@@ -1,3 +1,4 @@
+// Lexer grammar
 lexer grammar SimpleLangLexer;
 
 // Keywords
@@ -17,9 +18,13 @@ COMMA: ',';
 LBRACKET: '[';
 RBRACKET: ']';
 
+// Indentation handling
+INDENT: '    ' | '\t';
+NEWLINE: '\r'? '\n';
+
 // Identifiers and Literals
 ID: [a-zA-Z_][a-zA-Z_0-9]*;
 NUMBER: [0-9]+;
 
-// Whitespace
-WS: [ \t\r\n]+ -> skip;
+// Skip other whitespace
+WS: [ \t]+ -> skip;

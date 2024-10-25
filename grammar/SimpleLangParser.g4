@@ -1,18 +1,23 @@
+// Parser grammar
 parser grammar SimpleLangParser;
-
 options {
     tokenVocab=SimpleLangLexer;
 }
 
-program: statement*;
+program: (statement NEWLINE*)* EOF;
 
-statement: function
-         | assignment
-         | returnStatement
-         | methodCall
-         ;
+statement
+    : function
+    | assignment
+    | indentedStatement
+    | methodCall
+    ;
 
-function: DEF ID LPAREN params? RPAREN COLON statement;
+function: DEF ID LPAREN params? RPAREN COLON NEWLINE functionBody;
+
+functionBody: indentedStatement+;
+
+indentedStatement: INDENT (returnStatement | assignment | methodCall);
 
 params: ID (COMMA ID)*;
 
@@ -22,13 +27,15 @@ returnStatement: RET expression;
 
 methodCall: ID DOT ID LPAREN args? RPAREN;
 
-expression: term (PLUS term)*
-          | listLiteral
-          | methodCall
-          | functionCall  // Added functionCall rule
-          ;
+expression
+    : term (PLUS term)*
+    | listLiteral
+    | methodCall
+    | functionCall
+    ;
 
-term: ID
+term
+    : ID
     | NUMBER
     ;
 
@@ -36,4 +43,4 @@ listLiteral: LBRACKET RBRACKET;
 
 args: expression (COMMA expression)*;
 
-functionCall: ID LPAREN args? RPAREN;  // Added functionCall rule
+functionCall: ID LPAREN args? RPAREN;
