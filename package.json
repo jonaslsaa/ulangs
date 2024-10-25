@@ -1,0 +1,14 @@
+{
+  "name": "simple-lang",
+  "module": "main.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "antlr4": "^4.13.2"
+  }
+}
