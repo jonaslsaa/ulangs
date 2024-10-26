@@ -52,7 +52,8 @@ function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: Sim
         ...helpers,
         '% CST Tree to AST conversion rules go here',
         '% Add conversion clauses here!',
-        '% Following main query below must be callable with the conversion clauses',
+        '% Following main query below must be callable with the conversion clauses:',
+        '',
         ...query];
 }
 
