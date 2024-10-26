@@ -80,8 +80,8 @@ nth_child_of_type(Parent, Type, N, Child) :-
 % Value handling helpers
 node_value(Node, Value) :-
     (value(Node, Value) ; 
-     child(Node, Child), 
-     value(Child, Value)),
+    child(Node, Child), 
+    value(Child, Value)),
     !.
 
 to_number(Atom, Number) :-
