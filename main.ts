@@ -1,4 +1,4 @@
-import { CharStream, CommonTokenStream, ParserRuleContext }  from 'antlr4';
+import { CharStream, CommonTokenStream, ParserRuleContext } from 'antlr4';
 import SimpleLangLexer from './grammar/SimpleLangLexer';
 import SimpleLangParser from './grammar/SimpleLangParser';
 import { generatePrologFacts } from './prolog-generator/treeFacts';
@@ -6,6 +6,8 @@ import path from 'path';
 import fs from 'fs';
 import { Command } from 'commander';
 import { assert } from 'console';
+import { callSWIProlog } from './utils';
+
 
 function fileToLines(fileRelativePath: string): string[] {
     const filePath = path.join(process.cwd(), fileRelativePath);
@@ -26,7 +28,7 @@ function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: Sim
             `% ${comment}`,
             ...lines,
             ''
-            ];
+        ];
     }
 
     const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Prolog facts for CST tree');
@@ -48,6 +50,10 @@ function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: Sim
 
 const cli = new Command();
 
+
+
+
+
 cli.name('tbd');
 cli.description('tbd');
 cli.version('0.0.1');
@@ -57,21 +63,42 @@ cli.command('generate')
     .argument('<file>', 'File to generate facts from')
     .argument('[output]', 'Output file')
     .option('-c, --conversion', 'Include conversion clauses')
-    .action(async (file: string, output: string, options: { conversion: boolean }) => {
+    .option('-r', '--run-prolog', 'Run prolog after generating facts')
+    .action(async (file: string, output: string, options: { conversion: boolean | undefined, r: boolean | undefined }) => {
         const fileNoExt = file.replace(/\.[^/.]+$/, '');
         const outputPath = output ?? `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
+
         const parser = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
         const tree = parser.program();
-        const includeConversionClauses = options.conversion ?? false;
-        if (includeConversionClauses) {
-            console.log(" - Including conversion clauses.");
-        }
-        const clauses = createTreeToAstGeneratorClauses(tree, parser, includeConversionClauses);
+
+        const clauses = createTreeToAstGeneratorClauses(tree, parser, options.conversion ?? false);
         assert(clauses.length > 0, "No clauses generated");
         assert(outputPath.length > 0, "No output path provided");
         assert(outputPath.endsWith('.pl'), "Output path must be a .pl file");
         fs.writeFileSync(outputPath, clauses.join('\n'));
+        console.log(`Generated facts written to ${outputPath}`);
+
+        if (options.r) {
+            if (!options.conversion) {
+                console.error("Cannot run prolog without conversion clauses");
+                process.exit(1);
+                return;
+            }
+            console.log("Running prolog to generate AST:");
+            const prologResult = callSWIProlog(outputPath);
+            if (prologResult.stderr) {
+                console.error("Prolog failed:");
+                console.error(prologResult.stderr);
+            }
+            const ast = prologResult.stdout.trim();
+            if (ast === '') {
+                console.error("Prolog returned empty result");
+            } else {
+                console.log(ast);
+            }
+        }
     });
+
 
 cli.parse();
