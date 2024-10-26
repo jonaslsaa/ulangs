@@ -1,11 +1,29 @@
-% Generic node to JSON conversion
+% Handle lists specially
 node_to_json(Node, JSON) :-
-    Node =.. [Type|Args],  % Decompose node into type and arguments
-    args_to_json(Args, ArgsJSON),
-    JSON = json([
-        type=Type,
-        args=ArgsJSON
-    ]).
+    Node =.. [Type|Args],
+    clean_args(Args, CleanArgs),
+    JSON = json([type=Type, args=CleanArgs]).
+
+% Clean arguments, converting Prolog lists to JSON arrays
+clean_args([], []).
+clean_args([H|T], [Clean|Rest]) :-
+    clean_arg(H, Clean),
+    clean_args(T, Rest).
+
+clean_arg(Arg, Clean) :-
+    (is_list(Arg) ->
+        maplist(node_to_json, Arg, Clean)  % Convert list elements
+    ; compound(Arg) ->
+        node_to_json(Arg, Clean)    % Convert compound term
+    ;
+        Clean = Arg    % Keep atomic values as is
+    ).
+
+% Helper to check if term is a list
+is_list(X) :- var(X), !, fail.
+is_list([]).
+is_list([_|T]) :- is_list(T).
+
 
 % Convert arguments recursively
 args_to_json([], []).
