@@ -66,7 +66,7 @@ cli.command('generate')
     .description('Generates prolog facts from a given file')
     .argument('<file>', 'File to generate facts from')
     .argument('[output]', 'Output file')
-    .option('-q, --query <query>', 'Query to run after generating facts', "mainQuery.pl")
+    .option('-q, --query <query>', 'Query file to run after generating facts', "mainQuery.pl")
     .option('-c, --conversion', 'Include conversion clauses', false)
     .option('-r, --run-prolog', 'Run prolog after generating facts', false)
     .action(async (file: string, output: string, options: { conversion: boolean | undefined, runProlog: boolean | undefined, query: string }) => {
