@@ -11,8 +11,13 @@ import { callSWIProlog } from './utils';
 
 function fileToLines(fileRelativePath: string): string[] {
     const filePath = path.join(process.cwd(), fileRelativePath);
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    return fileContent.split('\n');
+    try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        return fileContent.split('\n');
+    } catch (error) {
+        console.error(`Failed to read file ${filePath}: ${error}`);
+        process.exit(1);
+    }
 }
 
 function createParserFromGrammar(codeInput: string) {
@@ -22,7 +27,7 @@ function createParserFromGrammar(codeInput: string) {
     return new SimpleLangParser(tokens);
 }
 
-function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: SimpleLangParser, withConversionClaues: boolean = true): string[] {
+function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: SimpleLangParser, withConversionClaues: boolean = true, queryFile: string): string[] {
     function wrapWithComment(lines: string[], comment: string): string[] {
         return [
             `% ${comment}`,
@@ -31,29 +36,28 @@ function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: Sim
         ];
     }
 
+    const baseRelPath = path.join('rules', 'CstToAst');
+    const libraries = wrapWithComment(fileToLines(path.join(baseRelPath, 'libraries.pl')), 'Libraries');
     const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Prolog facts for CST tree');
-    const helpers = wrapWithComment(fileToLines('rules/CstToAst/genericHelpers.pl'), 'Generic helpers');
-    const conversion = wrapWithComment(fileToLines('rules/CstToAst/conversion.pl'), 'CST to AST conversion rules');
-    const mainQuery = wrapWithComment(fileToLines('rules/CstToAst/mainQuery.pl'), 'Main query');
+    const helpers = wrapWithComment(fileToLines(path.join(baseRelPath, 'genericHelpers.pl')), 'Generic helpers');
+    const conversion = wrapWithComment(fileToLines(path.join(baseRelPath, 'conversion.pl')), 'CST to AST conversion rules');
+    const query = wrapWithComment(fileToLines(path.join(baseRelPath, queryFile)), 'Main query');
 
     if (withConversionClaues) {
-        return [...treeFacts, ...helpers, ...conversion, ...mainQuery];
+        return [...libraries, ...treeFacts, ...helpers, ...conversion, ...query];
     }
     return [
+        ...libraries,
         ...treeFacts,
         ...helpers,
         '% CST Tree to AST conversion rules go here',
         '% Add conversion clauses here!',
         '% Following main query below must be callable with the conversion clauses',
-        ...mainQuery];
+        ...query];
 }
 
+
 const cli = new Command();
-
-
-
-
-
 cli.name('tbd');
 cli.description('tbd');
 cli.version('0.0.1');
@@ -62,9 +66,10 @@ cli.command('generate')
     .description('Generates prolog facts from a given file')
     .argument('<file>', 'File to generate facts from')
     .argument('[output]', 'Output file')
-    .option('-c, --conversion', 'Include conversion clauses')
+    .option('-q, --query <query>', 'Query to run after generating facts', "mainQuery.pl")
+    .option('-c, --conversion', 'Include conversion clauses', false)
     .option('-r', '--run-prolog', 'Run prolog after generating facts')
-    .action(async (file: string, output: string, options: { conversion: boolean | undefined, r: boolean | undefined }) => {
+    .action(async (file: string, output: string, options: { conversion: boolean | undefined, r: boolean | undefined, query: string }) => {
         const fileNoExt = file.replace(/\.[^/.]+$/, '');
         const outputPath = output ?? `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
@@ -72,7 +77,7 @@ cli.command('generate')
         const parser = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
         const tree = parser.program();
 
-        const clauses = createTreeToAstGeneratorClauses(tree, parser, options.conversion ?? false);
+        const clauses = createTreeToAstGeneratorClauses(tree, parser, options.conversion, options.query);
         assert(clauses.length > 0, "No clauses generated");
         assert(outputPath.length > 0, "No output path provided");
         assert(outputPath.endsWith('.pl'), "Output path must be a .pl file");
