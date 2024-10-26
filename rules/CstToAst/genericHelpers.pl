@@ -112,5 +112,5 @@ is_nonterminal(Node) :-
 % Error handling helpers
 safe_convert(Converter, Node, Result) :-
     catch(call(Converter, Node, Result),
-          Error,
-          (print_message(warning, Error), fail)).
+        Error,
+        (print_message(warning, Error), fail)).
