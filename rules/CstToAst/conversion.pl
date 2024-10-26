@@ -3,12 +3,16 @@ convert_cst_to_ast(Root, program(Statements)) :-
     convert_nodes(StmtNodes, convert_statement, Statements).
 
 % Statement conversion
-convert_statement(Node, Statement) :-
-    convert_by_type(Node, [
-        ('FunctionContext', convert_function),
-        ('AssignmentContext', convert_assignment),
-        ('MethodCallContext', convert_method_call)
-    ], Statement).
+convert_statement(Node, ast_node(AST, Loc)) :-
+    node_location(Node, File, Line, Col, Len),
+    Loc = location(File, Line, Col, Len),
+    (get_child_with_type(Node, 'FunctionContext', FuncNode) ->
+        convert_function(FuncNode, AST)
+    ; get_child_with_type(Node, 'AssignmentContext', AssignNode) ->
+        convert_assignment(AssignNode, AST)
+    ; get_child_with_type(Node, 'MethodCallContext', MethodNode) ->
+        convert_method_call(MethodNode, AST)
+    ).
 
 % Function conversion
 convert_function(Node, function(Name, Params, Body)) :-
@@ -38,15 +42,17 @@ convert_method_call(Node, method_call(Object, Method, Args)) :-
     convert_expression_list(ArgNodes, Args).
 
 % Expression conversion
-convert_expression(Node, Expr) :-
-    get_child_with_type(Node, 'ListLiteralContext', _) ->
+convert_expression(Node, ast_node(Expr, Loc)) :-
+    node_location(Node, File, Line, Col, Len),
+    Loc = location(File, Line, Col, Len),
+    (get_child_with_type(Node, 'TermContext', TermNode) ->
+        convert_term(TermNode, Expr)
+    ; get_child_with_type(Node, 'ListLiteralContext', _) ->
         Expr = list([])
     ; get_child_with_type(Node, 'FunctionCallContext', CallNode) ->
         convert_function_call(CallNode, Expr)
-    ; get_child_with_type(Node, 'PLUS', _) ->
-        convert_binary_op(Node, Expr)
-    ; get_child_with_type(Node, 'TermContext', TermNode) ->
-        convert_term(TermNode, Expr).
+    ; convert_binary_expression(Node, Expr)
+    ).
 
 % Function call conversion
 convert_function_call(Node, func_call(Name, Args)) :-

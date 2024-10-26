@@ -114,3 +114,19 @@ safe_convert(Converter, Node, Result) :-
     catch(call(Converter, Node, Result),
         Error,
         (print_message(warning, Error), fail)).
+
+% Location helpers
+% Get location for any AST node by finding its corresponding CST node
+get_node_location(NodeId, File, StartLine, StartCol, Length) :-
+    node_location(NodeId, File, StartLine, StartCol, Length).
+
+% Helper to get location from a specific type
+get_location_by_type(ParentId, Type, File, StartLine, StartCol, Length) :-
+    get_child_with_type(ParentId, Type, ChildId),
+    node_location(ChildId, File, StartLine, StartCol, Length).
+
+% Modified conversion predicates to include location information
+convert_with_location(Node, ast_node(AST, Location)) :-
+    node_location(Node, File, Line, Col, Len),
+    Location = location(File, Line, Col, Len),
+    convert_cst_to_ast(Node, AST).

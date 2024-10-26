@@ -1,10 +1,15 @@
 import { Parser, ParserRuleContext, TerminalNode } from "antlr4";
+import assert from "assert";
 
 interface PrologNode {
   id: number;
   type: string;
   value?: string;
   children: number[];
+  line?: number;
+  column?: number;
+  length?: number;
+  file?: string;
 }
 
 function cleanValue(value: string): string {
@@ -27,20 +32,17 @@ function asserted<T>(value: T): T {
   return value;
 }
 
-export function generatePrologFacts(tree: ParserRuleContext, parser: Parser): string[] {
+export function generatePrologFacts(
+  tree: ParserRuleContext, 
+  parser: Parser, 
+  filename: string = '__file__'
+): string[] {
   const nodes: Map<ParserRuleContext, PrologNode> = new Map();
   let nodeCounter = 1;
 
   function createNodes(node: ParserRuleContext): number | null {
     const nodeId = nodeCounter++;
-    const nodeType = node.constructor.name;
-    const prologNode: PrologNode = {
-      id: nodeId,
-      type: nodeType,
-      children: []
-    };
-
-     // Handle terminal nodes differently
+    
     if (node instanceof TerminalNode) {
       const token = node.symbol;
       const tokenTypeName = parser.getSymbolicNames()[token.type];
@@ -48,8 +50,13 @@ export function generatePrologFacts(tree: ParserRuleContext, parser: Parser): st
         id: nodeId,
         type: tokenTypeName || 'UNKNOWN_TOKEN',
         value: cleanValue(node.getText().trim()),
-        children: []
+        children: [],
+        line: token.line,
+        column: token.column,
+        length: token.stop - token.start + 1,
+        file: filename
       };
+
       if (prologNode.type === 'UNKNOWN_TOKEN' && prologNode.value?.includes('EOF')) {
         prologNode.type = 'EOF';
       }
@@ -57,10 +64,19 @@ export function generatePrologFacts(tree: ParserRuleContext, parser: Parser): st
       return nodeId;
     }
 
-    // Handle terminal nodes
-    if (node.getChildCount() === 0) {
-      throw new Error(`Node ${node.constructor.name} has no children`);
-    }
+    assert(node.getChildCount() > 0, `Node ${node.constructor.name} has no children`);
+
+    const start = node.start;
+      const stop = node.stop;
+      const prologNode: PrologNode = {
+        id: nodeId,
+        type: node.constructor.name,
+        children: [],
+        line: start?.line,
+        column: start?.column,
+        length: stop ? (stop.stop - start.start + 1) : undefined,
+        file: filename
+      };
 
     nodes.set(node, prologNode);
 
@@ -84,6 +100,7 @@ export function generatePrologFacts(tree: ParserRuleContext, parser: Parser): st
     facts.push(':- discontiguous node/2.');
     facts.push(':- discontiguous has_child/2.');
     facts.push(':- discontiguous has_value/2.');
+    facts.push(':- discontiguous node_location/5.');
     facts.push('');
 
     // Group nodes by type for better readability
@@ -100,6 +117,15 @@ export function generatePrologFacts(tree: ParserRuleContext, parser: Parser): st
         facts.push(`node(${node.id}, '${asserted(node.type)}').`);
       });
     }
+    facts.push('');
+
+    // Generate location facts
+    const locationFacts = Array.from(nodes.values())
+      .filter(node => node.line !== undefined)
+      .map(node => 
+        `node_location(${node.id}, '${node.file}', ${node.line}, ${node.column}, ${node.length}).`
+      );
+    facts.push(...locationFacts);
     facts.push('');
 
     // Generate node values (only for meaningful values)
