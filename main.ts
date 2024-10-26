@@ -68,8 +68,8 @@ cli.command('generate')
     .argument('[output]', 'Output file')
     .option('-q, --query <query>', 'Query to run after generating facts', "mainQuery.pl")
     .option('-c, --conversion', 'Include conversion clauses', false)
-    .option('-r', '--run-prolog', 'Run prolog after generating facts')
-    .action(async (file: string, output: string, options: { conversion: boolean | undefined, r: boolean | undefined, query: string }) => {
+    .option('-r, --run-prolog', 'Run prolog after generating facts', false)
+    .action(async (file: string, output: string, options: { conversion: boolean | undefined, runProlog: boolean | undefined, query: string }) => {
         const fileNoExt = file.replace(/\.[^/.]+$/, '');
         const outputPath = output ?? `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
@@ -84,7 +84,7 @@ cli.command('generate')
         fs.writeFileSync(outputPath, clauses.join('\n'));
         console.log(`Generated facts written to ${outputPath}`);
 
-        if (options.r) {
+        if (options.runProlog) {
             if (!options.conversion) {
                 console.error("Cannot run prolog without conversion clauses");
                 process.exit(1);
