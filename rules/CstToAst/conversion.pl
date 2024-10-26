@@ -1,27 +1,24 @@
-% CST to AST conversion rules
 convert_cst_to_ast(Root, program(Statements)) :-
-    get_children_of_type(Root, 'StatementContext', StmtNodes),
-    convert_statement_list(StmtNodes, Statements).
+    children_of_type(Root, 'StatementContext', StmtNodes),
+    convert_nodes(StmtNodes, convert_statement, Statements).
 
 % Statement conversion
 convert_statement(Node, Statement) :-
-    (get_child_with_type(Node, 'FunctionContext', FuncNode) ->
-        convert_function(FuncNode, Statement)
-    ; get_child_with_type(Node, 'AssignmentContext', AssignNode) ->
-        convert_assignment(AssignNode, Statement)
-    ; get_child_with_type(Node, 'MethodCallContext', MethodNode) ->
-        convert_method_call(MethodNode, Statement)
-    ).
+    convert_by_type(Node, [
+        ('FunctionContext', convert_function),
+        ('AssignmentContext', convert_assignment),
+        ('MethodCallContext', convert_method_call)
+    ], Statement).
 
 % Function conversion
 convert_function(Node, function(Name, Params, Body)) :-
-    get_child_value(Node, 'ID', Name),
-    get_child_with_type(Node, 'ParamsContext', ParamsNode),
-    collect_values(ParamsNode, 'ID', Params),
-    get_child_with_type(Node, 'FunctionBodyContext', BodyNode),
-    get_child_with_type(BodyNode, 'IndentedStatementContext', IndentNode),
-    get_child_with_type(IndentNode, 'ReturnStatementContext', ReturnNode),
-    get_child_with_type(ReturnNode, 'ExpressionContext', ExprNode),
+    child_value(Node, 'ID', Name),
+    first_child_of_type(Node, 'ParamsContext', ParamsNode),
+    child_values(ParamsNode, 'ID', Params),
+    first_child_of_type(Node, 'FunctionBodyContext', BodyNode),
+    first_child_of_type(BodyNode, 'IndentedStatementContext', IndentNode),
+    first_child_of_type(IndentNode, 'ReturnStatementContext', ReturnNode),
+    first_child_of_type(ReturnNode, 'ExpressionContext', ExprNode),
     convert_expression(ExprNode, ReturnExpr),
     Body = [return(ReturnExpr)].
 
