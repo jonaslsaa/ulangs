@@ -1,4 +1,4 @@
-import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
+import { ErrorListener, Lexer, Parser, RecognitionException, Recognizer, Token } from 'antlr4';
 
 export type ANTLRError = {
     isWarning: boolean;
@@ -21,15 +21,21 @@ export class CustomErrorListener extends ErrorListener<Token> {
         msg: string,
         e: RecognitionException
     ): void {
-        console.log("ANTLR Runtime error:");
-        console.log(recognizer, offendingSymbol, line, column, msg, e);
+        console.error("ANTLR Runtime error:");
         console.error(`Line ${line}:${column} - ${msg}`);
 
-        // TODO: determine if this is a lexer or parser error
-        const type = 'PARSER';
+        // Determine which file and what type of grammar is being parsed
+        let file = '<unknown>';
+        let type: ANTLRError['grammarType'] = 'UNKNOWN';
 
-        // TODO: determine which file is being parsed
-        const file = '<unknown>';
+        if (recognizer instanceof Lexer || recognizer instanceof Parser) {
+            if (recognizer instanceof Lexer) type = 'LEXER';
+            if (recognizer instanceof Parser) type = 'PARSER';
+            const maybeFile = (recognizer as any)['grammarFileName'];
+            if (maybeFile && typeof maybeFile === 'string' && maybeFile.length > 0) {
+                file = maybeFile;
+            }
+        }
 
         this.errors.push({
             isWarning: false,
