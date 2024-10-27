@@ -1,11 +1,13 @@
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 
 export type ANTLRError = {
-    type: 'LEXER' | 'PARSER';
+    isWarning: boolean;
+    grammarType: 'LEXER' | 'PARSER' | 'UNKNOWN';
     source: 'BUILD' | 'RUNTIME';
     message: string;
-    line: number;
-    column: number;
+    file?: string;
+    line?: number;
+    column?: number;
 };
 
 export class CustomErrorListener extends ErrorListener<Token> {
@@ -26,10 +28,15 @@ export class CustomErrorListener extends ErrorListener<Token> {
         // TODO: determine if this is a lexer or parser error
         const type = 'PARSER';
 
+        // TODO: determine which file is being parsed
+        const file = '<unknown>';
+
         this.errors.push({
-            type: type,
+            isWarning: false,
+            grammarType: type,
             source: 'RUNTIME',
             message: msg,
+            file: file,
             line,
             column
         });

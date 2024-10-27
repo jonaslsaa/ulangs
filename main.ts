@@ -11,10 +11,10 @@ cli.version('0.0.1');
 
 
 type CLIGenerateArguments = {
-    conversion: boolean | undefined;
-    runProlog: boolean | undefined;
+    excludeConversion: boolean;
+    runProlog: boolean;
     query: string;
-    generateAntlr: boolean | undefined
+    generateAntlr: boolean
 };
 
 cli.command('generate')
@@ -22,15 +22,19 @@ cli.command('generate')
     .argument('<file>', 'File to generate facts from')
     .argument('[output]', 'Output file')
     .option('-q, --query <query>', 'Query file to run after generating facts', "CstToAst/queries/printAST.pl")
-    .option('-c, --conversion', 'Include conversion clauses', false)
+    .option('-ec, --exclude-conversion', 'Exclude conversion clauses', false)
     .option('-r, --run-prolog', 'Run prolog after generating facts', false)
     .option('-g, --generate-antlr', 'Generate ANTLR files', false)
     .action(async (file: string, output: string, options: CLIGenerateArguments) => {
         if (options.generateAntlr) {
             const errors = compileANTLRFiles('grammar');
-
             if (errors.length === 0) {
                 console.log('ANTLR files generated successfully');
+                const warnings = errors.filter(error => error.isWarning);
+                if (warnings.length > 0) {
+                    console.warn('ANTLR files generation produced warnings:');
+                    warnings.forEach(warning => console.warn(warning));
+                }
             } else {
                 console.error('ANTLR files generation failed:');
                 errors.forEach(error => console.error(error));
@@ -56,8 +60,10 @@ cli.command('generate')
             process.exit(1);
         }
 
+        const includeConversionClauses = !options.excludeConversion;
+
         const clauses = [
-            ...cstToAstGeneratorClauses(tree, parser, options.conversion),
+            ...cstToAstGeneratorClauses(tree, parser, includeConversionClauses),
             ...queryClauses(options.query)
         ];
         assert(clauses.length > 0, "No clauses generated");
@@ -66,7 +72,7 @@ cli.command('generate')
         fs.writeFileSync(outputPath, clauses.join('\n'));
 
         if (options.runProlog) {
-            if (!options.conversion) {
+            if (!includeConversionClauses) {
                 console.error("Cannot run prolog without conversion clauses");
                 process.exit(1);
                 return;

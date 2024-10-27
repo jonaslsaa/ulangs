@@ -1,7 +1,8 @@
 import { spawnSync } from 'child_process';
 import fs from 'fs';
+import { type ANTLRError } from '../syntactic/ErrorListener';
 
-export function compileANTLRFiles(grammarDirectoryPath: string): string[] {
+export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
     const grammarFiles = fs.readdirSync(grammarDirectoryPath);
     const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
 
@@ -24,5 +25,64 @@ export function compileANTLRFiles(grammarDirectoryPath: string): string[] {
             .filter(line => line.length > 0)); // Remove empty lines
     }
 
-    return errors;
+    function toANTLRError(_error: string): ANTLRError {
+        /* Error format:
+            error(50): SimpleLangLexer.g4:11:0: ...message...
+            warning(125): SimpleLangParser.g4:25:15: ...message...
+            error(12): OtherFileLexer.g4:11:0: ...message...
+        */
+        // Match error type, file, line, column, and message
+        const error = _error.trim();
+
+        const isError = error.startsWith('error(');
+        let isWarning = error.startsWith('warning(');
+
+        if (!isError && !isWarning) {
+            console.error(`Unknown error format: ${error}`);
+            isWarning = true; // Default to warning
+        }
+
+        // Extract file, line, and column using regex
+        const fileRegex = /: (.+):(\d+):(\d+):/;
+        const match = fileRegex.exec(error);
+        let file: string | undefined;
+        let line: number | undefined;
+        let column: number | undefined;
+
+        if (match) {
+            file = match[1];
+            try {
+                line = parseInt(match[2]);
+                column = parseInt(match[3]);
+            } catch (error) {
+                console.error(`Failed to parse line and column: ${error}`);
+                line = undefined;
+                column = undefined;
+            }
+        }
+
+        // Detect grammar type based on error message
+        let errorType: ANTLRError['grammarType'];
+        if (error.toLowerCase().includes('lexer')) {
+            errorType = 'LEXER';
+        } else if (error.toLowerCase().includes('parser')) {
+            errorType = 'PARSER';
+        } else {
+            console.error(`Unknown grammar type: ${error}`);
+            errorType = 'UNKNOWN';
+            isWarning = true;
+        }
+
+        return {
+            isWarning: isWarning,
+            grammarType: errorType,
+            source: 'BUILD',
+            message: error,
+            file: file,
+            line: line,
+            column: column,
+        };
+    }
+
+    return errors.map(toANTLRError);
 }
