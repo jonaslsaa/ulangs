@@ -1,7 +1,6 @@
 
 import { spawnSync } from 'child_process';
 import type { SpawnSyncReturns, SpawnSyncOptionsWithStringEncoding } from 'child_process';
-import fs from 'fs';
 
 export function callSWIProlog(file: string): {stdout: string, stderr: string} {
     try {
@@ -30,19 +29,4 @@ export function callSWIProlog(file: string): {stdout: string, stderr: string} {
         }
         throw new Error(`Failed to run SWI-Prolog: ${String(error)}`);
     }
-}
-
-export function generateANTLRFiles(grammarDirectoryPath: string): void {
-    // We have to detect all .g4 files in the directory and generate their corresponding files with:
-    // antlr4 -Dlanguage=TypeScript SimpleLangLexer.g4 SimpleLangParser.g4
-    const grammarFiles = fs.readdirSync(grammarDirectoryPath);
-    const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
-    
-    // Call ANTLR for all the files at once with CD in the grammar directory
-    spawnSync('antlr4', ['-Dlanguage=TypeScript', ...grammarFilesWithExtension], {
-        cwd: grammarDirectoryPath,
-        encoding: 'utf8',
-        stdio: 'inherit'
-    });
-    console.log('ANTLR files generated successfully');
 }
