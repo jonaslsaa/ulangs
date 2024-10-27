@@ -1,0 +1,9 @@
+def add(a, b):
+    ret a + b
+
+def addadd(a, b):
+    x = add(a, b)
+    b = add(a, b)
+    ret x + b
+
+addadd(2, 4)

@@ -1,0 +1,5 @@
+def add(a, b):
+    sideeffect(a, b)
+    ret a + b
+
+add(2, 4)

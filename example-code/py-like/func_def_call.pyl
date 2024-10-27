@@ -2,3 +2,9 @@ def add(a, b):
     ret a + b
 
 add(2, 4)
+
+def sub(a, b):
+    ret (a - b)
+  
+def mul(x, y):
+    ret a * b

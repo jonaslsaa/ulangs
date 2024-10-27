@@ -1,0 +1,9 @@
+a<string> = "Hello, world!"
+b<int> = 42
+c = a + b
+
+def add(a<int>, b<int>)<int>:
+    ret a + b
+
+def sub(a, b):
+    ret<int> a - b

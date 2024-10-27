@@ -1,0 +1,2 @@
+for num<int> in my_numbers:
+    print(num)
