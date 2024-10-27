@@ -30,11 +30,6 @@ cli.command('generate')
             const errors = compileANTLRFiles('grammar');
             if (errors.length === 0) {
                 console.log('ANTLR files generated successfully');
-                const warnings = errors.filter(error => error.isWarning);
-                if (warnings.length > 0) {
-                    console.warn('ANTLR files generation produced warnings:');
-                    warnings.forEach(warning => console.warn(warning));
-                }
             } else {
                 console.error('ANTLR files generation failed:');
                 errors.forEach(error => console.error(error));
