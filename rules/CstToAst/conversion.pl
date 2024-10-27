@@ -12,6 +12,8 @@ convert_statement(Node, ast_node(AST, Loc)) :-
         convert_assignment(AssignNode, AST)
     ; get_child_with_type(Node, 'MethodCallContext', MethodNode) ->
         convert_method_call(MethodNode, AST)
+    ; get_child_with_type(Node, 'FunctionCallContext', CallNode) ->  % Add this clause
+        convert_function_call(CallNode, AST)
     ).
 
 % Function conversion

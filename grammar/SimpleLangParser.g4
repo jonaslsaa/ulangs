@@ -11,6 +11,7 @@ statement
     | assignment
     | indentedStatement
     | methodCall
+    | functionCall    // Add this line
     ;
 
 function: DEF ID LPAREN params? RPAREN COLON NEWLINE functionBody;
