@@ -3,7 +3,7 @@ def add(a, b):
 
 def addadd(a, b):
     x = add(a, b)
-    b = add(a, b)
-    ret x + b
+    y = add(a, b)
+    ret x + y
 
 addadd(2, 4)
