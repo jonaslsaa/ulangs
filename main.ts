@@ -14,19 +14,18 @@ type CLIGenerateArguments = {
     excludeConversion: boolean;
     runProlog: boolean;
     query: string;
-    generateAntlr: boolean
+    compileAntlr: boolean
 };
 
-cli.command('generate')
-    .description('Generates prolog facts from a given file')
+cli.command('query')
+    .description('Generates Prolog from file with a given query')
     .argument('<file>', 'File to generate facts from')
-    .argument('[output]', 'Output file')
     .option('-q, --query <query>', 'Query file to run after generating facts', "CstToAst/queries/printAST.pl")
     .option('-ec, --exclude-conversion', 'Exclude conversion clauses', false)
     .option('-r, --run-prolog', 'Run prolog after generating facts', false)
-    .option('-g, --generate-antlr', 'Generate ANTLR files', false)
-    .action(async (file: string, output: string, options: CLIGenerateArguments) => {
-        if (options.generateAntlr) {
+    .option('-a, --compile-antlr', 'Generate ANTLR files', false)
+    .action(async (file: string, options: CLIGenerateArguments) => {
+        if (options.compileAntlr) {
             const errors = compileANTLRFiles('grammar');
             if (errors.length === 0) {
                 console.log('ANTLR files generated successfully');
@@ -42,7 +41,7 @@ cli.command('generate')
         const { cstToAstGeneratorClauses, queryClauses } = await import('./semantic/prolog');
 
         const fileNoExt = file.replace(/\.[^/.]+$/, '');
-        const outputPath = output ?? `${fileNoExt}.pl`;
+        const outputPath = `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
 
         const { parser, errorListener } = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
