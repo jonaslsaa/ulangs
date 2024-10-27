@@ -7,6 +7,7 @@ import fs from 'fs';
 import { Command } from 'commander';
 import { assert } from 'console';
 import { callSWIProlog } from './utils';
+import { CustomErrorListener } from './ErrorListener';
 
 
 function fileToLines(fileRelativePath: string): string[] {
@@ -21,10 +22,21 @@ function fileToLines(fileRelativePath: string): string[] {
 }
 
 function createParserFromGrammar(codeInput: string) {
+    const errorListener = new CustomErrorListener();
+    
     const chars = new CharStream(codeInput); // replace this with a FileStream as required
     const lexer = new SimpleLangLexer(chars);
+     // Remove default console error listener
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(errorListener);
     const tokens = new CommonTokenStream(lexer);
-    return new SimpleLangParser(tokens);
+    const parser = new SimpleLangParser(tokens);
+    parser.removeErrorListeners();
+    parser.addErrorListener(errorListener);
+    return {
+        parser,
+        errorListener
+    };
 }
 
 function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: SimpleLangParser, withConversionClaues: boolean = true, queryFile: string): string[] {
@@ -75,8 +87,15 @@ cli.command('generate')
         const outputPath = output ?? `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
 
-        const parser = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
+        const {parser, errorListener} = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
         const tree = parser.program();
+
+        // Check for errors after parsing
+        if (errorListener.hasErrors()) {
+            console.error("Parsing errors detected:");
+            errorListener.getErrors().forEach(error => console.error(error));
+            process.exit(1);
+        }
 
         const clauses = createTreeToAstGeneratorClauses(tree, parser, options.conversion, options.query);
         assert(clauses.length > 0, "No clauses generated");
