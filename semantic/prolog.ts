@@ -1,6 +1,6 @@
 import type { Parser, ParserRuleContext } from "antlr4";
 import path from 'path';
-import { generatePrologFacts } from "../prolog-generator/treeFacts";
+import { generatePrologFacts } from "../prolog-generator/cst";
 import fs from 'fs';
 
 function fileToLines(fileRelativePath: string): string[] {
