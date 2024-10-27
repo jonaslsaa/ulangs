@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, type Grammar } from "../llm/grammar";
+import { generateCandidateSolutions, repairCandidateSolution, type Grammar, type GrammarWithMessageHistory } from "../llm/grammar";
 import { compileANTLRFiles } from "../syntactic/build";
 import { createParserFromGrammar } from "../syntactic/context-free-parser";
 
@@ -59,13 +59,13 @@ function createTemporaryDirectory(name: string): string {
 }
 
 type TestedGrammar = {
-    grammar: Grammar;
+    grammarWithHistory: GrammarWithMessageHistory;
     errors?: ANTLRError[];
     success: boolean;
     complexity: number;
 };
 
-async function testGrammar(grammar: Grammar, snippet: string): Promise<TestedGrammar> {
+async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippet: string): Promise<TestedGrammar> {
     // try to build the grammar 
     // by creating temporary directory
     // write grammars to file
@@ -76,9 +76,9 @@ async function testGrammar(grammar: Grammar, snippet: string): Promise<TestedGra
     // trying to parse the snippet to a tree
     // check if errorlistener has errors
     // return result
-
+    const grammar = grammarWithHistory.grammar;
     const testedGrammar: TestedGrammar = {
-        grammar,
+        grammarWithHistory: grammarWithHistory,
         success: false,
         complexity: calculateComplexity(`${grammar.lexerSource}\n${grammar.parserSource}`)
     };
@@ -133,7 +133,7 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     const errors: string[] = [];
     let errorUnderCompilationOfANTLRFiles = false;
     if (currentIntermediateSolution) {
-        const testedGrammar = await testGrammar(currentIntermediateSolution, snippet.snippet);
+        const testedGrammar = await testGrammar({grammar: currentIntermediateSolution, messages: []}, snippet.snippet);
         // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
         if (!testedGrammar.success) {
             errors.push(...testedGrammar.errors?.map(error => error.message) ?? []);
@@ -162,6 +162,42 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     // Filter out invalid grammars
     const validGrammars = testedGrammars.filter(g => g.success);
     console.log(`Tested ${testedGrammars.length} candidate grammars - ${validGrammars.length} succeeded`);
+
+    // If no valid grammars were found, let's try to get the LLM to repair all the grammars based on the errors
+    if (validGrammars.length === 0) {
+        console.log("No valid grammars found, trying to repair grammars based on errors...");
+        async function repairCandidateSolutions(testedGrammars: TestedGrammar[]) {
+            return Promise.all(testedGrammars.map(async testedGrammar => {
+                const newErrors: string[] = [];
+                newErrors.push(...testedGrammar.errors?.map(error => error.message) ?? []);
+                return await repairCandidateSolution(openaiEnv, testedGrammar.grammarWithHistory, newErrors);
+            }));
+        }
+        const repairedCandidateGrammars = await repairCandidateSolutions(testedGrammars);
+        // Test each repaired candidate grammar
+        const repairedTestedGrammars = await Promise.all(repairedCandidateGrammars.map(async candidateGrammar => {
+            const g: GrammarWithMessageHistory = {
+                grammar: candidateGrammar.grammar!, // TODO: Fix this type
+                messages: candidateGrammar.messages
+            }
+            const testedGrammar = await testGrammar(g, snippet.snippet);
+            // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
+            return testedGrammar;
+        }));
+        // Filter out invalid grammars
+        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success);    
+        console.log(`Repaired ${repairedTestedGrammars.length} candidate grammars - ${validGrammars.length} succeeded`);
+        if (validRepairedGrammars.length > 0) {
+            console.log("Selecting the best repaired grammar...");
+            let bestRepairedGrammar: TestedGrammar = validRepairedGrammars[0];
+            for (const grammar of validRepairedGrammars) {
+                if (grammar.complexity < bestRepairedGrammar.complexity) {
+                    bestRepairedGrammar = grammar;
+                }
+            }
+            validGrammars.push(bestRepairedGrammar);
+        }
+    }
 
     // If no valid grammars were found, return undefined
     if (validGrammars.length === 0) {
@@ -196,6 +232,7 @@ export async function doInferGrammar(directory: string, extension: string, optio
     const lowestComplexity = sortedSnippets[0];
     const highestComplexity = sortedSnippets[sortedSnippets.length - 1];
     console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
+    console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
 
     // Load OpenAI environment variables
     const openaiEnv = loadOpenAIEnvVars();
@@ -217,7 +254,7 @@ export async function doInferGrammar(directory: string, extension: string, optio
 
         // If no valid intermediate solution was found, break
         if (nextIntermediateSolution) {
-            currentIntermediateSolution = nextIntermediateSolution.grammar;
+            currentIntermediateSolution = nextIntermediateSolution.grammarWithHistory.grammar;
         } else {
             didWeGiveUp = true;
             break;

@@ -7,6 +7,18 @@ export type Grammar = {
     parserSource: string;
 };
 
+export type GrammarWithMessageHistory = {
+    grammar: Grammar;
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+};
+
+export type MaybeGrammarWithHistory = {
+    grammar?: Grammar;
+    error?: string;
+    completion?: string;
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+};
+
 function constructPrompt(currentIntermediateSolution: Grammar | undefined, 
     codeSnippet: string, 
     errors: string[] = [],
@@ -45,7 +57,7 @@ function constructPrompt(currentIntermediateSolution: Grammar | undefined,
     }
     messages.push({
         role: 'user',
-        content: `You are a programming language expert. Here is the current ANTLR4 solution:
+        content: `Here is the current ANTLR4 solution:
 <LexerGrammar>
 \`\`\`antlr
 ${currentIntermediateSolution.lexerSource}
@@ -63,20 +75,14 @@ ${codeSnippet}
 \`\`\`
 Start by shortly thinking step-by-step.`
     });
-    console.log(messages);
     return messages;
 }
 
-type MaybeGrammar = {
-    grammar?: Grammar;
-    error?: string;
-    completion?: string;
-};
-
-function parseCompletionToGrammar(completion: string | null): MaybeGrammar {
+function parseCompletionToGrammar(completion: string | null): MaybeGrammarWithHistory {
     if (completion === null) {
         return {
             error: 'No completion provided',
+            messages: []
         };
     }
     // Find all ```antlr blocks
@@ -85,6 +91,7 @@ function parseCompletionToGrammar(completion: string | null): MaybeGrammar {
         return {
             error: 'No Antlr blocks found in completion',
             completion: completion,
+            messages: []
         };
     }
 
@@ -95,6 +102,7 @@ function parseCompletionToGrammar(completion: string | null): MaybeGrammar {
         return {
             error: 'No lexer or parser block found in completion',
             completion: completion,
+            messages: []
         };
     }
 
@@ -108,6 +116,7 @@ function parseCompletionToGrammar(completion: string | null): MaybeGrammar {
             parserSource,
         },
         completion: completion,
+        messages: []
     };
 }
 
@@ -115,7 +124,7 @@ async function makeCompletionRequest(
     openai: OpenAI,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string
-): Promise<MaybeGrammar> {
+): Promise<MaybeGrammarWithHistory> {
     try {
         const completion = await openai.chat.completions.create({
             model: model,
@@ -123,12 +132,25 @@ async function makeCompletionRequest(
             max_tokens: 4096,
             temperature: 0.7,
         });
+        
+        console.log(messages);
+        const content = completion.choices[0].message.content;
         console.log("LLM completion:");
-        console.log(completion.choices[0].message.content);
-        return parseCompletionToGrammar(completion.choices[0].message.content);
+        console.log(content);
+        
+        // Create new messages array with assistant's response
+        const updatedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
+            role: 'assistant',
+            content: content
+        }];
+        
+        const result = parseCompletionToGrammar(content);
+        result.messages = [...messages, ...updatedMessages];
+        return result;
     } catch (error) {
         return {
             error: `API request failed: ${error instanceof Error ? error.message : String(error)}`,
+            messages: messages
         };
     }
 }
@@ -139,8 +161,8 @@ export async function generateCandidateSolutions(
     codeSnippet: string,
     errors: string[] = [],
     errorUnderCompilationOfANTLRFiles: boolean = false,
-    n = 2
-) { 
+    n = 5
+): Promise<GrammarWithMessageHistory[]> { 
     const openai = new OpenAI({
         baseURL: openaiEnv.baseUrl,
         apiKey: openaiEnv.apiKey,
@@ -175,5 +197,35 @@ export async function generateCandidateSolutions(
         throw new Error('No successful grammars found');
     }
 
-    return successfulGrammars.map(result => result.grammar!);
+    // Convert successful results to GrammarWithMessageHistory
+    return successfulGrammars.map(result => ({
+        grammar: result.grammar!,
+        messages: result.messages
+    }));
+}
+
+export async function repairCandidateSolution(
+    openaiEnv: OpenAIEnv,
+    candidateSolution: GrammarWithMessageHistory,
+    newErrors: string[]
+) {
+    const openai = new OpenAI({
+        baseURL: openaiEnv.baseUrl,
+        apiKey: openaiEnv.apiKey,
+    });
+
+    const messages = candidateSolution.messages;
+    messages.push({
+        role: 'user',
+        content: `I got the following errors:
+        <Errors>
+        ${newErrors.join('\n')}
+        </Errors>
+        Repair the grammar to fix the errors (same output format as before).`
+    });
+    const repairedGrammar = await makeCompletionRequest(openai, messages, openaiEnv.model);
+    return {
+        grammar: repairedGrammar.grammar,
+        messages: repairedGrammar.messages
+    };
 }

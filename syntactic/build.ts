@@ -57,12 +57,13 @@ function toANTLRError(_error: string): ANTLRError {
     if (messageMatch) {
         message = messageMatch[1];
     }
+    // TODO: consider using message
 
     return {
         isWarning: isWarning,
         grammarType: errorType,
         source: 'BUILD',
-        message: message,
+        message: error,
         file: file,
         line: line,
         column: column,
@@ -86,6 +87,8 @@ export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
     // Parse stderr into array of errors
     const errors: string[] = [];
     if (result.stderr) {
+        console.log("ANTLR4 stderr in directory", grammarDirectoryPath, ":");
+        console.log(result.stderr);
         errors.push(...result.stderr
             .split('\n')
             .map(line => line.trim())
