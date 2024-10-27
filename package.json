@@ -9,7 +9,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "antlr4": "^4.13.2",
+    "antlr4": "4.13.2",
     "commander": "^12.1.0"
   }
 }
