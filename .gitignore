@@ -177,3 +177,5 @@ dist
 .antlr
 
 test.pl
+
+.grammar-tmp

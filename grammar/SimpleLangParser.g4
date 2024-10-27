@@ -1,8 +1,6 @@
 // Parser grammar
 parser grammar SimpleLangParser;
-options {
-    tokenVocab=SimpleLangLexer;
-}
+options { tokenVocab=SimpleLangLexer; }
 
 program: (statement NEWLINE*)* EOF;
 
