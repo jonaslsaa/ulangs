@@ -69,4 +69,5 @@ main: ID;
 - The lexer and parser should align with ANTLR 4 syntax rules and paradigms.
 - Document and comment the grammar rules to aid comprehension, and note consideration the next developer might need to think about.
 - Adjust rules to match the specific syntax used in the given code snippet for successful parsing.
+- No explanations are needed after the solution is given, just write the solution.
 - Remember to not break the current solution given to you, build on it and improve it with a focus on the current code snippet.`;

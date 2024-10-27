@@ -180,6 +180,9 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
             bestGrammar = grammar;
         }
     }
+    if (validGrammars.length > 1) {
+        console.log(`Selected best grammar with complexity ${bestGrammar.complexity}`);
+    }
     return bestGrammar;
 }
 

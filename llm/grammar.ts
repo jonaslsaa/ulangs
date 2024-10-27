@@ -61,7 +61,7 @@ Write/fix the ANTLR4 lexer and parser grammars for the following code snippet:
 \`\`\`
 ${codeSnippet}
 \`\`\`
-Start by explaining what you will do at a high-level.`
+Start by shortly thinking step-by-step.`
     });
     console.log(messages);
     return messages;
@@ -123,7 +123,8 @@ async function makeCompletionRequest(
             max_tokens: 4096,
             temperature: 0.7,
         });
-
+        console.log("LLM completion:");
+        console.log(completion.choices[0].message.content);
         return parseCompletionToGrammar(completion.choices[0].message.content);
     } catch (error) {
         return {
