@@ -1,74 +1,7 @@
-import { CharStream, CommonTokenStream, ParserRuleContext } from 'antlr4';
-import SimpleLangLexer from './grammar/SimpleLangLexer';
-import SimpleLangParser from './grammar/SimpleLangParser';
-import { generatePrologFacts } from './prolog-generator/treeFacts';
-import path from 'path';
 import fs from 'fs';
 import { Command } from 'commander';
 import { assert } from 'console';
-import { callSWIProlog } from './utils';
-import { CustomErrorListener } from './ErrorListener';
-
-
-function fileToLines(fileRelativePath: string): string[] {
-    const filePath = path.join(process.cwd(), fileRelativePath);
-    try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        return fileContent.split('\n');
-    } catch (error) {
-        console.error(`Failed to read file ${filePath}: ${error}`);
-        process.exit(1);
-    }
-}
-
-function createParserFromGrammar(codeInput: string) {
-    const errorListener = new CustomErrorListener();
-    
-    const chars = new CharStream(codeInput); // replace this with a FileStream as required
-    const lexer = new SimpleLangLexer(chars);
-     // Remove default console error listener
-    lexer.removeErrorListeners();
-    lexer.addErrorListener(errorListener);
-    const tokens = new CommonTokenStream(lexer);
-    const parser = new SimpleLangParser(tokens);
-    parser.removeErrorListeners();
-    parser.addErrorListener(errorListener);
-    return {
-        parser,
-        errorListener
-    };
-}
-
-function createTreeToAstGeneratorClauses(cstTree: ParserRuleContext, parser: SimpleLangParser, withConversionClaues: boolean = true, queryFile: string): string[] {
-    function wrapWithComment(lines: string[], comment: string): string[] {
-        return [
-            `% ${comment}`,
-            ...lines,
-            ''
-        ];
-    }
-
-    const baseRelPath = path.join('rules', 'CstToAst');
-    const libraries = wrapWithComment(fileToLines(path.join(baseRelPath, 'libraries.pl')), 'Libraries');
-    const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Prolog facts for CST tree');
-    const helpers = wrapWithComment(fileToLines(path.join(baseRelPath, 'genericHelpers.pl')), 'Generic helpers');
-    const conversion = wrapWithComment(fileToLines(path.join(baseRelPath, 'conversion.pl')), 'CST to AST conversion rules');
-    const query = wrapWithComment(fileToLines(path.join(baseRelPath, queryFile)), 'Main query');
-
-    if (withConversionClaues) {
-        return [...libraries, ...treeFacts, ...helpers, ...conversion, ...query];
-    }
-    return [
-        ...libraries,
-        ...treeFacts,
-        ...helpers,
-        '% CST Tree to AST conversion rules go here',
-        '% Add conversion clauses here!',
-        '% Following main query below must be callable with the conversion clauses:',
-        '',
-        ...query];
-}
-
+import { callSWIProlog, generateANTLRFiles } from './utils';
 
 const cli = new Command();
 cli.name('tbd');
@@ -82,7 +15,15 @@ cli.command('generate')
     .option('-q, --query <query>', 'Query file to run after generating facts', "mainQuery.pl")
     .option('-c, --conversion', 'Include conversion clauses', false)
     .option('-r, --run-prolog', 'Run prolog after generating facts', false)
-    .action(async (file: string, output: string, options: { conversion: boolean | undefined, runProlog: boolean | undefined, query: string }) => {
+    .option('-g, --generate-antlr', 'Generate ANTLR files', false)
+    .action(async (file: string, output: string, options: { conversion: boolean | undefined, runProlog: boolean | undefined, query: string, generateAntlr: boolean | undefined }) => {
+        if (options.generateAntlr) {
+            generateANTLRFiles('grammar');
+        }
+
+        // Import from parser.ts
+        const { createParserFromGrammar, createTreeToAstGeneratorClauses } = await import('./parser');
+
         const fileNoExt = file.replace(/\.[^/.]+$/, '');
         const outputPath = output ?? `${fileNoExt}.pl`;
         console.log("Generating prolog file from", file, "to", outputPath);
