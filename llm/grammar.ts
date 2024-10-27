@@ -7,7 +7,11 @@ export type Grammar = {
     parserSource: string;
 };
 
-function constructPrompt(currentIntermediateSolution: Grammar | undefined, codeSnippet: string, errors: string[] = []): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+function constructPrompt(currentIntermediateSolution: Grammar | undefined, 
+    codeSnippet: string, 
+    errors: string[] = [],
+    errorUnderCompilationOfANTLRFiles: boolean = false
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
     if (currentIntermediateSolution === undefined) {
@@ -33,6 +37,11 @@ function constructPrompt(currentIntermediateSolution: Grammar | undefined, codeS
             errors.push(`...and ${errors.length - maxErrors} more errors...`);
         }
         errorMessage = `\n\nThe following errors were found in the current solution:\n<Errors>\n${errors.join('\n')}\n</Errors>`;
+        if (errorUnderCompilationOfANTLRFiles) {
+            errorMessage += `\nThe error occurred under compilation of ANTLR4 files.`;
+        } else {
+            errorMessage += `\nThe error occurred during the parsing of the code snippet.`;
+        }
     }
     messages.push({
         role: 'user',
@@ -54,7 +63,7 @@ ${codeSnippet}
 \`\`\`
 Start by explaining what you will do at a high-level.`
     });
-
+    console.log(messages);
     return messages;
 }
 
@@ -128,6 +137,7 @@ export async function generateCandidateSolutions(
     currentIntermediateSolution: Grammar | undefined,
     codeSnippet: string,
     errors: string[] = [],
+    errorUnderCompilationOfANTLRFiles: boolean = false,
     n = 2
 ) { 
     const openai = new OpenAI({
@@ -135,7 +145,7 @@ export async function generateCandidateSolutions(
         apiKey: openaiEnv.apiKey,
     });
 
-    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors);
+    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors, errorUnderCompilationOfANTLRFiles);
 
     // Create array of n identical requests
     const requests = Array(n).fill(null).map(() => 

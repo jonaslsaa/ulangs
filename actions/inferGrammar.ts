@@ -131,11 +131,13 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
 
     // First see if the current intermediate solution is valid
     const errors: string[] = [];
+    let errorUnderCompilationOfANTLRFiles = false;
     if (currentIntermediateSolution) {
         const testedGrammar = await testGrammar(currentIntermediateSolution, snippet.snippet);
         // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
         if (!testedGrammar.success) {
             errors.push(...testedGrammar.errors?.map(error => error.message) ?? []);
+            errorUnderCompilationOfANTLRFiles = testedGrammar.errors?.some(error => error.source === 'BUILD') ?? false;
             console.log("Current intermediate solution is invalid, trying to generate a new one.");
         } else {
             console.log("Current intermediate solution is valid.");
@@ -144,7 +146,12 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     }
 
     // Generate candidate grammars from LLM
-    const candidateGrammars = await generateCandidateSolutions(openaiEnv, currentIntermediateSolution, snippet.snippet, errors);
+    const candidateGrammars = await generateCandidateSolutions(openaiEnv,
+                                                                currentIntermediateSolution,
+                                                                snippet.snippet,
+                                                                errors,
+                                                                errorUnderCompilationOfANTLRFiles
+                                                            );
     console.log(`Generated ${candidateGrammars.length} candidate grammars`);
     // Test each candidate grammar
     const testedGrammars = await Promise.all(candidateGrammars.map(async candidateGrammar => {
