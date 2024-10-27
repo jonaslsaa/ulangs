@@ -5,6 +5,30 @@ import { compileANTLRFiles } from '../syntactic/build';
 
 import type { CLIGenerateArguments } from '../cli';
 
+
+export async function doCheck(file: string) {
+    const errors = compileANTLRFiles('grammar');
+    if (errors.length > 0) {
+        console.error('ANTLR files generation failed:');
+        errors.forEach(error => console.error(error));
+        process.exit(1);
+    }
+    console.log('ANTLR files generated successfully');
+
+    // Try to parse the file
+    const { createParserFromGrammar } = await import('../syntactic/parser');
+    const { parser, errorListener } = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
+    parser.program();
+
+    // Check for errors after parsing
+    if (errorListener.hasErrors()) {
+        console.error("Parsing errors detected:");
+        errorListener.getErrors().forEach(error => console.error(error));
+        process.exit(1);
+    }
+    console.log('File parsed successfully');
+}
+
 export async function doQuery(file: string, options: CLIGenerateArguments) {
     if (options.compileAntlr) {
         const errors = compileANTLRFiles('grammar');

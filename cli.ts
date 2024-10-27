@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { doQuery } from './main/query';
+import { doCheck, doQuery } from './main/query';
 
 
 const cli = new Command();
@@ -25,4 +25,10 @@ cli.command('query')
         doQuery(file, options);
     });
 
+cli.command('check')
+    .description('Check if a file is syntactically valid')
+    .argument('<file>', 'File to check')
+    .action(async (file: string) => {
+        doCheck(file);
+    });
 cli.parse();
