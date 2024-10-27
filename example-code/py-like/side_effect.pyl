@@ -1,3 +1,6 @@
+def sideeffect(a, b):
+    ret a + b
+
 def add(a, b):
     sideeffect(a, b)
     ret a + b
