@@ -185,8 +185,8 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
             return testedGrammar;
         }));
         // Filter out invalid grammars
-        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success);    
-        console.log(`Repaired ${repairedTestedGrammars.length} candidate grammars - ${validGrammars.length} succeeded`);
+        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success); 
+        console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
         if (validRepairedGrammars.length > 0) {
             console.log("Selecting the best repaired grammar...");
             let bestRepairedGrammar: TestedGrammar = validRepairedGrammars[0];
