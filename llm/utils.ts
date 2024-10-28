@@ -1,3 +1,4 @@
+import { OpenAI } from 'openai';
 
 export type OpenAIEnv = {
     apiKey: string;
@@ -29,4 +30,9 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
     console.log("Loaded OpenAI environment variables:");
     console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
     return r;
+}
+
+
+export function stripSystemMessage(messages: OpenAI.Chat.ChatCompletionMessageParam[]): OpenAI.Chat.ChatCompletionMessageParam[] {
+    return messages.filter(m => m.role !== 'system');
 }
