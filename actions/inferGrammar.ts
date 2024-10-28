@@ -7,6 +7,7 @@ import type { ANTLRError } from "../syntactic/ErrorListener";
 import { generateCandidateSolutions, repairCandidateSolution, type Grammar, type GrammarWithMessageHistory } from "../llm/grammar";
 import { compileANTLRFiles } from "../syntactic/build";
 import { checkGrammar } from "../syntactic/check-grammar";
+import type OpenAI from "openai";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
     if (extension.startsWith('.')) {
@@ -132,7 +133,62 @@ async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, 
 }
     
 
-async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentIntermediateSolution: Grammar | undefined, snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
+async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGrammar[], snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
+    console.log("Attempting to repair invalid grammars based on errors...");
+    
+    // Repair all candidate grammars
+    const repairedCandidateGrammars = await Promise.all(testedGrammars.map(async testedGrammar => {
+        const newErrors: ANTLRError[] = [];
+        newErrors.push(...(testedGrammar.errors ?? []));
+        return await repairCandidateSolution(openaiEnv, testedGrammar.grammarWithHistory, newErrors);
+    }));
+
+    // Filter out undefined grammars
+    const repairedCandidateGrammarsFiltered = repairedCandidateGrammars.filter(candidateGrammar => 
+        candidateGrammar.grammar !== undefined
+    );
+
+    // Test each repaired candidate grammar
+    const repairedTestedGrammars = await Promise.all(repairedCandidateGrammarsFiltered.map(async candidateGrammar => {
+        const grammar = candidateGrammar.grammar;
+        if (grammar === undefined) {
+            throw new Error('Grammar is undefined');
+        }
+        const g: GrammarWithMessageHistory = {
+            grammar: grammar,
+            messages: candidateGrammar.messages
+        }
+        return await testGrammarOnMany(g, snippet, previousSnippets);
+    }));
+
+    // Filter out invalid grammars
+    const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success);
+    console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
+
+    if (validRepairedGrammars.length === 0) {
+        return undefined;
+    }
+
+    // Select the best repaired grammar based on complexity
+    let bestRepairedGrammar = validRepairedGrammars[0];
+    if (validRepairedGrammars.length > 1) {
+        console.log("Selecting the best repaired grammar...");
+        for (const grammar of validRepairedGrammars) {
+            if (grammar.complexity < bestRepairedGrammar.complexity) {
+                bestRepairedGrammar = grammar;
+            }
+        }
+    }
+
+    return bestRepairedGrammar;
+}
+
+async function generateNextIntermediateSolution(
+    openaiEnv: OpenAIEnv, 
+    currentIntermediateSolution: Grammar | undefined, 
+    snippet: Snippet, 
+    previousSnippets: Snippet[]
+): Promise<TestedGrammar | undefined> {
     console.log(`Inferring grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
 
     // First see if the current intermediate solution is valid
@@ -141,12 +197,10 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
         const testedGrammar = await testGrammarOnMany({ grammar: currentIntermediateSolution, messages: [] }, snippet, previousSnippets);
         if (!testedGrammar.success) {
             console.log("Current intermediate solution is invalid, trying to generate a new one.");
-            // Extend with the error messages
             if (testedGrammar.errors === undefined || testedGrammar.errors.length === 0) {
                 throw new Error('No errors found in the grammar, but it failed?');
             }
             errors.push(...testedGrammar.errors);
-
         } else {
             console.log("Current intermediate solution is valid.");
             return testedGrammar;
@@ -162,70 +216,23 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
         N
     );
     console.log(`Generated ${candidateGrammars.length}/${N} candidate grammars`);
+
     // Test each candidate grammar
     const testedGrammars = await Promise.all(candidateGrammars.map(async candidateGrammar => {
-        return await testGrammarOnMany(candidateGrammar, snippet, previousSnippets);;
+        return await testGrammarOnMany(candidateGrammar, snippet, previousSnippets);
     }));
+
     // Filter out invalid grammars
     const validGrammars = testedGrammars.filter(g => g.success);
     console.log(`Tested ${testedGrammars.length} candidate grammars - ${validGrammars.length} succeeded`);
 
-    // If no valid grammars were found, let's try to get the LLM to repair all the grammars based on the errors
+    // If no valid grammars were found, try to repair them
     if (validGrammars.length === 0) {
-        console.log("No valid grammars found, trying to repair grammars based on errors...");
-        async function repairCandidateSolutions(testedGrammars: TestedGrammar[]) {
-            return Promise.all(testedGrammars.map(async testedGrammar => {
-                const newErrors: ANTLRError[] = [];
-                newErrors.push(...(testedGrammar.errors ?? []));
-                return await repairCandidateSolution(openaiEnv, testedGrammar.grammarWithHistory, newErrors);
-            }));
-        }
-        const repairedCandidateGrammars = await repairCandidateSolutions(testedGrammars);
-        // Filter out undefined grammars
-        const repairedCandidateGrammarsFiltered = repairedCandidateGrammars.filter(candidateGrammar => candidateGrammar.grammar !== undefined);
-        // Test each repaired candidate grammar
-        const repairedTestedGrammars = await Promise.all(repairedCandidateGrammarsFiltered.map(async candidateGrammar => {
-            const grammar = candidateGrammar.grammar;
-            if (grammar === undefined) {
-                throw new Error('Grammar is undefined');
-            }
-            const g: GrammarWithMessageHistory = {
-                grammar: grammar,
-                messages: candidateGrammar.messages
-            }
-            const testedGrammar = await testGrammarOnMany(g, snippet, previousSnippets);
-            return testedGrammar;
-        }));
-        // Filter out invalid grammars
-        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success);
-        console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
-        if (validRepairedGrammars.length > 0) {
-            let bestRepairedGrammar: TestedGrammar = validRepairedGrammars[0];
-            if (validRepairedGrammars.length > 1) {
-                console.log("Selecting the best repaired grammar...");
-                for (const grammar of validRepairedGrammars) {
-                    if (grammar.complexity < bestRepairedGrammar.complexity) {
-                        bestRepairedGrammar = grammar;
-                    }
-                }
-                validGrammars.push(bestRepairedGrammar);
-            }
-            return bestRepairedGrammar;
-        }
+        return await repairGrammars(openaiEnv, testedGrammars, snippet, previousSnippets);
     }
 
-    // If no valid grammars were found, return undefined
-    if (validGrammars.length === 0) {
-        // Log the errors for debugging
-        if (testedGrammars.length > 0) {
-            // console.log("Errors for the first grammar:");
-            testedGrammars[0].errors?.forEach(error => console.error(error));
-        }
-        return undefined;
-    }
-
-    // If multiple valid grammars were found, select the best one by heuristic
-    let bestGrammar: TestedGrammar = validGrammars[0];
+    // Select the best grammar based on complexity
+    let bestGrammar = validGrammars[0];
     for (const grammar of validGrammars) {
         if (grammar.complexity < bestGrammar.complexity) {
             bestGrammar = grammar;
@@ -252,23 +259,30 @@ export async function doInferGrammar(directory: string, extension: string, optio
     // Load OpenAI environment variables
     const openaiEnv = loadOpenAIEnvVars();
 
-    // For each snippet, try to find a intermediate solution
-    // By generating candidate solutions and testing them, if they are valid they become the new intermediate solution
     let currentIntermediateSolution: Grammar | undefined = undefined;
     const snippetHistory: Snippet[] = [];
     let didWeGiveUp = false;
     let lastSnippetBeforeGiveUp: Snippet | undefined = undefined;
+
     for (const snippet of sortedSnippets) {
-        let nextIntermediateSolution = undefined;
+        let nextIntermediateSolution: TestedGrammar | undefined = undefined;
+        
         for (let i = 0; i < maxRetries; i++) {
-            if (i > 0) console.error(" * Retrying...");
-            nextIntermediateSolution = await generateNextIntermediateSolution(openaiEnv, currentIntermediateSolution, snippet, snippetHistory);
+            if (i > 0) {
+                console.error(` * Retry attempt ${i + 1}/${maxRetries}...`);
+            }
+
+            nextIntermediateSolution = await generateNextIntermediateSolution(
+                openaiEnv, 
+                currentIntermediateSolution,
+                snippet,
+                snippetHistory
+            );
             if (nextIntermediateSolution) {
                 break;
             }
         }
 
-        // If no valid intermediate solution was found, break
         if (nextIntermediateSolution) {
             currentIntermediateSolution = nextIntermediateSolution.grammarWithHistory.grammar;
         } else {
@@ -283,7 +297,7 @@ export async function doInferGrammar(directory: string, extension: string, optio
 
     const finalGrammar = currentIntermediateSolution;
     if (!finalGrammar) {
-        console.error("Failed to find a ANY valid grammar!");
+        console.error("Failed to find ANY valid grammar!");
         process.exit(1);
     }
 
