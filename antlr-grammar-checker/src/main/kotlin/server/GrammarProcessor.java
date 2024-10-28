@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.v4.Tool;
 import org.antlr.v4.gui.Interpreter;
-import org.antlr.v4.gui.Trees;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.misc.IntegerList;
@@ -18,13 +17,8 @@ import org.antlr.v4.tool.*;
 import static org.antlr.v4.gui.Interpreter.profilerColumnNames;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 public class GrammarProcessor {
     public static final int MAX_PARSE_TIME_MS = 10 * 1000; // 10 seconds
@@ -97,7 +91,7 @@ public class GrammarProcessor {
             warnings.add(jsonError);
         }
         else {
-            if (lexlistener.errors.size() == 0 && parselistener.errors.size() == 0) {
+            if (lexlistener.errors.isEmpty() && parselistener.errors.isEmpty()) {
                 result = parseAndGetJSON(g, lg, startRule, input);
             }
         }
@@ -203,7 +197,7 @@ public class GrammarProcessor {
         return table;
     }
 
-    public static final int nodeCount(Tree t) {
+    public static int nodeCount(Tree t) {
         if (t == null) {
             return 0;
         }
