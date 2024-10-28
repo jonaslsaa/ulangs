@@ -2,7 +2,7 @@ import { type ANTLRError } from './ErrorListener';
 import fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
 
-type ANTLRCheckerResult = {
+type ANTLRCheckerOutput = {
     warnings: any[];
     parser_grammar_errors: {
         type: string;
@@ -38,19 +38,19 @@ type ANTLRCheckerResult = {
             line: number;
             pos: number;
             msg: string;
-        }[];
+        }[] | undefined;
         parse_errors: {
             startidx: number;
             erridx: number;
             line: number;
             pos: number;
             msg: string;
-        }[];
+        }[] | undefined;
         profile: {
             colnames: string[];
             data: (string | number)[][];
         };
-    };
+    } | undefined;
 };
 
 export async function checkGrammar(lexerPath: string, parserPath: string, codePath: string) {
@@ -95,11 +95,11 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         error += data;
     });
 
-    const result = await new Promise<ANTLRCheckerResult>((resolve, reject) => {
+    const checker = await new Promise<ANTLRCheckerOutput>((resolve, reject) => {
         checkerProcess.on('close', (code) => {
             if (code === 0) {
                 try {
-                    const data: ANTLRCheckerResult = JSON.parse(output);
+                    const data: ANTLRCheckerOutput = JSON.parse(output);
                     resolve(data);
                 } catch (e) {
                     reject(e);
@@ -114,7 +114,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
     const errors: ANTLRError[] = [];
 
     // Collect all errors from that occured during the build of the grammar
-    for (const error of result.lexer_grammar_errors) {
+    for (const error of checker.lexer_grammar_errors) {
         errors.push({
             grammarType: 'LEXER',
             source: 'BUILD',
@@ -125,7 +125,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         });
     }
 
-    for (const error of result.parser_grammar_errors) {
+    for (const error of checker.parser_grammar_errors) {
         errors.push({
             grammarType: 'PARSER',
             source: 'BUILD',
@@ -136,29 +136,31 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         });
     }
     // Now, let's collect the errors that occured during the runtime of the grammar (under result.result)
-    if (result.result) {
-        for (const error of result.result.parse_errors) {
-            errors.push({
-
-                grammarType: 'PARSER',
-                source: 'RUNTIME',
-                message: error.msg,
-                file: codePath,
-                line: error.line,
-                column: error.pos,
-            });
+    if (checker.result) {
+        if (checker.result.parse_errors) {
+            for (const error of checker.result.parse_errors) {
+                errors.push({
+                    grammarType: 'PARSER',
+                    source: 'RUNTIME',
+                    message: error.msg,
+                    file: codePath,
+                    line: error.line,
+                    column: error.pos,
+                });
+            }
         }
 
-        for (const error of result.result.lex_errors) {
-            errors.push({
-
-                grammarType: 'LEXER',
-                source: 'RUNTIME',
-                message: error.msg,
-                file: codePath,
-                line: error.line,
-                column: error.pos,
-            });
+        if (checker.result.lex_errors) {
+            for (const error of checker.result.lex_errors) {
+                errors.push({
+                    grammarType: 'LEXER',
+                    source: 'RUNTIME',
+                    message: error.msg,
+                    file: codePath,
+                    line: error.line,
+                    column: error.pos,
+                });
+            }
         }
     }
 
