@@ -1,3 +1,4 @@
+
 import { ErrorListener, Lexer, Parser, RecognitionException, Recognizer, Token } from 'antlr4';
 
 export type ANTLRError = {

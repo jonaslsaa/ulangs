@@ -1,34 +1,17 @@
 import fs from 'fs';
 import { assert } from 'console';
 import { callSWIProlog } from '../semantic/call';
-import { compileANTLRFiles } from '../syntactic/build';
 
 import type { CLIGenerateArguments } from '../cli';
+import { checkGrammar } from '../syntactic/check-grammar';
+import { compileANTLRFiles } from '../syntactic/build';
 
 export async function doCheck(file: string) {
-    const errors = await compileANTLRFiles('grammar');
-    if (errors.length > 0) {
-        console.error('ANTLR files generation failed:');
-        errors.forEach(error => console.error(error));
-        process.exit(1);
-    }
-    console.log('ANTLR files generated successfully');
-
-    // Try to parse the file
-    const { createParserFromGrammar } = await import('../syntactic/parser');
-    const { parser, errorListener } = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
-    parser.program();
-
-    // Check for errors after parsing
-    if (errorListener.hasErrors()) {
-        console.error("Parsing errors detected:");
-        errorListener.getErrors().forEach(error => console.error(error));
-        process.exit(1);
-    }
-    console.log('File parsed successfully');
+    console.log(await checkGrammar('grammar/SimpleLangLexer.g4', 'grammar/SimpleLangParser.g4', file));
 }
 
 export async function doQuery(file: string, options: CLIGenerateArguments) {
+    // TODO: check grammar first
     if (options.compileAntlr) {
         const errors = await compileANTLRFiles('grammar');
         if (errors.length === 0) {
