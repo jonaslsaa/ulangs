@@ -166,15 +166,21 @@ async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string,
-    debug: undefined | 'input' | 'output' | 'both' = 'both',
-    timeoutSeconds: number = 90
+    debug: undefined | 'input' | 'output' | 'both' = undefined,
+    timeoutSeconds: number = 20,
 ): Promise<MaybeGrammarWithHistory> {
+    //const models = ["ai21/jamba-1-5-mini", "google/gemini-flash-1.5"];
+    //const randomModel = models[Math.floor(Math.random() * models.length)];
     try {
         const openai = new OpenAI({
             baseURL: openaiEnv.baseUrl,
             apiKey: openaiEnv.apiKey,
         });
-
+        console.log(`LLM Call - Using model: ${model}, num_messages: ${messages.length}`);
+        if (messages.length > 4) {
+            //console.log(messages);
+            console.log("LARGE MESSAGES");
+        }
         const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
             model: model,
             messages: messages,
@@ -203,10 +209,11 @@ async function makeCompletionRequest(
     } catch (error) {
         if (error instanceof TimeoutError) {
             return {
-                error: `Request timed out after ${timeoutSeconds} seconds`,
+                error: `Request timed out after ${timeoutSeconds} seconds (model: ${model})`,
                 messages: messages
             };
         }
+        console.error(error);
         return {
             error: `API request failed: ${error instanceof Error ? error.message : String(error)}`,
             messages: messages
@@ -275,9 +282,23 @@ ${newErrors.map(error => errorToString(error)).join('\n')}
 </Errors>
 Repair the grammar to fix the errors (same output format as before).`
     });
-    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, 'both');
+    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model);
     return {
         grammar: repairedGrammar.grammar,
         messages: repairedGrammar.messages
+    };
+}
+
+export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: string[]) {
+    const combinedSnippets = snippets.join('\nNext snippet:\n');
+    const tempSolution: Grammar = {
+        lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
+        parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
+    };
+    const messages = constructPrompt(tempSolution, combinedSnippets, []);
+    const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model);
+    return {
+        grammar: completion.grammar,
+        messages: completion.messages
     };
 }
