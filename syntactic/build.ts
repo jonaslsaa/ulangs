@@ -81,7 +81,7 @@ function spawnSyncANTLR(grammarDirectoryPath: string, grammarFilesWithExtension:
     );
 }
 
-export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] | undefined {
+export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
     const grammarFiles = fs.readdirSync(grammarDirectoryPath);
     const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
 
@@ -102,7 +102,7 @@ export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] | 
             const recoveryResult = spawnSyncANTLR(grammarDirectoryPath, grammarFilesWithExtension);
             if (recoveryResult.stderr.includes('Traceback (most recent call last):')) {
                 console.error('Recovery failed! Giving up...');
-                return undefined;
+                process.exit(1);
             }
             console.log('Recovery succeeded!');
             stderr = recoveryResult.stderr;
