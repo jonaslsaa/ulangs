@@ -10,7 +10,6 @@ function toANTLRError(_error: string): ANTLRError {
 
     if (!isError && !isWarning) {
         console.error(`Unknown error format: ${error}`);
-        isWarning = true; // Default to warning
     }
 
     const fileRegex = /: (.+):(\d+):(\d+):/;
@@ -39,7 +38,6 @@ function toANTLRError(_error: string): ANTLRError {
     } else {
         console.error(`Unknown grammar type: ${error}`);
         errorType = 'UNKNOWN';
-        isWarning = true;
     }
 
     const messageRegex = /: (.+):/;
@@ -50,7 +48,6 @@ function toANTLRError(_error: string): ANTLRError {
     }
 
     return {
-        isWarning: isWarning,
         grammarType: errorType,
         source: 'BUILD',
         message: error,

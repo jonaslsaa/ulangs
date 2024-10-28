@@ -2,7 +2,6 @@
 import { ErrorListener, Lexer, Parser, RecognitionException, Recognizer, Token } from 'antlr4';
 
 export type ANTLRError = {
-    isWarning: boolean;
     grammarType: 'LEXER' | 'PARSER' | 'UNKNOWN';
     source: 'BUILD' | 'RUNTIME';
     message: string;
@@ -39,7 +38,6 @@ export class CustomErrorListener extends ErrorListener<Token> {
         }
 
         this.errors.push({
-            isWarning: false,
             grammarType: type,
             source: 'RUNTIME',
             message: msg,

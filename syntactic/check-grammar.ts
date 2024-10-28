@@ -116,7 +116,6 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
     // Collect all errors from that occured during the build of the grammar
     for (const error of result.lexer_grammar_errors) {
         errors.push({
-            isWarning: false,
             grammarType: 'LEXER',
             source: 'BUILD',
             message: error.msg,
@@ -128,7 +127,6 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
 
     for (const error of result.parser_grammar_errors) {
         errors.push({
-            isWarning: false,
             grammarType: 'PARSER',
             source: 'BUILD',
             message: error.msg,
@@ -141,7 +139,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
     if (result.result) {
         for (const error of result.result.parse_errors) {
             errors.push({
-                isWarning: false,
+
                 grammarType: 'PARSER',
                 source: 'RUNTIME',
                 message: error.msg,
@@ -153,7 +151,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
 
         for (const error of result.result.lex_errors) {
             errors.push({
-                isWarning: false,
+
                 grammarType: 'LEXER',
                 source: 'RUNTIME',
                 message: error.msg,
