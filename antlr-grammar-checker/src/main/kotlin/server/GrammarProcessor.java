@@ -213,15 +213,4 @@ public class GrammarProcessor {
         }
         return n;
     }
-
-    /** A test main program for the "big" dir grammar */
-    public static void main(String[] args) throws IOException {
-        String base = "/Users/jonassilva/Desktop/simple-lang/grammar/";
-        String codeBase = "/Users/jonassilva/Desktop/simple-lang/example-code/py-like/";
-        String parserContent = Files.readString(Path.of(base + "SimpleLangParser.g4"));
-        String lexerContent = Files.readString(Path.of(base + "SimpleLangLexer.g4"));
-        String input = Files.readString(Path.of(codeBase + "func_def_call.pyl"));
-        JsonObject json = interp(parserContent, lexerContent, input, "program");
-        System.out.println(json);
-    }
 }
