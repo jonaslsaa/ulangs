@@ -70,12 +70,8 @@ function toANTLRError(_error: string): ANTLRError {
     };
 }
 
-export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
-    const grammarFiles = fs.readdirSync(grammarDirectoryPath);
-    const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
-
-    // Use spawnSync with pipe to capture output
-    const result = spawnSync('antlr4',
+function spawnSyncANTLR(grammarDirectoryPath: string, grammarFilesWithExtension: string[]) {
+    return spawnSync('antlr4',
         ['-Dlanguage=TypeScript', ...grammarFilesWithExtension],
         {
             cwd: grammarDirectoryPath,
@@ -83,13 +79,37 @@ export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
             stdio: ['inherit', 'pipe', 'pipe'] // stdin inherit, stdout and stderr as pipes
         }
     );
+}
+
+export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] | undefined {
+    const grammarFiles = fs.readdirSync(grammarDirectoryPath);
+    const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
+
+    // Use spawnSync with pipe to capture output
+    const result = spawnSyncANTLR(grammarDirectoryPath, grammarFilesWithExtension);
+
 
     // Parse stderr into array of errors
     const errors: string[] = [];
     if (result.stderr) {
         console.log("ANTLR4 stderr in directory", grammarDirectoryPath, ":");
         console.log(result.stderr);
-        errors.push(...result.stderr
+        let stderr = result.stderr;
+        // handle sudden python error
+        if (result.stderr.includes('Traceback (most recent call last):')) {
+            console.error('Got python error! Let\'s try recover...');
+            // try to recover
+            const recoveryResult = spawnSyncANTLR(grammarDirectoryPath, grammarFilesWithExtension);
+            if (recoveryResult.stderr.includes('Traceback (most recent call last):')) {
+                console.error('Recovery failed! Giving up...');
+                return undefined;
+            }
+            console.log('Recovery succeeded!');
+            stderr = recoveryResult.stderr;
+        }
+
+        // Parse stderr into array of errors
+        errors.push(...stderr
             .split('\n')
             .map(line => line.trim())
             .filter(line => line.length > 0)); // Remove empty lines
