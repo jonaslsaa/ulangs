@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { type OpenAIEnv } from "./utils";
 import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationSystemMessage } from "./prompts";
+import type { ANTLRError } from "../syntactic/ErrorListener";
 
 export type Grammar = {
     lexerSource: string;
@@ -20,10 +21,49 @@ export type MaybeGrammarWithHistory = {
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 };
 
+function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
+    const msg = error.message.replaceAll('\n', ' ');
+    const firstPart = error.source === 'BUILD' ? 'while building' : 'under parsing';
+    const grammarPart = showGrammarType ? ` in the ${error.grammarType.toLowerCase()} grammar` : '';
+    return `Got error ${firstPart}${grammarPart}: ${msg}`;
+}
+
+function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
+    let newCodeLines = code.split('\n');
+    const errorOnLineMap = new Map<number, ANTLRError[]>();
+    // add errors to the errorOnLineMap
+    for (const error of errors) {
+        if (error.line === undefined) {
+            throw new Error(`Error line number is undefined, this shouldn't happen!!!`);
+        }
+        const lineNumber = error.line - 1;
+        // check if the line number is valid
+        if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
+            throw new Error(`Invalid line number: ${lineNumber}, this shouldn't happen!!!`);
+        }
+        if (!errorOnLineMap.has(lineNumber)) {
+            errorOnLineMap.set(lineNumber, []);
+        }
+        errorOnLineMap.get(lineNumber)!.push(error);
+    }
+
+    // for each line in map, add a comment with the errors
+    for (const [lineNumber, errorsOnLine] of errorOnLineMap.entries()) {
+        const line = newCodeLines[lineNumber];
+        let allErrors = errorsOnLine.map(error => errorToString(error, false)).join(', ');
+        const trimLength = 64;
+        if (allErrors.length >= trimLength) {
+            allErrors = allErrors.substring(0, trimLength-1) + '...';
+        }
+        const comment = `// Error: ${allErrors}`;
+        newCodeLines[lineNumber] = `${line} ${comment}`;
+    }
+    return newCodeLines.join('\n');   
+}
+
 function constructPrompt(currentIntermediateSolution: Grammar | undefined, 
     codeSnippet: string, 
-    errors: string[] = [],
-    errorUnderCompilationOfANTLRFiles: boolean = false
+    errors: ANTLRError[]
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
@@ -40,36 +80,37 @@ function constructPrompt(currentIntermediateSolution: Grammar | undefined,
         content: grammarGenerationSystemMessage
     });
 
-    // Add user message
-    let errorMessage = '';
-    if (errors.length > 0) {
-        // Limit amount of errors to 10
-        const maxErrors = 10;
-        if (errors.length > maxErrors) {
-            errors = errors.slice(0, maxErrors);
-            errors.push(`...and ${errors.length - maxErrors} more errors...`);
-        }
-        errorMessage = `\n\nThe following errors were found in the current solution:\n<Errors>\n${errors.join('\n')}\n</Errors>`;
-        if (errorUnderCompilationOfANTLRFiles) {
-            errorMessage += `\nThe error occurred under compilation of ANTLR4 files.`;
-        } else {
-            errorMessage += `\nThe error occurred during the parsing of the code snippet.`;
-        }
+    // Add error messages
+    // Overlay the error messages on the code by adding a comment
+    const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER');
+    const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER');
+    const lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
+    const parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
+
+    // Put other error messages in its own block
+    const otherErrorMessages = errors.filter(error => error.line === undefined || error.grammarType === 'UNKNOWN')
+    let otherErrorsBlock = '';
+    if (otherErrorMessages.length > 0) {
+        otherErrorsBlock = `<OtherErrors>
+${otherErrorMessages.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
+</OtherErrors>`;
     }
+
+    // Add user message
     messages.push({
         role: 'user',
-        content: `Here is the current ANTLR4 solution:
+        content: `Here is my current ANTLR4 code:
 <LexerGrammar>
 \`\`\`antlr
-${currentIntermediateSolution.lexerSource}
+${lexerSource}
 \`\`\`
 </LexerGrammar>
 <ParserGrammar>
 \`\`\`antlr
-${currentIntermediateSolution.parserSource}
+${parserSource}
 \`\`\`
 </ParserGrammar>
-${errorMessage}
+${otherErrorsBlock}
 Write/fix the ANTLR4 lexer and parser grammars for the following code snippet:
 \`\`\`
 ${codeSnippet}
@@ -125,8 +166,8 @@ async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string,
-    debug: undefined | 'input' | 'output' | 'both' = undefined,
-    timeoutSeconds: number = 30
+    debug: undefined | 'input' | 'output' | 'both' = 'both',
+    timeoutSeconds: number = 90
 ): Promise<MaybeGrammarWithHistory> {
     try {
         const openai = new OpenAI({
@@ -177,12 +218,11 @@ export async function generateCandidateSolutions(
     openaiEnv: OpenAIEnv,
     currentIntermediateSolution: Grammar | undefined,
     codeSnippet: string,
-    errors: string[] = [],
-    errorUnderCompilationOfANTLRFiles: boolean = false,
-    n = 8
+    errors: ANTLRError[] = [],
+    n = 2
 ): Promise<GrammarWithMessageHistory[]> { 
 
-    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors, errorUnderCompilationOfANTLRFiles);
+    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors);
 
     // Create array of n identical requests
     const requests = Array(n).fill(null).map(() => 
@@ -213,7 +253,7 @@ export async function generateCandidateSolutions(
 
     // Convert successful results to GrammarWithMessageHistory
     return successfulGrammars.map(result => ({
-        grammar: result.grammar!,
+        grammar: result.grammar!, // ! is fine since we filtered out the ones that didn't have a grammar
         messages: result.messages
     }));
 }
@@ -221,17 +261,19 @@ export async function generateCandidateSolutions(
 export async function repairCandidateSolution(
     openaiEnv: OpenAIEnv,
     candidateSolution: GrammarWithMessageHistory,
-    newErrors: string[]
+    newErrors: ANTLRError[]
 ) {
-
+    if (newErrors.length === 0) {
+        throw new Error('No new errors provided');
+    }
     const messages = candidateSolution.messages;
     messages.push({
         role: 'user',
-        content: `I got the following errors:
-        <Errors>
-        ${newErrors.join('\n')}
-        </Errors>
-        Repair the grammar to fix the errors (same output format as before).`
+        content: `I got some errors:
+<Errors>
+${newErrors.map(error => errorToString(error)).join('\n')}
+</Errors>
+Repair the grammar to fix the errors (same output format as before).`
     });
     const repairedGrammar = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, 'both');
     return {
