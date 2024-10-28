@@ -126,7 +126,7 @@ async function makeCompletionRequest(
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string,
     debug: undefined | 'input' | 'output' | 'both' = undefined,
-    timeoutSeconds: number = 20
+    timeoutSeconds: number = 30
 ): Promise<MaybeGrammarWithHistory> {
     try {
         const openai = new OpenAI({
@@ -134,12 +134,14 @@ async function makeCompletionRequest(
             apiKey: openaiEnv.apiKey,
         });
 
-        const completionPromise = openai.chat.completions.create({
+        const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
             model: model,
             messages: messages,
             max_tokens: 4096,
-            temperature: 0.7,
-        });
+            temperature: 0.8,
+        };
+
+        const completionPromise = openai.chat.completions.create(completionBody); // { body: { ...completionBody, provider: { order: ['Hyperbolic'] } } }
 
         // Wrap the completion promise with a timeout
         const completion = await timeout(completionPromise, timeoutSeconds * 1000);
@@ -177,7 +179,7 @@ export async function generateCandidateSolutions(
     codeSnippet: string,
     errors: string[] = [],
     errorUnderCompilationOfANTLRFiles: boolean = false,
-    n = 5
+    n = 8
 ): Promise<GrammarWithMessageHistory[]> { 
 
     const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors, errorUnderCompilationOfANTLRFiles);

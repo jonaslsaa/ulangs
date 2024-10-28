@@ -5,9 +5,8 @@ import { compileANTLRFiles } from '../syntactic/build';
 
 import type { CLIGenerateArguments } from '../cli';
 
-
 export async function doCheck(file: string) {
-    const errors = compileANTLRFiles('grammar');
+    const errors = await compileANTLRFiles('grammar');
     if (errors.length > 0) {
         console.error('ANTLR files generation failed:');
         errors.forEach(error => console.error(error));
@@ -31,7 +30,7 @@ export async function doCheck(file: string) {
 
 export async function doQuery(file: string, options: CLIGenerateArguments) {
     if (options.compileAntlr) {
-        const errors = compileANTLRFiles('grammar');
+        const errors = await compileANTLRFiles('grammar');
         if (errors.length === 0) {
             console.log('ANTLR files generated successfully');
         } else {

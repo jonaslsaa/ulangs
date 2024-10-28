@@ -21,8 +21,8 @@ export class CustomErrorListener extends ErrorListener<Token> {
         msg: string,
         e: RecognitionException
     ): void {
-        // console.error("ANTLR Runtime error:");
-        // console.error(`Line ${line}:${column} - ${msg}`);
+        console.error("ANTLR Runtime error:");
+        console.error(`Line ${line}:${column} - ${msg}`);
 
         // Determine which file and what type of grammar is being parsed
         let file = '<unknown>';

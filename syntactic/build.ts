@@ -1,14 +1,8 @@
-import { spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import { type ANTLRError } from '../syntactic/ErrorListener';
 
 function toANTLRError(_error: string): ANTLRError {
-    /* Error format:
-        error(50): SimpleLangLexer.g4:11:0: ...message...
-        warning(125): SimpleLangParser.g4:25:15: ...message...
-        error(12): OtherFileLexer.g4:11:0: ...message...
-    */
-    // Match error type, file, line, column, and message
     const error = _error.trim();
 
     const isError = error.startsWith('error(');
@@ -19,7 +13,6 @@ function toANTLRError(_error: string): ANTLRError {
         isWarning = true; // Default to warning
     }
 
-    // Extract file, line, and column using regex
     const fileRegex = /: (.+):(\d+):(\d+):/;
     const match = fileRegex.exec(error);
     let file: string | undefined;
@@ -38,7 +31,6 @@ function toANTLRError(_error: string): ANTLRError {
         }
     }
 
-    // Detect grammar type based on error message
     let errorType: ANTLRError['grammarType'];
     if (error.toLowerCase().includes('lexer')) {
         errorType = 'LEXER';
@@ -50,14 +42,12 @@ function toANTLRError(_error: string): ANTLRError {
         isWarning = true;
     }
 
-    // Try to extract the error message
     const messageRegex = /: (.+):/;
     const messageMatch = messageRegex.exec(error);
     let message = error;
     if (messageMatch) {
         message = messageMatch[1];
     }
-    // TODO: consider using message
 
     return {
         isWarning: isWarning,
@@ -70,50 +60,71 @@ function toANTLRError(_error: string): ANTLRError {
     };
 }
 
-function spawnSyncANTLR(grammarDirectoryPath: string, grammarFilesWithExtension: string[]) {
-    return spawnSync('antlr4',
-        ['-Dlanguage=TypeScript', ...grammarFilesWithExtension],
-        {
-            cwd: grammarDirectoryPath,
-            encoding: 'utf8',
-            stdio: ['inherit', 'pipe', 'pipe'] // stdin inherit, stdout and stderr as pipes
-        }
-    );
+async function spawnANTLR(grammarDirectoryPath: string, grammarFilesWithExtension: string[]): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+        const process = spawn('antlr4',
+            ['-Dlanguage=TypeScript', ...grammarFilesWithExtension],
+            {
+                cwd: grammarDirectoryPath,
+                stdio: ['inherit', 'pipe', 'pipe'] // stdin inherit, stdout and stderr as pipes
+            }
+        );
+
+        let stdout = '';
+        let stderr = '';
+
+        process.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        // Always resolve with the output, regardless of exit code
+        process.on('close', () => {
+            resolve({ stdout, stderr });
+        });
+
+        process.on('error', (err) => {
+            stderr = err.message;
+            resolve({ stdout, stderr });
+        });
+    });
 }
 
-export function compileANTLRFiles(grammarDirectoryPath: string): ANTLRError[] {
+export async function compileANTLRFiles(grammarDirectoryPath: string): Promise<ANTLRError[]> {
     const grammarFiles = fs.readdirSync(grammarDirectoryPath);
     const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
 
-    // Use spawnSync with pipe to capture output
-    const result = spawnSyncANTLR(grammarDirectoryPath, grammarFilesWithExtension);
-
-
-    // Parse stderr into array of errors
-    const errors: string[] = [];
-    if (result.stderr) {
-        console.log("ANTLR4 stderr in directory", grammarDirectoryPath, ":");
-        console.log(result.stderr);
-        let stderr = result.stderr;
-        // handle sudden python error
+    // First attempt
+    let result = await spawnANTLR(grammarDirectoryPath, grammarFilesWithExtension);
+    
+    // Check if it's a Python error and try recovery
+    if (result.stderr.includes('Traceback (most recent call last):')) {
+        console.error('Got python error! Let\'s try recover...');
+        // Recovery attempt
+        result = await spawnANTLR(grammarDirectoryPath, grammarFilesWithExtension);
         if (result.stderr.includes('Traceback (most recent call last):')) {
-            console.error('Got python error! Let\'s try recover...');
-            // try to recover
-            const recoveryResult = spawnSyncANTLR(grammarDirectoryPath, grammarFilesWithExtension);
-            if (recoveryResult.stderr.includes('Traceback (most recent call last):')) {
-                console.error('Recovery failed! Giving up...');
-                process.exit(1);
-            }
-            console.log('Recovery succeeded!');
-            stderr = recoveryResult.stderr;
+            console.error('Recovery failed! Giving up...');
+            process.exit(1);
         }
-
-        // Parse stderr into array of errors
-        errors.push(...stderr
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)); // Remove empty lines
+        console.log('Recovery succeeded!');
     }
 
-    return errors.map(toANTLRError);
+    return parseErrors(result.stderr, grammarDirectoryPath);
+}
+
+function parseErrors(stderr: string, grammarDirectoryPath: string): ANTLRError[] {
+    if (stderr) {
+        console.log("ANTLR4 stderr in directory", grammarDirectoryPath, ":");
+        console.log(stderr);
+        
+        return stderr
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(toANTLRError);
+    }
+    return [];
 }

@@ -7,6 +7,7 @@ export const grammarGenerationSystemMessage = `Create ANTLR 4 grammar by writing
 3. **Write Lexer Rules**: Create a set of lexer rules that break the input into tokens. Ensure these rules cover all relevant syntax elements in the code snippet. Build upon the current solution if provided.
 4. **Write Parser Rules**: Develop parser rules using the tokens defined in the lexer. Ensure that the parser correctly represents the language's grammar and hierarchy, suitable for the given code snippet. Build upon the current solution if provided!
 5. **Focus on readability, simplicity and correctness**
+6. MUST be made in a general way, so that the next snippet which might give new information can be integrated into the grammar.
 
 # Output Format
 
@@ -17,6 +18,7 @@ export const grammarGenerationSystemMessage = `Create ANTLR 4 grammar by writing
 - There is always two code blocks, no more no less. All code must be in these. This will be directly given to the ANTLR 4 compiler.
 - Lexer should always be named MyLexer and parser MyParser. MUST be named exactly this way: MyLexer, MyParser.
 - Start rule must be callled 'program', and must be the first rule in the parser grammar.
+- Make it as general as possible, so that the next snippet which might give new information can be integrated into the grammar.
 
 # Examples
 

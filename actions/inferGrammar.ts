@@ -65,7 +65,10 @@ type TestedGrammar = {
     complexity: number;
 };
 
-async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippet: string): Promise<TestedGrammar> {
+async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippet: Snippet): Promise<TestedGrammar> {
+    if (grammarWithHistory.grammar === undefined) {
+        throw new Error("Grammar is undefined");
+    }
     // try to build the grammar 
     // by creating temporary directory
     // write grammars to file
@@ -92,7 +95,7 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     fs.writeFileSync(lexerFilePath, grammar.lexerSource);
     fs.writeFileSync(parserFilePath, grammar.parserSource);
 
-    const errors = compileANTLRFiles(tempPath);
+    const errors = await compileANTLRFiles(tempPath);
     if (errors.length > 0) {
         testedGrammar.errors = errors;
         return testedGrammar;
@@ -100,7 +103,7 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
 
     // Try to parse the snippet
     try {
-        const { parser, errorListener } = await createParserFromGrammar(snippet, lexerFilePath, parserFilePath);
+        const { parser, errorListener } = await createParserFromGrammar(snippet.snippet, lexerFilePath, parserFilePath);
         parser.program();
         if (errorListener.hasErrors()) {
             testedGrammar.errors = errorListener.getErrors();
@@ -121,20 +124,20 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
         return testedGrammar;
     }
 
-    console.log(`Successfully tested grammar at path:\n- ${lexerFilePath}\n- ${parserFilePath}`);
+    console.log(`Successfully tested grammar on ${snippet.fileName} at path:\n - ${lexerFilePath}\n- ${parserFilePath}`);
     testedGrammar.success = true;
     return testedGrammar;
 }
 
 async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, newSnippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar> {
     // Test first on new snippets
-    const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet.snippet);
+    const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet);
     if (!TestedGrammarMain.success) {
         return TestedGrammarMain;
     }
     // Now test all previous snippets
     const TestedGrammarPrevious = await Promise.all(previousSnippets.map(async previousSnippet => {
-        const TestedGrammarPrevious = await testGrammar(grammarWithHistory, previousSnippet.snippet);
+        const TestedGrammarPrevious = await testGrammar(grammarWithHistory, previousSnippet);
         TestedGrammarPrevious.grammarWithHistory.messages
         return TestedGrammarPrevious;
     }));
@@ -217,6 +220,7 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
                 }
                 validGrammars.push(bestRepairedGrammar);
             }
+            return bestRepairedGrammar;
         }
     }
 
@@ -307,4 +311,5 @@ export async function doInferGrammar(directory: string, extension: string, optio
     fs.writeFileSync(outputLexerFilePath, finalGrammar.lexerSource);
     fs.writeFileSync(outputParserFilePath, finalGrammar.parserSource);
     console.log("Wrote final grammar to", outputLexerFilePath, "and", outputParserFilePath);
+    process.exit(0);
 }
