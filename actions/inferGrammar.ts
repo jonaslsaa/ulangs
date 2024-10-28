@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, type Grammar, type GrammarWithMessageHistory } from "../llm/grammar";
+import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type Grammar, type GrammarWithMessageHistory } from "../llm/grammar";
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
@@ -251,6 +251,13 @@ async function generateNextIntermediateSolution(
     return bestGrammar;
 }
 
+function ExitAndLogStats(exitCode: number = 0) {
+    console.log(`\nGenerated ${Stats.totalRequests} requests with ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
+    console.log(`Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
+    console.log(`Cost: ${Stats.getCost(0.002, 0.002)}`);
+    process.exit(exitCode);
+}
+
 export async function doInferGrammar(directory: string, extension: string, options: CLIInferGrammarArguments) {
     const maxRetries = 3;
 
@@ -272,7 +279,7 @@ export async function doInferGrammar(directory: string, extension: string, optio
     let currentIntermediateSolution: Grammar | undefined = (await generateInitalGuess(openaiEnv, snippetsUsedInGuess)).grammar;
     if (currentIntermediateSolution === undefined) {
         console.error("Failed to generate an initial guess for the first intermediate solution!");
-        process.exit(1);
+        ExitAndLogStats(1);
     }
     console.log("Generated initial guess for the first intermediate solution:\n", currentIntermediateSolution);
 
@@ -312,15 +319,16 @@ export async function doInferGrammar(directory: string, extension: string, optio
     }
 
     const finalGrammar = currentIntermediateSolution;
-    if (!finalGrammar) {
+    if (finalGrammar === undefined) {
         console.error("Failed to find ANY valid grammar!");
-        process.exit(1);
+        ExitAndLogStats(1);
+        return;
     }
 
     if (didWeGiveUp) {
         console.log("Couldn't pass following snippets:", [...snippetHistory, lastSnippetBeforeGiveUp!].map(snippet => snippet.fileName).join(', '));
         console.error("Failed to find a final grammar.");
-        process.exit(1);
+        ExitAndLogStats(1);
     } else {
         console.log("A final solution found with complexity", calculateComplexity(finalGrammar.lexerSource + finalGrammar.parserSource));
     }
@@ -331,5 +339,5 @@ export async function doInferGrammar(directory: string, extension: string, optio
     fs.writeFileSync(outputLexerFilePath, finalGrammar.lexerSource);
     fs.writeFileSync(outputParserFilePath, finalGrammar.parserSource);
     console.log("Wrote final grammar to", outputLexerFilePath, "and", outputParserFilePath);
-    process.exit(0);
+    ExitAndLogStats();
 }

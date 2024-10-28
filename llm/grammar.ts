@@ -21,6 +21,26 @@ export type MaybeGrammarWithHistory = {
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 };
 
+export const Stats = {
+    totalRequests: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    get totalTokens () {
+        return this.inputTokens + this.outputTokens;
+    },
+    get avgTokensPerRequest () {
+        return this.totalTokens / this.totalRequests;
+    },
+    getCost(inputPricePerMillionTokens: number, outputPricePerMillionTokens: number) {
+        return this.totalTokens * inputPricePerMillionTokens + this.totalTokens * outputPricePerMillionTokens;
+    },
+    addRequest(inputTokens: number, outputTokens: number) {
+        this.totalRequests++;
+        this.inputTokens += inputTokens;
+        this.outputTokens += outputTokens;
+    },
+}
+
 function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
     const msg = error.message.replaceAll('\n', ' ');
     const firstPart = error.source === 'BUILD' ? 'while building' : 'under parsing';
@@ -176,7 +196,6 @@ async function makeCompletionRequest(
             baseURL: openaiEnv.baseUrl,
             apiKey: openaiEnv.apiKey,
         });
-        console.log(`LLM Call - Using model: ${model}, num_messages: ${messages.length}`);
         if (messages.length > 4) {
             //console.log(messages);
             console.log("LARGE MESSAGES");
@@ -205,6 +224,9 @@ async function makeCompletionRequest(
         
         const result = parseCompletionToGrammar(content);
         result.messages = [...messages, ...updatedMessages];
+
+        if (completion.usage) Stats.addRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
+
         return result;
     } catch (error) {
         if (error instanceof TimeoutError) {
