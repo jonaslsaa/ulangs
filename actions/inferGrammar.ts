@@ -126,6 +126,29 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     return testedGrammar;
 }
 
+async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, newSnippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar> {
+    // Test first on new snippets
+    const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet.snippet);
+    if (!TestedGrammarMain.success) {
+        return TestedGrammarMain;
+    }
+    // Now test all previous snippets
+    const TestedGrammarPrevious = await Promise.all(previousSnippets.map(async previousSnippet => {
+        const TestedGrammarPrevious = await testGrammar(grammarWithHistory, previousSnippet.snippet);
+        TestedGrammarPrevious.grammarWithHistory.messages
+        return TestedGrammarPrevious;
+    }));
+    // If any previous snippets failed, return the first failed snippet
+    for (const TestedGrammar of TestedGrammarPrevious) {
+        if (!TestedGrammar.success) {
+            return TestedGrammar;
+        }
+    }
+    // If all previous snippets succeeded, return the main snippet
+    return TestedGrammarMain;
+}
+    
+
 async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentIntermediateSolution: Grammar | undefined, snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
     console.log(`Inferring grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
 
@@ -133,8 +156,7 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     const errors: string[] = [];
     let errorUnderCompilationOfANTLRFiles = false;
     if (currentIntermediateSolution) {
-        const testedGrammar = await testGrammar({grammar: currentIntermediateSolution, messages: []}, snippet.snippet);
-        // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
+        const testedGrammar = await testGrammarOnMany({ grammar: currentIntermediateSolution, messages: [] }, snippet, previousSnippets);
         if (!testedGrammar.success) {
             errors.push(...testedGrammar.errors?.map(error => error.message) ?? []);
             errorUnderCompilationOfANTLRFiles = testedGrammar.errors?.some(error => error.source === 'BUILD') ?? false;
@@ -147,17 +169,15 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
 
     // Generate candidate grammars from LLM
     const candidateGrammars = await generateCandidateSolutions(openaiEnv,
-                                                                currentIntermediateSolution,
-                                                                snippet.snippet,
-                                                                errors,
-                                                                errorUnderCompilationOfANTLRFiles
-                                                            );
+        currentIntermediateSolution,
+        snippet.snippet,
+        errors,
+        errorUnderCompilationOfANTLRFiles
+    );
     console.log(`Generated ${candidateGrammars.length} candidate grammars`);
     // Test each candidate grammar
     const testedGrammars = await Promise.all(candidateGrammars.map(async candidateGrammar => {
-        const testedGrammar = await testGrammar(candidateGrammar, snippet.snippet);
-        // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
-        return testedGrammar;
+        return await testGrammarOnMany(candidateGrammar, snippet, previousSnippets);;
     }));
     // Filter out invalid grammars
     const validGrammars = testedGrammars.filter(g => g.success);
@@ -180,22 +200,23 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
                 grammar: candidateGrammar.grammar!, // TODO: Fix this type
                 messages: candidateGrammar.messages
             }
-            const testedGrammar = await testGrammar(g, snippet.snippet);
-            // TODO: Test all previous snippets if the current one succeedes, an intermediate must be valid for all previous snippets
+            const testedGrammar = await testGrammarOnMany(g, snippet, previousSnippets);
             return testedGrammar;
         }));
         // Filter out invalid grammars
-        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success); 
+        const validRepairedGrammars = repairedTestedGrammars.filter(g => g.success);
         console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
         if (validRepairedGrammars.length > 0) {
-            console.log("Selecting the best repaired grammar...");
             let bestRepairedGrammar: TestedGrammar = validRepairedGrammars[0];
-            for (const grammar of validRepairedGrammars) {
-                if (grammar.complexity < bestRepairedGrammar.complexity) {
-                    bestRepairedGrammar = grammar;
+            if (validRepairedGrammars.length > 1) {
+                console.log("Selecting the best repaired grammar...");
+                for (const grammar of validRepairedGrammars) {
+                    if (grammar.complexity < bestRepairedGrammar.complexity) {
+                        bestRepairedGrammar = grammar;
+                    }
                 }
+                validGrammars.push(bestRepairedGrammar);
             }
-            validGrammars.push(bestRepairedGrammar);
         }
     }
 
@@ -242,14 +263,15 @@ export async function doInferGrammar(directory: string, extension: string, optio
     let currentIntermediateSolution: Grammar | undefined = undefined;
     const snippetHistory: Snippet[] = [];
     let didWeGiveUp = false;
+    let lastSnippetBeforeGiveUp: Snippet | undefined = undefined;
     for (const snippet of sortedSnippets) {
         let nextIntermediateSolution = undefined;
         for (let i = 0; i < maxRetries; i++) {
+            if (i > 0) console.error(" * Retrying...");
             nextIntermediateSolution = await generateNextIntermediateSolution(openaiEnv, currentIntermediateSolution, snippet, snippetHistory);
             if (nextIntermediateSolution) {
                 break;
             }
-            console.error(" * Retrying...");
         }
 
         // If no valid intermediate solution was found, break
@@ -257,6 +279,7 @@ export async function doInferGrammar(directory: string, extension: string, optio
             currentIntermediateSolution = nextIntermediateSolution.grammarWithHistory.grammar;
         } else {
             didWeGiveUp = true;
+            lastSnippetBeforeGiveUp = snippet;
             break;
         }
 
@@ -271,12 +294,13 @@ export async function doInferGrammar(directory: string, extension: string, optio
     }
 
     if (didWeGiveUp) {
+        console.log("Couldn't pass following snippets:", [...snippetHistory, lastSnippetBeforeGiveUp!].map(snippet => snippet.fileName).join(', '));
         console.error("Failed to find a final grammar.");
         return;
     } else {
         console.log("A final solution found with complexity", calculateComplexity(finalGrammar.lexerSource + finalGrammar.parserSource));
     }
-    
+
     // Write to current directory
     const outputLexerFilePath = path.join(process.cwd(), 'MyLexer.g4');
     const outputParserFilePath = path.join(process.cwd(), 'MyParser.g4');
