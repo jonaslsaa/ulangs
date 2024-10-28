@@ -100,7 +100,7 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     await new Promise(resolve => setTimeout(resolve, 500));
     testedGrammar.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
     if (testedGrammar.errors.length > 0) {    
-        console.log("Errors found in grammar:", testedGrammar.errors);
+        //console.log("Errors found in grammar:", testedGrammar.errors);
         return testedGrammar;
     }
 
@@ -154,7 +154,7 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     }
 
     // Generate candidate grammars from LLM
-    const N = 6;
+    const N = 10;
     const candidateGrammars = await generateCandidateSolutions(openaiEnv,
         currentIntermediateSolution,
         snippet.snippet,
@@ -218,7 +218,7 @@ async function generateNextIntermediateSolution(openaiEnv: OpenAIEnv, currentInt
     if (validGrammars.length === 0) {
         // Log the errors for debugging
         if (testedGrammars.length > 0) {
-            console.log("Errors for the first grammar:");
+            // console.log("Errors for the first grammar:");
             testedGrammars[0].errors?.forEach(error => console.error(error));
         }
         return undefined;
