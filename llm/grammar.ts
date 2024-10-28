@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { type OpenAIEnv } from "./utils";
+import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationSystemMessage } from "./prompts";
 
 export type Grammar = {
@@ -121,22 +122,31 @@ function parseCompletionToGrammar(completion: string | null): MaybeGrammarWithHi
 }
 
 async function makeCompletionRequest(
-    openai: OpenAI,
+    openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-    model: string
+    model: string,
+    debug: undefined | 'input' | 'output' | 'both' = undefined,
+    timeoutSeconds: number = 20
 ): Promise<MaybeGrammarWithHistory> {
     try {
-        const completion = await openai.chat.completions.create({
+        const openai = new OpenAI({
+            baseURL: openaiEnv.baseUrl,
+            apiKey: openaiEnv.apiKey,
+        });
+
+        const completionPromise = openai.chat.completions.create({
             model: model,
             messages: messages,
             max_tokens: 4096,
             temperature: 0.7,
         });
-        
-        console.log(messages);
+
+        // Wrap the completion promise with a timeout
+        const completion = await timeout(completionPromise, timeoutSeconds * 1000);
         const content = completion.choices[0].message.content;
-        console.log("LLM completion:");
-        console.log(content);
+        
+        if (debug === 'input' || debug === 'both') console.log(messages);
+        if (debug === 'output' || debug === 'both') console.log(content);
         
         // Create new messages array with assistant's response
         const updatedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
@@ -148,6 +158,12 @@ async function makeCompletionRequest(
         result.messages = [...messages, ...updatedMessages];
         return result;
     } catch (error) {
+        if (error instanceof TimeoutError) {
+            return {
+                error: `Request timed out after ${timeoutSeconds} seconds`,
+                messages: messages
+            };
+        }
         return {
             error: `API request failed: ${error instanceof Error ? error.message : String(error)}`,
             messages: messages
@@ -163,16 +179,12 @@ export async function generateCandidateSolutions(
     errorUnderCompilationOfANTLRFiles: boolean = false,
     n = 5
 ): Promise<GrammarWithMessageHistory[]> { 
-    const openai = new OpenAI({
-        baseURL: openaiEnv.baseUrl,
-        apiKey: openaiEnv.apiKey,
-    });
 
     const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors, errorUnderCompilationOfANTLRFiles);
 
     // Create array of n identical requests
     const requests = Array(n).fill(null).map(() => 
-        makeCompletionRequest(openai, messages, openaiEnv.model)
+        makeCompletionRequest(openaiEnv, messages, openaiEnv.model)
     );
 
     // Execute all requests in parallel
@@ -209,10 +221,6 @@ export async function repairCandidateSolution(
     candidateSolution: GrammarWithMessageHistory,
     newErrors: string[]
 ) {
-    const openai = new OpenAI({
-        baseURL: openaiEnv.baseUrl,
-        apiKey: openaiEnv.apiKey,
-    });
 
     const messages = candidateSolution.messages;
     messages.push({
@@ -223,7 +231,7 @@ export async function repairCandidateSolution(
         </Errors>
         Repair the grammar to fix the errors (same output format as before).`
     });
-    const repairedGrammar = await makeCompletionRequest(openai, messages, openaiEnv.model);
+    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, 'both');
     return {
         grammar: repairedGrammar.grammar,
         messages: repairedGrammar.messages
