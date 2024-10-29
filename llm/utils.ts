@@ -27,8 +27,8 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
         apiKey: openaiApiKey,
         model: openaiModel,
     };
-    console.log("Loaded OpenAI environment variables:");
-    console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
+    console.log("Loaded OpenAI environment variables.");
+    // console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
     return r;
 }
 
