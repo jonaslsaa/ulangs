@@ -180,6 +180,10 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
         // Filter out invalid grammars
         validRepairedGrammars.push(...repairedTestedGrammars.filter(g => g.success));
         console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
+        
+        // Add the score of the repaired grammars to the overall score
+        validRepairedGrammars.forEach(g => Stats.addScore(g.grammarWithHistory.grammar.generatedWithModel));
+        
         if (validRepairedGrammars.length > 0) {
             break;
         }
@@ -251,6 +255,9 @@ async function generateNextIntermediateSolution(
         return await repairGrammars(openaiEnv, testedGrammars, snippet, previousSnippets);
     }
 
+    // Give models points for correct grammars
+    validGrammars.forEach(g => Stats.addScore(g.grammarWithHistory.grammar.generatedWithModel));
+
     // Select the best grammar based on complexity
     let bestGrammar = validGrammars[0];
     for (const grammar of validGrammars) {
@@ -266,8 +273,10 @@ async function generateNextIntermediateSolution(
 
 function ExitAndLogStats(exitCode: number = 0) {
     console.log("\n[Stats]");
-    console.log(`Generated ${Stats.totalRequests} requests,\n    and completed ${Stats.totalCompletedRequests} requests with ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
+    console.log(`Generated ${Stats.totalRequests} requests, and completed ${Stats.totalCompletedRequests} requests.`);
     console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
+    console.log(`    ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
+    console.log(`    Scores:\n${JSON.stringify(Stats.score, null, 2)}`);
     process.exit(exitCode);
 }
 

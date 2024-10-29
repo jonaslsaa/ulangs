@@ -7,6 +7,7 @@ import type { ANTLRError } from "../syntactic/ErrorListener";
 export type Grammar = {
     lexerSource: string;
     parserSource: string;
+    generatedWithModel?: string;
 };
 
 export type GrammarWithMessageHistory = {
@@ -26,6 +27,7 @@ export const Stats = {
     totalCompletedRequests: 0,
     inputTokens: 0,
     outputTokens: 0,
+    score: new Map<string, number>(), // Map from model name to score
     get totalTokens () {
         return this.inputTokens + this.outputTokens;
     },
@@ -42,6 +44,17 @@ export const Stats = {
         this.totalRequests++;
         this.inputTokens += inputTokens;
         this.outputTokens += outputTokens;
+    },
+    addScore(modelName: string | undefined) {
+        if (!modelName) {
+            console.error('addScore: Model name is undefined');
+            return;
+        }
+        if (this.score.has(modelName)) {
+            this.score.set(modelName, this.score.get(modelName)! + 1);
+        } else {
+            this.score.set(modelName, 1);
+        }
     },
 }
 
@@ -230,6 +243,7 @@ async function makeCompletionRequest(
         
         const result = parseCompletionToGrammar(content);
         result.messages = [...messages, ...updatedMessages];
+        if (result.grammar) result.grammar.generatedWithModel = usingModel;
 
         if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
 
