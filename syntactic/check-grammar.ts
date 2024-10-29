@@ -3,7 +3,9 @@ import fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
 
 type ANTLRCheckerOutput = {
-    warnings: any[];
+    warnings: {
+        msg: string;
+    }[];
     parser_grammar_errors: {
         type: string;
         line: number;
@@ -112,6 +114,16 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
 
     // Create ANTLR errors
     const errors: ANTLRError[] = [];
+
+    // Collect all warnings from that occured during the build of the grammar
+    for (const warning of checker.warnings) {
+        errors.push({
+            grammarType: 'UNKNOWN',
+            source: 'BUILD',
+            message: warning['msg'],
+            file: codePath,
+        });
+    }
 
     // Collect all errors from that occured during the build of the grammar
     for (const error of checker.lexer_grammar_errors) {
