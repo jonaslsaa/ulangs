@@ -34,5 +34,6 @@ RBRACKET: ']' ;
 COLON: ':' ;
 COMMA: ',' ;
 SEMI: ';' ;
-LBRACE: '{'; // Added missing token
-RBRACE: '}'; // Added missing token
+LBRACE: '{';
+RBRACE: '}';
+

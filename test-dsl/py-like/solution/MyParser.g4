@@ -2,32 +2,28 @@ parser grammar MyParser;
 
 options { tokenVocab=MyLexer; }
 
-prog: statement*;
+program:   function*;
 
-statement: assignment SEMI? 
-         | function_def SEMI?
-         | func_call SEMI?;
+function: DEF ID LPAREN parameterList RPAREN COLON statement+ ;
 
-assignment: ID TYPE? ASSIGN expression;
+parameterList: ID (COMMA ID)*;
 
-function_def: DEF ID LPAREN params RPAREN TYPE? LBRACE statement* RBRACE;
+statement: assignment SEMI? | functionCall SEMI? | RET expression SEMI?;
 
-params: ID TYPE (COMMA ID TYPE)*;
+assignment: ID ASSIGN expression;
 
-func_call: ID LPAREN args RPAREN;
+functionCall: ID LPAREN argumentList RPAREN;
 
-args: expression (COMMA expression)*;
+argumentList: expression (COMMA expression)*;
 
-expression: list_expression 
-          | term ((PLUS | MINUS) term)?;
+expression: additiveExpression;
 
-list_expression: LBRACKET (expression (COMMA expression)*)? RBRACKET;
+additiveExpression: multiplicativeExpression ( (PLUS | MINUS) multiplicativeExpression )* ;
 
-term: factor ((MUL | DIV | MOD) factor)*;
+multiplicativeExpression: unaryExpression ( (MUL | DIV | MOD) unaryExpression )* ;
 
-factor: NUMBER 
-      | STRING
-      | ID 
-      | LPAREN expression RPAREN 
-      | MINUS factor // Allow for unary minus
-      ;
+
+unaryExpression: (PLUS | MINUS)? primary ;
+
+
+primary: ID | NUMBER | LPAREN expression RPAREN;
