@@ -137,7 +137,7 @@ async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory,
     // If any previous snippets failed, return the first failed snippet
     for (const TestedGrammar of TestedGrammarPrevious) {
         if (!TestedGrammar.success) {
-            console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests. Failed on ${previousSnippets[TestedGrammar.grammarWithHistory.messages.length - 1].fileName}!`);
+            console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests."`);
             return TestedGrammar;
         }
         numberOfTestsPassed++;
