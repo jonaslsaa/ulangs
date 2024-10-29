@@ -41,7 +41,7 @@ export const Stats = {
         this.totalRequests++;
     },
     addCompletedRequest(inputTokens: number, outputTokens: number) {
-        this.totalRequests++;
+        this.totalCompletedRequests++;
         this.inputTokens += inputTokens;
         this.outputTokens += outputTokens;
     },

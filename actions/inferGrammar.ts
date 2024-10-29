@@ -98,7 +98,7 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
 
     await new Promise(resolve => setTimeout(resolve, 500));
     try {
-    testedGrammar.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
+        testedGrammar.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
     } catch (error: any) {
         console.error("Failed to check grammar:", error);
         testedGrammar.errors = [{
@@ -110,7 +110,7 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
             column: undefined,
         }];
     }
-    if (testedGrammar.errors.length > 0) {    
+    if (testedGrammar.errors.length > 0) {
         //console.log("Errors found in grammar:", testedGrammar.errors);
         return testedGrammar;
     }
@@ -142,7 +142,7 @@ async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, 
     // If all previous snippets succeeded, return the main snippet
     return TestedGrammarMain;
 }
-    
+
 
 async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGrammar[], snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
     console.log("Attempting to repair invalid grammars based on errors...");
@@ -160,7 +160,7 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
         }));
 
         // Filter out undefined grammars
-        const repairedCandidateGrammarsFiltered = repairedCandidateGrammars.filter(candidateGrammar => 
+        const repairedCandidateGrammarsFiltered = repairedCandidateGrammars.filter(candidateGrammar =>
             candidateGrammar.grammar !== undefined
         );
 
@@ -180,10 +180,10 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
         // Filter out invalid grammars
         validRepairedGrammars.push(...repairedTestedGrammars.filter(g => g.success));
         console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
-        
+
         // Add the score of the repaired grammars to the overall score
         validRepairedGrammars.forEach(g => Stats.addScore(g.grammarWithHistory.grammar.generatedWithModel));
-        
+
         if (validRepairedGrammars.length > 0) {
             break;
         }
@@ -208,9 +208,9 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
 }
 
 async function generateNextIntermediateSolution(
-    openaiEnv: OpenAIEnv, 
-    currentIntermediateSolution: Grammar | undefined, 
-    snippet: Snippet, 
+    openaiEnv: OpenAIEnv,
+    currentIntermediateSolution: Grammar | undefined,
+    snippet: Snippet,
     previousSnippets: Snippet[]
 ): Promise<TestedGrammar | undefined> {
     console.log(`Inferring grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
@@ -276,7 +276,12 @@ function ExitAndLogStats(exitCode: number = 0) {
     console.log(`Generated ${Stats.totalRequests} requests, and completed ${Stats.totalCompletedRequests} requests.`);
     console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
     console.log(`    ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
-    console.log(`    Scores:\n${JSON.stringify(Stats.score, null, 2)}`);
+    if (Stats.score.size > 0) console.log("\n[Model scores]");
+    Array.from(Stats.score.entries())
+        .sort(([, scoreA], [, scoreB]) => scoreB - scoreA)
+        .forEach(([modelName, score]) => {
+            console.log(`    - ${modelName}: ${score}`);
+        });
     process.exit(exitCode);
 }
 
@@ -311,14 +316,14 @@ export async function doInferGrammar(directory: string, extension: string, optio
 
     for (const snippet of sortedSnippets) {
         let nextIntermediateSolution: TestedGrammar | undefined = undefined;
-        
+
         for (let i = 0; i < maxRetries; i++) {
             if (i > 0) {
                 console.error(` * Retry attempt ${i + 1}/${maxRetries}...`);
             }
 
             nextIntermediateSolution = await generateNextIntermediateSolution(
-                openaiEnv, 
+                openaiEnv,
                 currentIntermediateSolution,
                 snippet,
                 snippetHistory
