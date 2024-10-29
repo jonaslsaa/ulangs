@@ -27,6 +27,7 @@ function findAllCodeFiles(directory: string, extension: string, recursive: boole
 type Snippet = {
     snippet: string;
     fileName: string;
+    filePath: string;
 }
 
 function loadFilesToSnippets(files: string[]): Snippet[] {
@@ -34,7 +35,8 @@ function loadFilesToSnippets(files: string[]): Snippet[] {
         const fileContent = fs.readFileSync(file, 'utf8');
         return {
             snippet: fileContent,
-            fileName: path.basename(file)
+            fileName: path.basename(file),
+            filePath: file
         };
     });
 }
@@ -312,6 +314,11 @@ async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv, initalLexer:
     return g;
 }
 
+async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePaths: string[]): Promise<ANTLRError[]> {
+    const results = await Promise.all(codePaths.map(codePath => checkGrammar(lexerPath, parserPath, codePath)));
+    return results.flat();
+}
+
 export async function doInferGrammar(directory: string, extension: string, options: CLIInferGrammarArguments) {
     const maxRetries = 3;
 
@@ -330,6 +337,17 @@ export async function doInferGrammar(directory: string, extension: string, optio
     // Load initial lexer and parser if they exist
     const initialLexer = loadFile(options.initialLexer);
     const initialParser = loadFile(options.initialParser);
+
+    // If both initial lexer and parser are provided, let's just check if they already are syntactically valid
+    if (initialLexer && initialParser && options.initialLexer && options.initialParser) {
+        const errors = await checkGrammarOnMany(options.initialLexer, options.initialParser, sortedSnippets.map(snippet => snippet.filePath));
+        if (errors.length === 0) {
+            console.log("Initial lexer and parser are syntactically valid!");
+            process.exit(0);
+        } else {
+            console.error("Initial lexer and parser are not syntactically valid!");
+        }
+    }
 
     // Build our first intermediate solution.
     // Static initialization:
