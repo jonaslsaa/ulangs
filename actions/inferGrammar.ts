@@ -123,7 +123,9 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     return testedGrammar;
 }
 
-async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, newSnippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar> {
+async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory,
+                                    newSnippet: Snippet,
+                                    previousSnippets: Snippet[]): Promise<TestedGrammar> {
     // Test first on new snippets
     const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet);
     if (!TestedGrammarMain.success) {
@@ -319,7 +321,7 @@ async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePat
     return results.flat();
 }
 
-export async function doInferGrammar(directory: string, extension: string, options: CLIInferGrammarArguments) {
+export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
     const maxRetries = 3;
 
     const files = findAllCodeFiles(directory, extension, options.recursive);
@@ -416,8 +418,8 @@ export async function doInferGrammar(directory: string, extension: string, optio
     }
 
     // Write to current directory
-    const outputLexerFilePath = path.join(process.cwd(), 'MyLexer.g4');
-    const outputParserFilePath = path.join(process.cwd(), 'MyParser.g4');
+    const outputLexerFilePath = path.join(outputDir, 'MyLexer.g4');
+    const outputParserFilePath = path.join(outputDir, 'MyParser.g4');
     fs.writeFileSync(outputLexerFilePath, finalGrammar.lexerSource);
     fs.writeFileSync(outputParserFilePath, finalGrammar.parserSource);
     console.log("Wrote final grammar to", outputLexerFilePath, "and", outputParserFilePath);

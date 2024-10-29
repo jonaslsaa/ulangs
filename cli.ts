@@ -45,11 +45,12 @@ cli.command('infer-grammar')
     .description('Infer grammar from a directory of files')
     .argument('<directory>', 'Directory to infer grammar from')
     .argument('<extension>', 'File extension to infer grammar from, ex: .pyl')
+    .argument('[outputDir]', 'Output directory for generated files', process.cwd())
     .option('-iL, --initial-lexer <path>', 'Use a file as a starting point for the lexer', undefined)
     .option('-iP, --initial-parser <path>', 'Use a file as a starting point for the parser', undefined)
     .option('-R, --recursive', 'Detect grammar from subdirectories', false)
     .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
-    .action(async (directory: string, extension: string, options: CLIInferGrammarArguments) => {
+    .action(async (directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) => {
         // Check if the directory exists
         if (!fs.existsSync(directory)) {
             console.error(`Directory ${directory} does not exist`);
@@ -72,7 +73,13 @@ cli.command('infer-grammar')
         checkFileExists(options.initialLexer);
         checkFileExists(options.initialParser);
 
-        doInferGrammar(directory, extension, options);
+        // Check if the output directory exists
+        if (!fs.existsSync(outputDir)) {
+            console.error(`Output directory '${outputDir}' does not exist`);
+            process.exit(1);
+        }
+
+        doInferGrammar(directory, extension, outputDir, options);
     });
 
 
