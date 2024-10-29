@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, Grammar } from '../llm/grammar';
+import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, type Grammar } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
