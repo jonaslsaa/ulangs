@@ -36,13 +36,19 @@ cli.command('check')
 
 export type CLIInferGrammarArguments = {
     recursive: boolean;
+    initialLexer: string | undefined;
+    initialParser: string | undefined;
+    skipFirstGuess: boolean;
 };
 
 cli.command('infer-grammar')
     .description('Infer grammar from a directory of files')
     .argument('<directory>', 'Directory to infer grammar from')
     .argument('<extension>', 'File extension to infer grammar from, ex: .pyl')
-    .option('-R, --recursive', 'Detect grammar from subdirectories', true)
+    .option('-iL, --initial-lexer <path>', 'Use a file as a starting point for the lexer', undefined)
+    .option('-iP, --initial-parser <path>', 'Use a file as a starting point for the parser', undefined)
+    .option('-R, --recursive', 'Detect grammar from subdirectories', false)
+    .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
     .action(async (directory: string, extension: string, options: CLIInferGrammarArguments) => {
         // Check if the directory exists
         if (!fs.existsSync(directory)) {
@@ -54,6 +60,17 @@ cli.command('infer-grammar')
             console.error(`Extension ${extension} does not start with a dot`);
             process.exit(1);
         }
+
+        // Check inital grammar files exist
+        function checkFileExists(filePath: string | undefined) {
+            if (filePath === undefined) return; // We don't care if it's undefined
+            if (!fs.existsSync(filePath)) {
+                console.error(`File '${filePath}' does not exist`);
+                process.exit(1);
+            }
+        }
+        checkFileExists(options.initialLexer);
+        checkFileExists(options.initialParser);
 
         doInferGrammar(directory, extension, options);
     });

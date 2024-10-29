@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type Grammar, type GrammarWithMessageHistory } from "../llm/grammar";
+import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, Grammar } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
@@ -209,7 +209,7 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
 
 async function generateNextIntermediateSolution(
     openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar | undefined,
+    currentIntermediateSolution: Grammar,
     snippet: Snippet,
     previousSnippets: Snippet[]
 ): Promise<TestedGrammar | undefined> {
@@ -285,6 +285,33 @@ function ExitAndLogStats(exitCode: number = 0) {
     process.exit(exitCode);
 }
 
+function loadFile(filePath: string | undefined): string | undefined {
+    if (filePath === undefined) return undefined;
+    if (!fs.existsSync(filePath)) return undefined;
+    console.log(`Loading initial grammar file from ${filePath}`);
+    return fs.readFileSync(filePath, 'utf8');
+}
+
+async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv, initalLexer: string | undefined, initalParser: string | undefined, tryOneShot: boolean = false, snippets: string[] = []): Promise<Grammar> {
+    let g: Grammar = {
+        lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
+        parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
+    };
+    if (initalLexer) g.lexerSource = initalLexer;
+    if (initalParser) g.parserSource = initalParser;
+
+    if (tryOneShot) {
+        console.log("Generating initial guess for the first intermediate solution...");
+        const newG = (await generateInitalGuess(openaiEnv, snippets, g.lexerSource, g.parserSource)).grammar;
+        if (newG === undefined) {
+            throw new Error('Failed to generate initial guess');
+        }
+        g = newG;
+    }
+
+    return g;
+}
+
 export async function doInferGrammar(directory: string, extension: string, options: CLIInferGrammarArguments) {
     const maxRetries = 3;
 
@@ -300,15 +327,25 @@ export async function doInferGrammar(directory: string, extension: string, optio
     // Load OpenAI environment variables
     const openaiEnv = loadOpenAIEnvVars();
 
-    // Let's create an initial guess for the first intermediate solution
-    console.log("Generating initial guess for the first intermediate solution...");
+    // Load initial lexer and parser if they exist
+    const initialLexer = loadFile(options.initialLexer);
+    const initialParser = loadFile(options.initialParser);
+
+    // Build our first intermediate solution.
+    // Static initialization:
+    //      1. Empty grammar (just a template)
+    //      2. The initial lexer and parser
+    // Dynamic initialization:
+    //      1. Guess based on all the snippets
+    //      2. Guess based on the snippets and the initial lexer and parser
     const snippetsUsedInGuess = sortedSnippets.map(snippet => snippet.snippet);
-    let currentIntermediateSolution: Grammar | undefined = (await generateInitalGuess(openaiEnv, snippetsUsedInGuess)).grammar;
-    if (currentIntermediateSolution === undefined) {
-        console.error("Failed to generate an initial guess for the first intermediate solution!");
-        ExitAndLogStats(1);
-    }
-    console.log("Generated initial guess for the first intermediate solution:\n", currentIntermediateSolution);
+    let currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
+                                            initialLexer,
+                                            initialParser,
+                                            !options.skipFirstGuess,
+                                            snippetsUsedInGuess
+                                        );
+    
 
     const snippetHistory: Snippet[] = [];
     let didWeGiveUp = false;

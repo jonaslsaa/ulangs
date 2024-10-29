@@ -98,18 +98,11 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     return newCodeLines.join('\n');   
 }
 
-function constructPrompt(currentIntermediateSolution: Grammar | undefined, 
+function constructPrompt(currentIntermediateSolution: Grammar, 
     codeSnippet: string, 
     errors: ANTLRError[]
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
-
-    if (currentIntermediateSolution === undefined) {
-        currentIntermediateSolution = {
-            lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
-            parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
-        };
-    }
 
     // Add system message
     messages.push({
@@ -265,7 +258,7 @@ async function makeCompletionRequest(
 
 export async function generateCandidateSolutions(
     openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar | undefined,
+    currentIntermediateSolution: Grammar,
     codeSnippet: string,
     errors: ANTLRError[] = [],
     n = 2
@@ -331,11 +324,11 @@ Repair the grammar to fix the errors (same output format as before).`
     };
 }
 
-export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: string[]) {
+export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: string[], initalLexer: string | undefined, initalParser: string | undefined) {
     const combinedSnippets = snippets.join('\nNext snippet:\n');
     const tempSolution: Grammar = {
-        lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
-        parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
+        lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
+        parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
     const messages = constructPrompt(tempSolution, combinedSnippets, []);
     const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 120);
