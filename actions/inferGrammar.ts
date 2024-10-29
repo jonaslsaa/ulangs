@@ -344,10 +344,10 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     if (initialLexer && initialParser && options.initialLexer && options.initialParser) {
         const errors = await checkGrammarOnMany(options.initialLexer, options.initialParser, sortedSnippets.map(snippet => snippet.filePath));
         if (errors.length === 0) {
-            console.log("Initial lexer and parser are syntactically valid!");
+            console.log("Loaded grammar (lexer and parser) is syntactically valid! Exiting...");
             process.exit(0);
         } else {
-            console.error("Initial lexer and parser are not syntactically valid!");
+            console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
     }
 
