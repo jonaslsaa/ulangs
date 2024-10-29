@@ -23,6 +23,7 @@ export type MaybeGrammarWithHistory = {
 
 export const Stats = {
     totalRequests: 0,
+    totalCompletedRequests: 0,
     inputTokens: 0,
     outputTokens: 0,
     get totalTokens () {
@@ -34,7 +35,10 @@ export const Stats = {
     getCost(inputPricePerMillionTokens: number, outputPricePerMillionTokens: number) {
         return this.totalTokens * inputPricePerMillionTokens + this.totalTokens * outputPricePerMillionTokens;
     },
-    addRequest(inputTokens: number, outputTokens: number) {
+    addRequest() {
+        this.totalRequests++;
+    },
+    addCompletedRequest(inputTokens: number, outputTokens: number) {
         this.totalRequests++;
         this.inputTokens += inputTokens;
         this.outputTokens += outputTokens;
@@ -185,28 +189,30 @@ function parseCompletionToGrammar(completion: string | null): MaybeGrammarWithHi
 async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-    model: string,
+    model?: string,
     debug: undefined | 'input' | 'output' | 'both' = undefined,
-    timeoutSeconds: number = 20,
+    timeoutSeconds: number = 60,
 ): Promise<MaybeGrammarWithHistory> {
-    //const models = ["ai21/jamba-1-5-mini", "google/gemini-flash-1.5"];
-    //const randomModel = models[Math.floor(Math.random() * models.length)];
+    // random sleep to avoid rate limiting
+    const randomSleep = Math.floor(Math.random() * 5000); // Up to 5 seconds
+    await new Promise(resolve => setTimeout(resolve, randomSleep));
+    const models = ["ai21/jamba-1-5-mini", "google/gemini-flash-1.5", "openai/gpt-4o-mini-2024-07-18"];
+    let usingModel: string;
+    if (model !== undefined) { usingModel = model; }
+    else { usingModel = models[Math.floor(Math.random() * models.length)]; }
     try {
         const openai = new OpenAI({
             baseURL: openaiEnv.baseUrl,
             apiKey: openaiEnv.apiKey,
         });
-        if (messages.length > 4) {
-            //console.log(messages);
-            console.log("LARGE MESSAGES");
-        }
         const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-            model: model,
+            model: model || usingModel, // If no model is provided, use a random one
             messages: messages,
             max_tokens: 4096,
             temperature: 0.8,
         };
 
+        Stats.addRequest();
         const completionPromise = openai.chat.completions.create(completionBody); // { body: { ...completionBody, provider: { order: ['Hyperbolic'] } } }
 
         // Wrap the completion promise with a timeout
@@ -225,13 +231,13 @@ async function makeCompletionRequest(
         const result = parseCompletionToGrammar(content);
         result.messages = [...messages, ...updatedMessages];
 
-        if (completion.usage) Stats.addRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
+        if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
 
         return result;
     } catch (error) {
         if (error instanceof TimeoutError) {
             return {
-                error: `Request timed out after ${timeoutSeconds} seconds (model: ${model})`,
+                error: `Request timed out after ${timeoutSeconds} seconds (model: ${usingModel}).`,
                 messages: messages
             };
         }
@@ -255,7 +261,7 @@ export async function generateCandidateSolutions(
 
     // Create array of n identical requests
     const requests = Array(n).fill(null).map(() => 
-        makeCompletionRequest(openaiEnv, messages, openaiEnv.model)
+        makeCompletionRequest(openaiEnv, messages)
     );
 
     // Execute all requests in parallel
@@ -304,7 +310,7 @@ ${newErrors.map(error => errorToString(error)).join('\n')}
 </Errors>
 Repair the grammar to fix the errors (same output format as before).`
     });
-    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model);
+    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages);
     return {
         grammar: repairedGrammar.grammar,
         messages: repairedGrammar.messages
@@ -314,11 +320,11 @@ Repair the grammar to fix the errors (same output format as before).`
 export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: string[]) {
     const combinedSnippets = snippets.join('\nNext snippet:\n');
     const tempSolution: Grammar = {
-        lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
+        lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
     const messages = constructPrompt(tempSolution, combinedSnippets, []);
-    const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model);
+    const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 120);
     return {
         grammar: completion.grammar,
         messages: completion.messages

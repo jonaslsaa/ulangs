@@ -97,13 +97,26 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     fs.writeFileSync(codeSnippetFilePath, snippet.snippet);
 
     await new Promise(resolve => setTimeout(resolve, 500));
+    try {
     testedGrammar.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
+    } catch (error: any) {
+        console.error("Failed to check grammar:", error);
+        testedGrammar.errors = [{
+            grammarType: 'UNKNOWN',
+            source: 'BUILD',
+            message: error['message'],
+            file: lexerFilePath,
+            line: undefined,
+            column: undefined,
+        }];
+    }
     if (testedGrammar.errors.length > 0) {    
         //console.log("Errors found in grammar:", testedGrammar.errors);
         return testedGrammar;
     }
 
-    console.log(`Successfully tested grammar on ${snippet.fileName} at path:\n - ${lexerFilePath}\n - ${parserFilePath}`);
+    console.log(`[PASS] ${snippet.fileName}!`);
+    // console.log(` - ${lexerFilePath}\n - ${parserFilePath}`);
     testedGrammar.success = true;
     return testedGrammar;
 }
@@ -133,7 +146,7 @@ async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory, 
 
 async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGrammar[], snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
     console.log("Attempting to repair invalid grammars based on errors...");
-    const maxRetries = 5;
+    const maxRetries = 6;
     const validRepairedGrammars: TestedGrammar[] = [];
     for (let i = 0; i < maxRetries; i++) {
         if (i > 0) console.error(` * Repair attempt ${i + 1}/${maxRetries}...`);
@@ -215,7 +228,7 @@ async function generateNextIntermediateSolution(
     }
 
     // Generate candidate grammars from LLM
-    const N = 10;
+    const N = 20;
     const candidateGrammars = await generateCandidateSolutions(openaiEnv,
         currentIntermediateSolution,
         snippet.snippet,
@@ -252,9 +265,9 @@ async function generateNextIntermediateSolution(
 }
 
 function ExitAndLogStats(exitCode: number = 0) {
-    console.log(`\nGenerated ${Stats.totalRequests} requests with ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
-    console.log(`Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
-    console.log(`Cost: ${Stats.getCost(0.002, 0.002)}`);
+    console.log("\n[Stats]");
+    console.log(`Generated ${Stats.totalRequests} requests,\n    and completed ${Stats.totalCompletedRequests} requests with ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
+    console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
     process.exit(exitCode);
 }
 
