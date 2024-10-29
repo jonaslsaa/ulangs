@@ -19,6 +19,7 @@ export const grammarGenerationSystemMessage = `Create ANTLR 4 grammar by writing
 - Lexer should always be named MyLexer and parser MyParser. MUST be named exactly this way: MyLexer, MyParser.
 - Start rule must be callled 'program', and must be the first rule in the parser grammar.
 - Make it as general as possible, so that the next snippet which might give new information can be integrated into the grammar.
+- skip : Whitespace and comments should be skipped!
 
 # Examples
 
@@ -26,48 +27,102 @@ export const grammarGenerationSystemMessage = `Create ANTLR 4 grammar by writing
 
 _Input Code Snippet_: 
 
-\`\`\`java
+\`\`\`
 int main() {
-    return 0;
+    return 0; // Return 0
 }
 \`\`\`
 
 _Current Solution_: 
 
-Lexer error: \`no viable token\`
+warning: 16:17: implicit definition of token COMMA in parser
 
 **Expected Output**
+
+Ah, good catch! Let me think through this step by step:
+
+1. The error occurs because we're using COMMA in the parser grammar (in parameterList rule) but haven't defined it in the lexer grammar
+2. We should always check that every token used in the parser has a corresponding definition in the lexer
+3. Looking at our current lexer grammar:
+  - We have basic punctuation like LPAREN, RPAREN, SEMI
+  - But we forgot COMMA!
+4. Other potential tokens we might be missing:
+  - Operators like PLUS, MINUS, etc. might be useful
+  - Assignment operator (=) could be needed
+5. Let's fix the COMMA issue and add some common operators while we're at it
 
 ## Lexer grammar
 \`\`\`antlr
 lexer grammar MyLexer;
-
+// Keywords
 INT: 'int';
 RETURN: 'return';
-NUMBER: [0-9]+;
-WS: [ \t\r\n]+ -> skip;
-ID: [a-zA-Z_][a-zA-Z_0-9]*;
-SEMI: ';';
+VOID: 'void';
+// Literals
+INTEGER_LITERAL: [0-9]+;
+// Identifiers
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+// Operators and punctuation
 LPAREN: '(';
 RPAREN: ')';
 LBRACE: '{';
 RBRACE: '}';
+SEMI: ';';
+COMMA: ',';
+// Comments
+SINGLE_LINE_COMMENT: '//' ~[\r\n]* -> skip;
+MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
+// Whitespace
+WS: [ \t\r\n]+ -> skip;
 \`\`\`
 
 ## Parser grammar
 \`\`\`antlr
 parser grammar MyParser;
-
-options { tokenVocab=MyLexer; }
-
-prog: INT main LPAREN RPAREN LBRACE RETURN NUMBER SEMI RBRACE;
-main: ID;
+options { tokenVocab = MyLexer; }
+program
+    : functionDeclaration*
+    ;
+// Function declaration
+functionDeclaration
+    : typeSpecifier IDENTIFIER LPAREN parameterList? RPAREN functionBody
+    ;
+// Parameter list (can be empty)
+parameterList
+    : parameter (COMMA parameter)*
+    | VOID
+    ;
+parameter
+    : typeSpecifier IDENTIFIER
+    ;
+// Function body
+functionBody
+    : LBRACE statement* RBRACE
+    ;
+// Statements
+statement
+    : returnStatement
+    | expressionStatement
+    ;
+returnStatement
+    : RETURN expression? SEMI
+    ;
+expressionStatement
+    : expression SEMI
+    ;
+// Expressions
+expression
+    : INTEGER_LITERAL
+    | IDENTIFIER
+    ;
+// Type specifiers
+typeSpecifier
+    : INT
+    | VOID
+    ;
 \`\`\`
 
-*(In more realistic cases, parser rules would be generalized and capable of handling more than just this snippet)*
-
 # Notes
-
 - The lexer and parser should align with ANTLR 4 syntax rules and paradigms.
 - Document and comment the grammar rules to aid comprehension, and note consideration the next developer might need to think about.
 - Adjust rules to match the specific syntax used in the given code snippet for successful parsing.
