@@ -4,9 +4,9 @@ import { doInferGrammar } from './actions/inferGrammar';
 import fs from 'fs';
 
 const cli = new Command();
-cli.name('tbd');
-cli.description('tbd');
-cli.version('0.0.1');
+cli.name('ulangs-toolkit');
+cli.description('Universal Language Server Toolkit');
+cli.version('0.1.0');
 
 export type CLIGenerateArguments = {
     excludeConversion: boolean;
