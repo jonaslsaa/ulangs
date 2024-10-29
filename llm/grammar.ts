@@ -22,6 +22,12 @@ export type MaybeGrammarWithHistory = {
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 };
 
+export type Snippet = {
+    snippet: string;
+    fileName: string;
+    filePath: string;
+}
+
 export const Stats = {
     totalRequests: 0,
     totalCompletedRequests: 0,
@@ -324,13 +330,21 @@ Repair the grammar to fix the errors (same output format as before).`
     };
 }
 
-export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: string[], initalLexer: string | undefined, initalParser: string | undefined) {
-    const combinedSnippets = snippets.join('\nNext snippet:\n');
+export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: Snippet[], initalLexer: string | undefined, initalParser: string | undefined, fileNamesThatDidntPass: string[] = []) {
+    const combinedSnippets = snippets.map(snippet => {
+        const didNotPass = fileNamesThatDidntPass.includes(snippet.filePath); // TODO: not the best way to do this
+        const didNotPassString = didNotPass ? '// This snippet did not pass the grammar check!\n' : '';
+        return `<File: ${snippet.fileName}>
+${didNotPassString}
+${snippet.snippet}
+</File>`;
+    }).join('\n');
     const tempSolution: Grammar = {
         lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
     const messages = constructPrompt(tempSolution, combinedSnippets, []);
+    console.log("LAST MESSAGE\n", messages[messages.length - 1], "\n-----------");
     const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 120);
     return {
         grammar: completion.grammar,

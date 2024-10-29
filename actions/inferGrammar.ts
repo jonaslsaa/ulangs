@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, type Grammar } from '../llm/grammar';
+import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, type Grammar, type Snippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
@@ -22,12 +22,6 @@ function findAllCodeFiles(directory: string, extension: string, recursive: boole
         });
     }
     return codeFiles;
-}
-
-type Snippet = {
-    snippet: string;
-    fileName: string;
-    filePath: string;
 }
 
 function loadFilesToSnippets(files: string[]): Snippet[] {
@@ -117,7 +111,6 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
         return testedGrammar;
     }
 
-    console.log(`[PASS] ${snippet.fileName}!`);
     // console.log(` - ${lexerFilePath}\n - ${parserFilePath}`);
     testedGrammar.success = true;
     return testedGrammar;
@@ -126,24 +119,31 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
 async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory,
                                     newSnippet: Snippet,
                                     previousSnippets: Snippet[]): Promise<TestedGrammar> {
+    let numberOfTestsPassed = 0;
+    let numberOfTestsTotal = 1 + previousSnippets.length;
     // Test first on new snippets
     const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet);
     if (!TestedGrammarMain.success) {
+        console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests. Failed on ${newSnippet.fileName}!`);
         return TestedGrammarMain;
     }
+    numberOfTestsPassed++;
     // Now test all previous snippets
     const TestedGrammarPrevious = await Promise.all(previousSnippets.map(async previousSnippet => {
         const TestedGrammarPrevious = await testGrammar(grammarWithHistory, previousSnippet);
-        // TODO: do something with the history/messages?
+        // TODO: do something with the history/messages?´
         return TestedGrammarPrevious;
     }));
     // If any previous snippets failed, return the first failed snippet
     for (const TestedGrammar of TestedGrammarPrevious) {
         if (!TestedGrammar.success) {
+            console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests. Failed on ${previousSnippets[TestedGrammar.grammarWithHistory.messages.length - 1].fileName}!`);
             return TestedGrammar;
         }
+        numberOfTestsPassed++;
     }
     // If all previous snippets succeeded, return the main snippet
+    console.log(`[PASS] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests!`);
     return TestedGrammarMain;
 }
 
@@ -296,7 +296,13 @@ function loadFile(filePath: string | undefined): string | undefined {
     return fs.readFileSync(filePath, 'utf8');
 }
 
-async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv, initalLexer: string | undefined, initalParser: string | undefined, tryOneShot: boolean = false, snippets: string[] = []): Promise<Grammar> {
+async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
+                                                initalLexer: string | undefined,
+                                                initalParser: string | undefined,
+                                                tryOneShot: boolean = false,
+                                                snippets: Snippet[] = [],
+                                                fileNamesThatDidntPass: string[] = []
+                                            ): Promise<Grammar> {
     let g: Grammar = {
         lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
         parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
@@ -306,7 +312,7 @@ async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv, initalLexer:
 
     if (tryOneShot) {
         console.log("Generating initial guess for the first intermediate solution...");
-        const newG = (await generateInitalGuess(openaiEnv, snippets, g.lexerSource, g.parserSource)).grammar;
+        const newG = (await generateInitalGuess(openaiEnv, snippets, g.lexerSource, g.parserSource, fileNamesThatDidntPass)).grammar;
         if (newG === undefined) {
             throw new Error('Failed to generate initial guess');
         }
@@ -341,6 +347,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const initialParser = loadFile(options.initialParser);
 
     // If both initial lexer and parser are provided, let's just check if they already are syntactically valid
+    let fileNamesThatDidntPass: string[] = [];
     if (initialLexer && initialParser && options.initialLexer && options.initialParser) {
         const errors = await checkGrammarOnMany(options.initialLexer, options.initialParser, sortedSnippets.map(snippet => snippet.filePath));
         if (errors.length === 0) {
@@ -349,6 +356,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         } else {
             console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
+        errors.forEach(error => error.file && fileNamesThatDidntPass.push(error.file));
     }
 
     // Build our first intermediate solution.
@@ -358,12 +366,13 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     // Dynamic initialization:
     //      1. Guess based on all the snippets
     //      2. Guess based on the snippets and the initial lexer and parser
-    const snippetsUsedInGuess = sortedSnippets.map(snippet => snippet.snippet);
+    const snippetsUsedInGuess = sortedSnippets.map(snippet => snippet); // TODO: shouldn't be all files ...
     let currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
                                             initialLexer,
                                             initialParser,
                                             !options.skipFirstGuess,
-                                            snippetsUsedInGuess
+                                            snippetsUsedInGuess,
+                                            fileNamesThatDidntPass
                                         );
     
 
