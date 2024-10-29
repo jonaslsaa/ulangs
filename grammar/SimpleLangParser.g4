@@ -1,45 +1,12 @@
-// Parser grammar
 parser grammar SimpleLangParser;
 options { tokenVocab=SimpleLangLexer; }
 
-program: (statement NEWLINE*)* EOF;
+program: (forStmt | printStmt)*;
 
-statement
-    : function
-    | assignment
-    | indentedStatement
-    | methodCall
-    | functionCall    // Add this line
-    ;
+forStmt: FOR ID LT INT GT IN ID COLON block;
 
-function: DEF ID LPAREN params? RPAREN COLON NEWLINE functionBody;
+block: (printStmt)*;
 
-functionBody: indentedStatement+;
+printStmt: PRINT LPAREN expr RPAREN;
 
-indentedStatement: INDENT (returnStatement | assignment | methodCall);
-
-params: ID (COMMA ID)*;
-
-assignment: ID ASSIGN expression;
-
-returnStatement: RET expression;
-
-methodCall: ID DOT ID LPAREN args? RPAREN;
-
-expression
-    : term (PLUS term)*
-    | listLiteral
-    | methodCall
-    | functionCall
-    ;
-
-term
-    : ID
-    | NUMBER
-    ;
-
-listLiteral: LBRACKET RBRACKET;
-
-args: expression (COMMA expression)*;
-
-functionCall: ID LPAREN args? RPAREN;
+expr: ID | NUMBER (PLUS NUMBER)*;
