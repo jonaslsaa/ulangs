@@ -48,6 +48,7 @@ type ANTLRCheckerOutput = {
             pos: number;
             msg: string;
         }[] | undefined;
+        number_of_nodes: number;
         profile: {
             colnames: string[];
             data: (string | number)[][];
@@ -173,6 +174,16 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
                     column: error.pos,
                 });
             }
+        }
+
+        // If only 1 node was created, it means that the grammar was not parsed correctly
+        if (checker.result.number_of_nodes < 2) {
+            errors.push({
+                grammarType: 'UNKNOWN',
+                source: 'RUNTIME',
+                message: `Grammar was not parsed correctly - only ${checker.result.number_of_nodes} node was created.`,
+                file: codePath,
+            });
         }
     }
 
