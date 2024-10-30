@@ -1,0 +1,14 @@
+Start:
+    Notify "Starting sales analysis"
+
+SalesData:
+    -> Database "Retrieve monthly sales data"
+
+Analyze:
+    Condition If SalesData.Total > 50000
+        Notify "Sales target met"
+    Else
+        Notify "Sales target not met"
+
+End:
+    Notify "Analysis completed"

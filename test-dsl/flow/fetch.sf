@@ -1,0 +1,25 @@
+Start:
+    Notify "Begin monthly workflow"
+
+DataFetch:
+    -> Database "Fetch regional sales data"
+    -> API "Get current tax rates"
+
+Process:
+    Transform SalesData using "Adjust for regional taxes"
+    Aggregate SalesData as TotalSales
+
+Evaluate:
+    Condition If TotalSales > 100000
+        Notify "Exceptional sales month"
+    Else If TotalSales > 50000
+        Notify "Satisfactory sales month"
+    Else
+        Notify "Sales below target"
+
+Report:
+    Report Generate "Sales Summary Report" with TotalSales
+    Archive DataFetch, Process, TotalSales
+
+End:
+    Notify "Monthly workflow completed"

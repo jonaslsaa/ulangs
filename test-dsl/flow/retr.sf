@@ -1,0 +1,9 @@
+Start:
+    Notify "Initiating data retrieval"
+
+DataFetch:
+    -> Database "Fetch user data"
+    -> API "Retrieve latest settings"
+
+End:
+    Notify "Data retrieval completed"

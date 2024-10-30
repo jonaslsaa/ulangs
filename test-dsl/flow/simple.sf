@@ -1,0 +1,4 @@
+Start:
+    Notify "Process started"
+End:
+    Notify "Process completed"

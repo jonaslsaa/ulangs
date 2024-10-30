@@ -1,0 +1,14 @@
+Start:
+    -> Database "Fetch backup logs"
+
+Process:
+    Transform Logs using "Filter failed backups"
+
+Check:
+    Condition If Logs.Count > 0
+        Notify "Backup failures detected"
+    Else
+        Notify "All backups successful"
+
+End:
+    Notify "Daily backup check completed"

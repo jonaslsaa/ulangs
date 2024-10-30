@@ -1,0 +1,17 @@
+Start:
+    -> Database "Get user activity data"
+
+Process:
+    Transform Data using "Filter active users"
+
+Check:
+    Condition If Data.Count > 100
+        Notify "High user activity"
+    Else
+        Notify "Low user activity"
+
+Export:
+    File Save "UserActivityReport.csv" with Data
+
+End:
+    Notify "Process complete"

@@ -1,0 +1,39 @@
+Start:
+    Notify "Starting data cleanup and reporting process"
+
+DataFetch:
+    -> Database "Fetch unprocessed user data"
+    -> API "Retrieve supplementary metadata"
+
+CleanUp:
+    Repeat ForEach record in DataFetch
+        Transform record using "Remove invalid fields"
+        Condition If record.isValid
+            Append record to CleanedData
+        Else
+            Log "Invalid record found" with record.ID
+            Notify "Skipping invalid record" 
+
+Validation:
+    Condition If CleanedData.Count < 100
+        Notify "Insufficient valid data, process terminated"
+        Stop
+    Else
+        Notify "Data validation passed"
+
+Analysis:
+    Aggregate CleanedData by Region as RegionalTotals
+    Condition If RegionalTotals.Max > 10000
+        Notify "High activity region detected"
+
+Report:
+    Report Generate "Cleaned Data Report" with RegionalTotals
+    Archive DataFetch, CleanedData, RegionalTotals
+
+ErrorHandling:
+    Catch ErrorType "DataFetchError" Log "Failed to fetch data"
+    Catch ErrorType "TransformationError" Log "Data transformation failed"
+    Notify "Error encountered, process incomplete"
+
+End:
+    Notify "Data cleanup and reporting process completed"
