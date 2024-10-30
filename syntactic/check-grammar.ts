@@ -178,6 +178,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
 
         // If only 1 node was created, it means that the grammar was not parsed correctly
         if (checker.result.number_of_nodes < 2) {
+            console.error('Grammar was not parsed correctly - only 1 node was created. TODO: better detection of this type of error');
             errors.push({
                 grammarType: 'UNKNOWN',
                 source: 'RUNTIME',
