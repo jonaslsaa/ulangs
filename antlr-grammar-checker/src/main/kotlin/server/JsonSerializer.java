@@ -108,7 +108,7 @@ public class JsonSerializer {
         TokenStream tokenStream = recog.getInputStream();
         CharStream inputStream = tokenStream.getTokenSource().getInputStream();
         return toJSON(t, Arrays.asList(ruleNames), recog.getVocabulary(), tokenStream, inputStream,
-                null, null, null);
+                null, null, null, 0);
     }
 
     /** Create a JSON representation of a parse tree and include all other information necessary to reconstruct
@@ -122,7 +122,8 @@ public class JsonSerializer {
                                     final CharStream inputStream,
                                     JsonArray lexMsgs,
                                     JsonArray parseMsgs,
-                                    String[][] profileData)
+                                    String[][] profileData,
+                                    int numberOfNodes)
         throws IOException
     {
         if ( t==null || ruleNames==null ) {
@@ -169,6 +170,8 @@ public class JsonSerializer {
 
         rootObject.add("lex_errors", lexMsgs);
         rootObject.add("parse_errors", parseMsgs);
+
+        rootObject.addProperty("number_of_nodes", numberOfNodes);
 
         final JsonArray dataArray = new JsonArray(profileData.length);
         for (final String[] row : profileData) {

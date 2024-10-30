@@ -158,7 +158,8 @@ public class GrammarProcessor {
                 inputStream,
                 lexListener.msgs,
                 parseListener.msgs,
-                profileData);
+                profileData,
+                n);
     }
 
     /**
