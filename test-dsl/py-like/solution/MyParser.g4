@@ -1,29 +1,26 @@
 parser grammar MyParser;
 
-options { tokenVocab=MyLexer; }
+options { tokenVocab = MyLexer; }
 
-program:   function*;
+program: functionDeclaration* ;
 
-function: DEF ID LPAREN parameterList RPAREN COLON statement+ ;
+functionDeclaration: typeSpecifier IDENTIFIER LPAREN parameterList? RPAREN COLON statement* ;
 
-parameterList: ID (COMMA ID)*;
+typeSpecifier: INT | STRING_TYPE;
 
-statement: assignment SEMI? | functionCall SEMI? | RET expression SEMI?;
+parameterList: parameter (COMMA parameter)* ;
+parameter: typeSpecifier IDENTIFIER ;
 
-assignment: ID ASSIGN expression;
+statement: returnStatement | expressionStatement;
 
-functionCall: ID LPAREN argumentList RPAREN;
+returnStatement: RET expression ;
 
-argumentList: expression (COMMA expression)*;
+expressionStatement: expression ;
 
-expression: additiveExpression;
-
-additiveExpression: multiplicativeExpression ( (PLUS | MINUS) multiplicativeExpression )* ;
-
-multiplicativeExpression: unaryExpression ( (MUL | DIV | MOD) unaryExpression )* ;
-
-
-unaryExpression: (PLUS | MINUS)? primary ;
-
-
-primary: ID | NUMBER | LPAREN expression RPAREN;
+expression: MINUS expression
+    | expression (MULT | DIV | MOD) expression
+    | expression (PLUS | MINUS) expression
+    | LPAREN expression RPAREN
+    | IDENTIFIER
+    | NUMBER
+    ;

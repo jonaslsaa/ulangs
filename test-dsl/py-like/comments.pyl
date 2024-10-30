@@ -1,0 +1,9 @@
+# This is a comment
+
+# This is another comment
+
+def add(a, b):
+    # This is a comment inside a function
+    ret a + b
+
+add(2, 4) # This is a comment after a statement

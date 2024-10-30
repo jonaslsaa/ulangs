@@ -1,0 +1,9 @@
+def fibonacci(n<int>)<int>:
+    if n <= 1:
+        ret n
+    else:
+        ret fibonacci(n - 1) + fibonacci(n - 2)
+
+# Test the function
+result<int> = fibonacci(10)
+print(result)  # Expected output: 55

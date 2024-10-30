@@ -1,39 +1,44 @@
 lexer grammar MyLexer;
 
-// Whitespace
-WS: [ \t\r\n]+ -> skip;
-
 // Keywords
-PRINT: 'print';
-FOR: 'for';
-IN: 'in';
 DEF: 'def';
 RET: 'ret';
+IF: 'if';
+ELSE: 'else';
+FOR: 'for';
+IN: 'in';
+PRINT: 'print';
+INT: 'int';
+STRING_TYPE: 'string';
 
-// Identifiers
-ID: [a-zA-Z_] [a-zA-Z0-9_]*;
+// Types
+TYPE_ANNOTATION: '<' IDENTIFIER '>';
 
-// Type annotations
-TYPE: '<' ID '>';
+// Operators
+PLUS: '+';
+MINUS: '-';
+MULT: '*';
+DIV: '/';
+MOD: '%';
+ASSIGN: '=';
+
+// Delimiters
+LPAREN: '(';
+RPAREN: ')';
+LBRACK: '[';
+RBRACK: ']';
+LANGLE: '<';
+RANGLE: '>';
+COLON: ':';
+COMMA: ',';
 
 // Literals
 NUMBER: [0-9]+;
-STRING: '"' .*? '"' ;
+STRING: '"' (~["\\] | '\\' .)* '"'; // Fixed STRING rule to avoid redefinition
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
 
-// Operators and punctuation
-PLUS: '+' ;
-MINUS: '-' ;
-MUL: '*' ;
-DIV: '/' ;
-MOD: '%' ;
-ASSIGN: '=' ;
-LPAREN: '(' ;
-RPAREN: ')' ;
-LBRACKET: '[' ;
-RBRACKET: ']' ;
-COLON: ':' ;
-COMMA: ',' ;
-SEMI: ';' ;
-LBRACE: '{';
-RBRACE: '}';
+// Comments
+COMMENT: '#' ~[\r\n]* -> skip;
 
+// Whitespace
+WS: [ \t\r\n]+ -> skip;
