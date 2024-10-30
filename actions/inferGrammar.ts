@@ -156,8 +156,8 @@ async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGramma
         if (i > 0) console.error(` * Repair attempt ${i + 1}/${maxRetries}...`);
         // Repair all candidate grammars
         const repairedCandidateGrammars = await Promise.all(testedGrammars.map(async testedGrammar => {
-            const newErrors: ANTLRError[] = [];
-            newErrors.push(...(testedGrammar.errors ?? []));
+            const newErrors: ANTLRError[] = [...(testedGrammar.errors ?? [])]
+            // TODO: check that correct errors are being passed, should we filter out errors that are not in the snippet?
             const r = await repairCandidateSolution(openaiEnv, testedGrammar.grammarWithHistory, newErrors);
             testedGrammar.grammarWithHistory.messages = r.messages;
             return r;
