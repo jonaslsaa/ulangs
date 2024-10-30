@@ -275,7 +275,14 @@ async function generateNextIntermediateSolution(
     return bestGrammar;
 }
 
+const temporaryFileDirectoryRecords = new Set<string>();
+
 function ExitAndLogStats(exitCode: number = 0) {
+    // Remove temporary file directory
+    for (const tempPath of temporaryFileDirectoryRecords) {
+        fs.rmSync(tempPath, { recursive: true, force: true });
+    }
+
     console.log("\n[Stats]");
     console.log(`Generated ${Stats.totalRequests} requests, and completed ${Stats.totalCompletedRequests} requests.`);
     console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
@@ -327,6 +334,19 @@ async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePat
     return results.flat();
 }
 
+function createTemporaryFile(dir: string, fileName: string): string {
+    const tempPath = path.join(dir, '.tmp');
+    if (!fs.existsSync(tempPath)) {
+        fs.mkdirSync(tempPath);
+    }
+    temporaryFileDirectoryRecords.add(tempPath);
+    const tempFilePath = path.join(tempPath, fileName);
+    if (!fs.existsSync(tempFilePath)) {
+        fs.writeFileSync(tempFilePath, '');
+    }
+    return tempFilePath;
+}
+
 export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
     const maxRetries = 3;
 
@@ -338,6 +358,10 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const highestComplexity = sortedSnippets[sortedSnippets.length - 1];
     console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
     console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
+
+    // Create temporary lexer and parser files
+    const tempLexerFilePath = createTemporaryFile(outputDir, 'MyLexer.tmp.g4');
+    const tempParserFilePath = createTemporaryFile(outputDir, 'MyParser.tmp.g4');
 
     // Load OpenAI environment variables
     const openaiEnv = loadOpenAIEnvVars();
@@ -381,6 +405,10 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     let lastSnippetBeforeGiveUp: Snippet | undefined = undefined;
 
     for (const snippet of sortedSnippets) {
+        // Write snippet to temporary files
+        fs.writeFileSync(tempLexerFilePath, currentIntermediateSolution.lexerSource);
+        fs.writeFileSync(tempParserFilePath, currentIntermediateSolution.parserSource);
+
         let nextIntermediateSolution: TestedGrammar | undefined = undefined;
 
         for (let i = 0; i < maxRetries; i++) {
