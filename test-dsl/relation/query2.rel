@@ -1,0 +1,13 @@
+# Define nodes and relationships
+(Person)[name="Alice"]
+(Person)[name="Bob"]
+(Person)[name="Charlie"]
+
+(Person)[name="Alice"] --[friend]--> (Person)[name="Bob"]
+(Person)[name="Bob"] --[colleague]--> (Person)[name="Charlie"]
+
+# Query all friends of Alice
+(Person)[name="Alice"] --[friend]--> $friends
+
+# Output the names of Alice's friends
+$output($friends.name)

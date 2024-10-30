@@ -1,0 +1,22 @@
+# Define nodes and relationships
+(Person)[name="Alice"]
+(Person)[name="Bob"]
+(Person)[name="Charlie"]
+(Person)[name="Diana"]
+(Person)[name="Eve"]
+
+(Person)[name="Alice"] --[friend]--> (Person)[name="Bob"]
+(Person)[name="Bob"] --[friend]--> (Person)[name="Charlie"]
+(Person)[name="Charlie"] --[friend]--> (Person)[name="Diana"]
+(Person)[name="Diana"] --[friend]--> (Person)[name="Eve"]
+
+# Recursive query: Find all friends up to 3 levels deep from Alice
+(Person)[name="Alice"] --[friend]--> $level1
+$level1 --[friend]--> $level2
+$level2 --[friend]--> $level3
+
+# Combine results
+$results = $level1, $level2, $level3
+
+# Output the names of all connected friends
+$output($results.name)

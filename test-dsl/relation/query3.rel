@@ -1,0 +1,5 @@
+# Define a person named Alice with age and city properties
+(Person)[name="Alice", age=30, city="Wonderland"]
+
+# Output Alice's city
+$output((Person)[name="Alice"].city)

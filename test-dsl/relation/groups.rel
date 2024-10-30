@@ -1,0 +1,23 @@
+# Define nodes and relationships
+(Person)[name="Alice", age=30]
+(Person)[name="Bob", age=25]
+(Person)[name="Charlie", age=35]
+(Person)[name="Diana", age=28]
+(Company)[name="Innotech"]
+(Company)[name="TechCorp"]
+
+(Person)[name="Alice"] --[friend]--> (Person)[name="Bob"]
+(Person)[name="Bob"] --[works_at]--> (Company)[name="Innotech"]
+(Person)[name="Charlie"] --[works_at]--> (Company)[name="TechCorp"]
+(Person)[name="Diana"] --[friend]--> (Person)[name="Charlie"]
+
+# Group: Friends of Alice who work at Innotech
+(Person)[name="Alice"]
+  --[friend]--> $friend
+    --[works_at]--> (Company)[name="Innotech"]
+
+# Condition: Only include friends older than 20
+if $friend.age > 20
+
+# Output the names of qualifying friends
+$output($friend.name)

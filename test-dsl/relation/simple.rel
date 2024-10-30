@@ -1,0 +1,5 @@
+# Define a person named Alice
+(Person)[name="Alice"]
+
+# Define a company named Innotech
+(Company)[name="Innotech"]

@@ -1,0 +1,6 @@
+# Define nodes
+(Person)[name="Alice"]
+(Person)[name="Bob"]
+
+# Define a friendship between Alice and Bob
+(Person)[name="Alice"] --[friend]--> (Person)[name="Bob"]

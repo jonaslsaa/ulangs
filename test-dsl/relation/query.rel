@@ -1,0 +1,5 @@
+# Query for all companies named "Innotech"
+(Company)[name="Innotech"]
+
+# Output their names
+$output((Company)[name="Innotech"].name)
