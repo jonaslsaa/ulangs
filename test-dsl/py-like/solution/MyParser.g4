@@ -1,26 +1,61 @@
 parser grammar MyParser;
-
 options { tokenVocab = MyLexer; }
 
-program: functionDeclaration* ;
+program: (functionDeclaration | statement)* EOF;
 
-functionDeclaration: typeSpecifier IDENTIFIER LPAREN parameterList? RPAREN COLON statement* ;
+functionDeclaration
+    : DEF IDENTIFIER LPAREN parameterList? RPAREN typeAnnotation? COLON statement*
+    ;
 
-typeSpecifier: INT | STRING_TYPE;
+typeAnnotation: TYPE_ANNOTATION;
 
-parameterList: parameter (COMMA parameter)* ;
-parameter: typeSpecifier IDENTIFIER ;
+parameterList: parameter (COMMA parameter)*;
 
-statement: returnStatement | expressionStatement;
+parameter: IDENTIFIER typeAnnotation?;
 
-returnStatement: RET expression ;
+statement
+    : returnStatement
+    | expressionStatement
+    | printStatement
+    | assignmentStatement
+    | ifStatement
+    | forStatement
+    ;
 
-expressionStatement: expression ;
+printStatement: PRINT LPAREN expression RPAREN;
 
-expression: MINUS expression
+returnStatement: RET typeAnnotation? expression;
+
+expressionStatement: expression;
+
+assignmentStatement: IDENTIFIER typeAnnotation? ASSIGN expression;
+
+ifStatement
+    : IF expression COLON statement*
+    (ELSE COLON statement*)?
+    ;
+
+forStatement
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON statement*
+    ;
+
+expression
+    : MINUS expression
     | expression (MULT | DIV | MOD) expression
     | expression (PLUS | MINUS) expression
+    | expression (LT | GT | LE | GE | EQ | NE) expression
     | LPAREN expression RPAREN
+    | functionCall
+    | list
     | IDENTIFIER
     | NUMBER
+    | STRING
+    ;
+
+functionCall
+    : IDENTIFIER LPAREN (expression (COMMA expression)*)? RPAREN
+    ;
+
+list
+    : LBRACK (expression (COMMA expression)*)? RBRACK
     ;

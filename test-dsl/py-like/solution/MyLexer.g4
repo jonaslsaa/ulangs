@@ -21,20 +21,24 @@ MULT: '*';
 DIV: '/';
 MOD: '%';
 ASSIGN: '=';
+LE: '<=';
+GE: '>=';
+EQ: '==';
+NE: '!=';
+LT: '<';
+GT: '>';
 
 // Delimiters
 LPAREN: '(';
 RPAREN: ')';
 LBRACK: '[';
 RBRACK: ']';
-LANGLE: '<';
-RANGLE: '>';
 COLON: ':';
-COMMA: ',';
+COMMA: ','; 
 
 // Literals
 NUMBER: [0-9]+;
-STRING: '"' (~["\\] | '\\' .)* '"'; // Fixed STRING rule to avoid redefinition
+STRING: '"' (~["\\] | '\\' .)* '"';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
 
 // Comments
