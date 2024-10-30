@@ -1,0 +1,10 @@
+def sum_list(numbers<List<int>>) <int>:
+    total<int> = 0
+    for num<int> in numbers:
+        total = total + num
+    ret total
+
+# Test the function
+my_numbers<List<int>> = [1, 2, 3, 4, 5]
+result<int> = sum_list(my_numbers)
+print(result)  # Expected output: 15

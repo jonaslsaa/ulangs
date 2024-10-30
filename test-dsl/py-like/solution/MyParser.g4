@@ -4,14 +4,16 @@ options { tokenVocab = MyLexer; }
 program: (functionDeclaration | statement)* EOF;
 
 functionDeclaration
-    : DEF IDENTIFIER LPAREN parameterList? RPAREN typeAnnotation? COLON statement*
+    : DEF IDENTIFIER LPAREN parameterList? RPAREN typeAnnotation COLON statement+
     ;
-
-typeAnnotation: TYPE_ANNOTATION;
 
 parameterList: parameter (COMMA parameter)*;
 
-parameter: IDENTIFIER typeAnnotation?;
+parameter: IDENTIFIER typeAnnotation;
+
+typeAnnotation
+    : TYPE_ANNOTATION
+    ;
 
 statement
     : returnStatement
@@ -24,19 +26,19 @@ statement
 
 printStatement: PRINT LPAREN expression RPAREN;
 
-returnStatement: RET typeAnnotation? expression;
+returnStatement: RET expression;
 
 expressionStatement: expression;
 
 assignmentStatement: IDENTIFIER typeAnnotation? ASSIGN expression;
 
 ifStatement
-    : IF expression COLON statement*
-    (ELSE COLON statement*)?
+    : IF expression COLON statement+
+    (ELSE COLON statement+)?
     ;
 
 forStatement
-    : FOR IDENTIFIER typeAnnotation? IN expression COLON statement*
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON statement+
     ;
 
 expression

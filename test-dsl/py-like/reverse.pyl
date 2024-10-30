@@ -1,0 +1,10 @@
+def reverse_string(s<string>)<string>:
+    rev<string> = ""
+    for char<string> in s:
+        rev = char + rev
+    ret rev
+
+# Test the function
+text<string> = "Hello, world!"
+reversed_text<string> = reverse_string(text)
+print(reversed_text)  # Expected output: "!dlrow ,olleH"
