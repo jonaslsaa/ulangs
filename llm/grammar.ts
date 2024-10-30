@@ -106,7 +106,8 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
 
 function constructPrompt(currentIntermediateSolution: Grammar, 
     codeSnippet: string, 
-    errors: ANTLRError[]
+    errors: ANTLRError[],
+    appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
@@ -147,7 +148,7 @@ ${parserSource}
 \`\`\`
 </ParserGrammar>
 ${otherErrorsBlock}
-Write/fix the ANTLR4 lexer and parser grammars for the following code snippet:
+Complete the ANTLR4 lexer and parser grammars for the following code snippet. ${appendToMessage}
 \`\`\`
 ${codeSnippet}
 \`\`\`
@@ -343,7 +344,8 @@ ${snippet.snippet}
         lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
-    const messages = constructPrompt(tempSolution, combinedSnippets, []);
+    const appendToMessage = "Write a complete solution by analyzing the semantics of the code and choosing the appropriate abstractions. You are Terence Parr, the creator of ANTLR.";
+    const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
     console.log("LAST MESSAGE\n", messages[messages.length - 1], "\n-----------");
     const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 120);
     return {
