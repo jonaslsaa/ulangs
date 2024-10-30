@@ -352,6 +352,11 @@ export async function doInferGrammar(directory: string, extension: string, outpu
 
     const files = findAllCodeFiles(directory, extension, options.recursive);
     const snippets = loadFilesToSnippets(files.map(file => path.join(directory, file)));
+    if (snippets.length === 0) {
+        console.error('No files found with the specified extension!');
+        return;
+    }
+
     const sortedSnippets = sortByComplexity(snippets);
 
     const lowestComplexity = sortedSnippets[0];
