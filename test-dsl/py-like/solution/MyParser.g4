@@ -1,57 +1,72 @@
 parser grammar MyParser;
-options { tokenVocab = MyLexer; }
+options { tokenVocab=MyLexer; }
 
-program: (functionDeclaration | statement)* EOF;
-
-functionDeclaration
-    : DEF IDENTIFIER LPAREN parameterList? RPAREN typeAnnotation COLON statement+
-    ;
-
-parameterList: parameter (COMMA parameter)*;
-
-parameter: IDENTIFIER typeAnnotation;
-
-typeAnnotation
-    : TYPE_ANNOTATION
+program
+    : statement*
     ;
 
 statement
-    : returnStatement
-    | expressionStatement
-    | printStatement
-    | assignmentStatement
+    : functionDef
+    | expression COMMENT?
+    | forLoop
     | ifStatement
-    | forStatement
+    | assignment
+    | returnStatement
+    | PRINT LPAREN expression RPAREN
     ;
 
-printStatement: PRINT LPAREN expression RPAREN;
+functionDef
+    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON block
+    ;
 
-returnStatement: RET expression;
+block
+    : statement+
+    ;
 
-expressionStatement: expression;
+paramList
+    : param (COMMA param)*
+    ;
 
-assignmentStatement: IDENTIFIER typeAnnotation? ASSIGN expression;
+param
+    : IDENTIFIER typeAnnotation?
+    ;
+
+typeAnnotation
+    : LT typeSpec GT
+    ;
+
+typeSpec
+    : INT
+    | STRING_TYPE
+    | LIST typeAnnotation
+    | IDENTIFIER
+    ;
+
+forLoop
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON block
+    ;
 
 ifStatement
-    : IF expression COLON statement+
-    (ELSE COLON statement+)?
+    : IF expression COLON block (ELSE COLON block)?
     ;
 
-forStatement
-    : FOR IDENTIFIER typeAnnotation? IN expression COLON statement+
+assignment
+    : IDENTIFIER typeAnnotation? ASSIGN expression
+    ;
+
+returnStatement
+    : RET typeAnnotation? expression?
     ;
 
 expression
-    : MINUS expression
-    | expression (MULT | DIV | MOD) expression
-    | expression (PLUS | MINUS) expression
-    | expression (LT | GT | LE | GE | EQ | NE) expression
-    | LPAREN expression RPAREN
-    | functionCall
-    | list
-    | IDENTIFIER
-    | NUMBER
-    | STRING
+    : LPAREN expression RPAREN                           #parenExpr
+    | MINUS expression                                   #unaryMinusExpr
+    | expression (MULT | DIV | MOD) expression          #multDivModExpr
+    | expression (PLUS | MINUS) expression              #addSubExpr
+    | expression (LT | GT | LE | GE | EQ | NE) expression #compareExpr
+    | list                                              #listExpr
+    | functionCall                                      #funcCallExpr
+    | atom                                              #atomExpr
     ;
 
 functionCall
@@ -60,4 +75,10 @@ functionCall
 
 list
     : LBRACK (expression (COMMA expression)*)? RBRACK
+    ;
+
+atom
+    : NUMBER
+    | STRING
+    | IDENTIFIER
     ;
