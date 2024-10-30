@@ -2,25 +2,12 @@ parser grammar MyParser;
 options { tokenVocab=MyLexer; }
 
 program
-    : statement*
-    ;
-
-statement
-    : functionDef
-    | expression COMMENT?
-    | forLoop
-    | ifStatement
-    | assignment
-    | returnStatement
-    | PRINT LPAREN expression RPAREN
+    : (statement | functionDef)*
     ;
 
 functionDef
-    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON block
-    ;
-
-block
-    : statement+
+    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON
+      block
     ;
 
 paramList
@@ -32,41 +19,62 @@ param
     ;
 
 typeAnnotation
-    : LT typeSpec GT
+    : LT type GT
     ;
 
-typeSpec
-    : INT
+type
+    : INT_TYPE
     | STRING_TYPE
-    | LIST typeAnnotation
+    | LIST_TYPE typeAnnotation
     | IDENTIFIER
     ;
 
-forLoop
-    : FOR IDENTIFIER typeAnnotation? IN expression COLON block
+block
+    : statement+
     ;
 
-ifStatement
-    : IF expression COLON block (ELSE COLON block)?
+statement
+    : assignment
+    | forLoop
+    | ifStatement
+    | functionCall COMMENT?
+    | returnStatement
+    | printStatement
+    | COMMENT
     ;
 
 assignment
     : IDENTIFIER typeAnnotation? ASSIGN expression
     ;
 
+forLoop
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON
+      block
+    ;
+
+ifStatement
+    : IF expression COLON
+      block
+      (ELSE COLON block)?
+    ;
+
 returnStatement
-    : RET typeAnnotation? expression?
+    : RET typeAnnotation? expression
+    ;
+
+printStatement
+    : PRINT LPAREN expression RPAREN
     ;
 
 expression
-    : LPAREN expression RPAREN                           #parenExpr
-    | MINUS expression                                   #unaryMinusExpr
-    | expression (MULT | DIV | MOD) expression          #multDivModExpr
-    | expression (PLUS | MINUS) expression              #addSubExpr
-    | expression (LT | GT | LE | GE | EQ | NE) expression #compareExpr
-    | list                                              #listExpr
-    | functionCall                                      #funcCallExpr
-    | atom                                              #atomExpr
+    : MINUS expression
+    | expression (MULT | DIV | MOD) expression
+    | expression (PLUS | MINUS) expression
+    | expression LE expression
+    | LPAREN expression RPAREN
+    | list
+    | functionCall
+    | atom
     ;
 
 functionCall
@@ -78,7 +86,7 @@ list
     ;
 
 atom
-    : NUMBER
+    : INTEGER
     | STRING
     | IDENTIFIER
     ;

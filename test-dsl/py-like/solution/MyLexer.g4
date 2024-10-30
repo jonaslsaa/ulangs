@@ -1,18 +1,18 @@
 lexer grammar MyLexer;
 
 // Keywords
-PRINT: 'print';
 DEF: 'def';
 RET: 'ret';
-IF: 'if';
-ELSE: 'else';
 FOR: 'for';
 IN: 'in';
+IF: 'if';
+ELSE: 'else';
+PRINT: 'print';
 
-// Type keywords
-INT: 'int';
+// Types
+INT_TYPE: 'int';
 STRING_TYPE: 'string';
-LIST: 'List';
+LIST_TYPE: 'List';
 
 // Operators
 PLUS: '+';
@@ -20,13 +20,8 @@ MINUS: '-';
 MULT: '*';
 DIV: '/';
 MOD: '%';
-LE: '<=';
-GE: '>=';
-EQ: '==';
-NE: '!=';
-LT: '<';
-GT: '>';
 ASSIGN: '=';
+LE: '<=';
 
 // Delimiters
 LPAREN: '(';
@@ -35,14 +30,16 @@ LBRACK: '[';
 RBRACK: ']';
 COLON: ':';
 COMMA: ',';
+LT: '<';
+GT: '>';
 
 // Literals
-NUMBER: [0-9]+;
-STRING: '"' (~["\r\n\\] | '\\' .)* '"';
+INTEGER: [0-9]+;
+STRING: '"' (~["\r\n])* '"';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
 
 // Comments
-COMMENT: ('#' | '//') ~[\r\n]* -> skip;
+COMMENT: '#' ~[\r\n]* -> skip;
 
 // Whitespace
 WS: [ \t\r\n]+ -> skip;
