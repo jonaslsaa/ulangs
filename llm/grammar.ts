@@ -232,7 +232,6 @@ ${snippet.snippet}
     };
     const appendToMessage = "Write a complete solution by analyzing the semantics of the code and choosing the appropriate abstractions, and the use of generic rules. You are Terence Parr, the creator of ANTLR.";
     const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
-    // console.log("LAST MESSAGE\n", messages[messages.length - 1], "\n-----------");
-    const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 60*5);
+    const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, undefined, 60*5);
     return completion.unwrap();
 }
