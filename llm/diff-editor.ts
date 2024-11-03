@@ -462,6 +462,8 @@ mathweb/flask/app.py
   }
 }
 
+export { DiffCodeEditor };
+
 async function main() {
   const files = [{
     path: 'lexer.g4',

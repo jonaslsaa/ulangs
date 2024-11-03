@@ -3,6 +3,7 @@ import { type OpenAIEnv } from "./utils";
 import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationSystemMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
+import { Err, Ok, type Result } from "../result";
 
 export type Grammar = {
     lexerSource: string;
@@ -10,17 +11,6 @@ export type Grammar = {
     generatedWithModel?: string;
 };
 
-export type GrammarWithMessageHistory = {
-    grammar: Grammar;
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-};
-
-export type MaybeGrammarWithHistory = {
-    grammar?: Grammar;
-    error?: string;
-    completion?: string;
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-};
 
 export type Snippet = {
     snippet: string;
@@ -157,69 +147,47 @@ Start by shortly thinking step-by-step.`
     return messages;
 }
 
-function parseCompletionToGrammar(completion: string | null): MaybeGrammarWithHistory {
+function parseCompletionToGrammar(completion: string | null): Result<Grammar> {
     if (completion === null) {
-        return {
-            error: 'No completion provided',
-            messages: []
-        };
+        return Err('No completion provided');
     }
     // Find all ```antlr blocks
     const antlrBlocks = completion.match(/```antlr\n([\s\S]*?)```/g);
     if (antlrBlocks === null) {
-        return {
-            error: 'No Antlr blocks found in completion',
-            completion: completion,
-            messages: []
-        };
+        return Err('No Antlr blocks found in completion');
     }
 
     // Identify the lexer and parser blocks
     const lexerBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('lexer grammar'));
     const parserBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('parser grammar'));
     if (lexerBlock === undefined || parserBlock === undefined) {
-        return {
-            error: 'No lexer or parser block found in completion',
-            completion: completion,
-            messages: []
-        };
+        return Err('No lexer or parser block found in completion');
     }
 
     // Extract the lexer and parser to just the code without the Antlr block
     const lexerSource = lexerBlock.replace('```antlr\n', '').replace('```', '');
     const parserSource = parserBlock.replace('```antlr\n', '').replace('```', '');
 
-    return {
-        grammar: {
-            lexerSource,
-            parserSource,
-        },
-        completion: completion,
-        messages: []
-    };
+    return Ok({
+        lexerSource,
+        parserSource,
+    })
 }
 
 async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-    model?: string,
+    model: string,
     debug: undefined | 'input' | 'output' | 'both' = undefined,
     timeoutSeconds: number = 60,
-): Promise<MaybeGrammarWithHistory> {
-    // random sleep to avoid rate limiting
-    const randomSleep = Math.floor(Math.random() * 5000); // Up to 5 seconds
-    await new Promise(resolve => setTimeout(resolve, randomSleep));
-    const models = ["ai21/jamba-1-5-mini", "google/gemini-flash-1.5", "openai/gpt-4o-mini-2024-07-18"];
-    let usingModel: string;
-    if (model !== undefined) { usingModel = model; }
-    else { usingModel = models[Math.floor(Math.random() * models.length)]; }
+): Promise<Result<Grammar>> {
     try {
         const openai = new OpenAI({
             baseURL: openaiEnv.baseUrl,
             apiKey: openaiEnv.apiKey,
         });
         const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-            model: model || usingModel, // If no model is provided, use a random one
+            model: model,
             messages: messages,
             max_tokens: 4096,
             temperature: 0.8,
@@ -235,100 +203,18 @@ async function makeCompletionRequest(
         if (debug === 'input' || debug === 'both') console.log(messages);
         if (debug === 'output' || debug === 'both') console.log(content);
         
-        // Create new messages array with assistant's response
-        const updatedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
-            role: 'assistant',
-            content: content
-        }];
-        
         const result = parseCompletionToGrammar(content);
-        result.messages = [...messages, ...updatedMessages];
-        if (result.grammar) result.grammar.generatedWithModel = usingModel;
 
         if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
 
         return result;
     } catch (error) {
         if (error instanceof TimeoutError) {
-            return {
-                error: `Request timed out after ${timeoutSeconds} seconds (model: ${usingModel}).`,
-                messages: messages
-            };
+            return Err(`Request timed out after ${timeoutSeconds} seconds (model: ${model}).`);
         }
         console.error(error);
-        return {
-            error: `API request failed: ${error instanceof Error ? error.message : String(error)}`,
-            messages: messages
-        };
+        return Err(`API request failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-}
-
-export async function generateCandidateSolutions(
-    openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar,
-    codeSnippet: string,
-    errors: ANTLRError[] = [],
-    n = 2
-): Promise<GrammarWithMessageHistory[]> { 
-
-    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors);
-
-    // Create array of n identical requests
-    const requests = Array(n).fill(null).map(() => 
-        makeCompletionRequest(openaiEnv, messages)
-    );
-
-    // Execute all requests in parallel
-    const results = await Promise.all(requests);
-
-    // Extract the grammars that were parsed successfully
-    const successfulGrammars = results.filter(result => result.error === undefined && result.grammar !== undefined);
-    
-    // Log bad grammars
-    const badGrammars = results.filter(result => result.error !== undefined);
-    if (badGrammars.length > 0) {
-        console.error('Bad grammar generations:');
-        badGrammars.forEach(result => {
-            console.error(result.error);
-            if (result.completion) {
-                console.log(result.completion);
-            }
-        });
-    }
-
-    if (successfulGrammars.length === 0) {
-        throw new Error('No successful grammars found');
-    }
-
-    // Convert successful results to GrammarWithMessageHistory
-    return successfulGrammars.map(result => ({
-        grammar: result.grammar!, // ! is fine since we filtered out the ones that didn't have a grammar
-        messages: result.messages
-    }));
-}
-
-export async function repairCandidateSolution(
-    openaiEnv: OpenAIEnv,
-    candidateSolution: GrammarWithMessageHistory,
-    newErrors: ANTLRError[]
-) {
-    if (newErrors.length === 0) {
-        throw new Error('No new errors provided');
-    }
-    const messages = candidateSolution.messages;
-    messages.push({
-        role: 'user',
-        content: `I got some errors:
-<Errors>
-${newErrors.map(error => errorToString(error)).join('\n')}
-</Errors>
-Repair the grammar to fix the errors (same output format as before).`
-    });
-    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages);
-    return {
-        grammar: repairedGrammar.grammar,
-        messages: repairedGrammar.messages
-    };
 }
 
 export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: Snippet[], initalLexer: string | undefined, initalParser: string | undefined, fileNamesThatDidntPass: string[] = []) {
@@ -348,8 +234,5 @@ ${snippet.snippet}
     const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
     // console.log("LAST MESSAGE\n", messages[messages.length - 1], "\n-----------");
     const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 60*5);
-    return {
-        grammar: completion.grammar,
-        messages: completion.messages
-    };
+    return completion.unwrap();
 }
