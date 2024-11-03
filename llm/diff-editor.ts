@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { loadOpenAIEnvVars, type OpenAIEnv } from './utils';
+import { Stats } from "./grammar";
 
 interface CodeEdit {
   path: string;
@@ -395,7 +396,10 @@ mathweb/flask/app.py
       content: prompt
     });
 
-    if (this.doLogging) console.log(this.messages);
+    if (this.doLogging)console.log(messagesWithLatestPrompt.length, "messages:");
+    if (this.doLogging) console.log(messagesWithLatestPrompt);
+    
+    Stats.addRequest();
 
     const completion = await this.openai.chat.completions.create({
       model: this.openaiEnv.model,
@@ -403,6 +407,8 @@ mathweb/flask/app.py
       max_tokens: 4096,
       temperature: 0.7,
     });
+
+    if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
 
     const responseContent = completion.choices[0].message.content;
     if (responseContent) { // seems like it worked
@@ -652,5 +658,3 @@ Line 4: \`    else:\` - mismatched input 'else' expecting '('
     console.log(`<${path}>\n${content.trim()}\n</${path}>`);
   });
 }
-
-main();
