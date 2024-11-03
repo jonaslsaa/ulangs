@@ -615,7 +615,7 @@ atom
   editor.doLogging = false;
 
   const prompt = `
-Fix the lexer and parser grammars to correctly parse the following code snippet:
+Identify and fix the ANTLR4 lexer and parser grammars to correctly parse the following code snippet:
 \`\`\`
 def fibonacci(n<int>)<int>:
     if n <= 1:
