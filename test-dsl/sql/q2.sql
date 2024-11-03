@@ -1,0 +1,1 @@
+SELECT name, position FROM Employees WHERE department = 'Sales';

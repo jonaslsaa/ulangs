@@ -180,3 +180,4 @@ test.pl
 
 .grammar-tmp
 .aider*
+*.tmp.g4

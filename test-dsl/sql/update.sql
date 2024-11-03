@@ -1,0 +1,1 @@
+UPDATE Employees SET position = 'Senior Developer' WHERE name = 'John Smith';
