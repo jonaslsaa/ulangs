@@ -392,7 +392,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     let lastSnippetBeforeGiveUp: Snippet | undefined = undefined;
 
     for (const snippet of sortedSnippets) {
-        // Write snippet to temporary files
+        // Write grammar to temporary files (lexer and parser)
         fs.writeFileSync(tempLexerFilePath, currentIntermediateSolution.lexerSource);
         fs.writeFileSync(tempParserFilePath, currentIntermediateSolution.parserSource);
 
