@@ -110,6 +110,7 @@ mathweb/flask/app.py
 
   private openai: OpenAI;
   private openaiEnv: OpenAIEnv;
+  private messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
   public doLogging: boolean = false;
 
   constructor(private files: FileContext[], openaiEnv: OpenAIEnv, private fence: [string, string] = DiffCodeEditor.DEFAULT_FENCE) {
@@ -380,27 +381,42 @@ mathweb/flask/app.py
   }
 
   private async callOpenAI(prompt: string) {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
-    messages.push({
-      role: 'system',
-      content: DiffCodeEditor.PROMPT
-    });
+    if (this.messages.length === 0) {
+      this.messages.push({
+        role: 'system',
+        content: DiffCodeEditor.PROMPT
+      });
+      this.messages.push(...DiffCodeEditor.EXAMPLES);
+    }
 
-    messages.push(...DiffCodeEditor.EXAMPLES);
-
-    messages.push({
+    const messagesWithLatestPrompt = [...this.messages];
+    messagesWithLatestPrompt.push({
       role: 'user',
       content: prompt
     });
 
-    if (this.doLogging) console.log(messages);
+    if (this.doLogging) console.log(this.messages);
 
-    return await this.openai.chat.completions.create({
+    const completion = await this.openai.chat.completions.create({
       model: this.openaiEnv.model,
-      messages: messages,
+      messages: messagesWithLatestPrompt,
       max_tokens: 4096,
       temperature: 0.7,
-    }).then(completion => completion.choices[0].message.content);
+    });
+
+    const responseContent = completion.choices[0].message.content;
+    if (responseContent) { // seems like it worked
+      // lets add the latest prompt to the messages and the response to the messages
+      this.messages.push({
+        role: 'user',
+        content: prompt
+      });
+      this.messages.push({
+        role: 'assistant',
+        content: responseContent
+      });
+    }
+    return responseContent;
   }
 
   applyEdits(edits: CodeEdit[]): Record<string, string> {
