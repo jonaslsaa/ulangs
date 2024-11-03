@@ -58,7 +58,6 @@ type TestedGrammar = {
     grammar: Grammar;
     errors?: ANTLRError[];
     success: boolean;
-    complexity: number;
 };
 
 async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedGrammar> {
@@ -75,7 +74,6 @@ async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedGr
     const testedGrammar: TestedGrammar = {
         grammar,
         success: false,
-        complexity: calculateComplexity(`${grammar.lexerSource}\n${grammar.parserSource}`)
     };
 
     const timestamp = new Date().toISOString().replaceAll(':', '-');
@@ -184,8 +182,10 @@ async function repairGrammar(openaiEnv: OpenAIEnv, testedGrammar: TestedGrammar,
 
     let fixingSnippet = snippet;
     let errorsForFixingSnippet = [...(testedGrammar.errors ?? [])];
-    let currentLexerSrc = testedGrammar.grammar.lexerSource;
-    let currentParserSrc = testedGrammar.grammar.parserSource;
+    const currentGrammar: Grammar = {
+        lexerSource:  testedGrammar.grammar.lexerSource,
+        parserSource:  testedGrammar.grammar.parserSource,
+    }
     for (let i = 0; i < maxRetries; i++) {
         const prompt = `
 Identify and fix the ANTLR4 lexer and parser grammars to correctly parse the following code snippet:
@@ -196,67 +196,39 @@ Got errors:
 ${errorsForFixingSnippet.map(error => errorToString(error)).join('\n')}
 `;
         const edits = await editor.edit(prompt);
+        console.log(edits.length, "edits generated");
         const repairedFiles = editor.applyEdits(edits);
         // TODO: check if the repaired files have actually been changed
         if (repairedFiles[lexerFileNameConstant]) {
-            currentLexerSrc = repairedFiles[lexerFileNameConstant];
+            currentGrammar.lexerSource = repairedFiles[lexerFileNameConstant];
         }
         if (repairedFiles[parserFileNameConstant]) {
-            currentParserSrc = repairedFiles[parserFileNameConstant];
+            currentGrammar.parserSource = repairedFiles[parserFileNameConstant];
         }
         // Test new grammar on the main snippet, even if we are not repairing that specific snippet (see below)
-        const newErrors = await checkGrammar(currentLexerSrc, currentParserSrc, snippet.snippet);
-        if (newErrors.length > 0) {
-            console.warn(`Failed to repair grammar, retrying...`);
+        const newGrammar = await testGrammar(currentGrammar, snippet);
+        if (!newGrammar.success) {
+            console.warn(`(${snippet.fileName}) Failed to repair grammar, retrying...`);
             fixingSnippet = snippet;
-            errorsForFixingSnippet = [...newErrors];
+            errorsForFixingSnippet = [...newGrammar.errors ?? []];
             continue;
         }
         // Now we check the rest of the snippets
         for (const previousSnippet of previousSnippets) {
-            const newErrors = await checkGrammar(currentLexerSrc, currentParserSrc, previousSnippet.snippet);
-            if (newErrors.length > 0) {
-                console.warn(`Failed to repair (previous snippet) grammar, retrying...`);
+            const newGrammar = await testGrammar(currentGrammar, previousSnippet);
+            if (!newGrammar.success) {
+                console.warn(`${previousSnippet.fileName}) Failed to repair (previous snippet) grammar, retrying...`);
                 fixingSnippet = previousSnippet;
-                errorsForFixingSnippet = [...newErrors];
+                errorsForFixingSnippet = [...newGrammar.errors ?? []];
                 continue;
             }
         }
         // If we reach this point, we have successfully repaired the grammar
         return {
-            grammar: {
-                lexerSource: currentLexerSrc,
-                parserSource: currentParserSrc,
-            },
+            grammar: currentGrammar,
             errors: [],
             success: true,
-            complexity: calculateComplexity(`${currentLexerSrc}\n${currentParserSrc}`)
         };
-    }
-}
-
-async function generateNextIntermediateSolution(
-    openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar,
-    snippet: Snippet,
-    previousSnippets: Snippet[]
-): Promise<TestedGrammar | undefined> {
-    console.log(`Inferring grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
-
-    // First see if the current intermediate solution is valid
-    const errors: ANTLRError[] = [];
-    if (currentIntermediateSolution) {
-        const testedGrammar = await testGrammarOnMany(currentIntermediateSolution, snippet, previousSnippets);
-        if (!testedGrammar.success) {
-            console.log("Current intermediate solution is invalid, trying to generate a new one.");
-            if (testedGrammar.errors === undefined || testedGrammar.errors.length === 0) {
-                throw new Error('No errors found in the grammar, but it failed?');
-            }
-            errors.push(...testedGrammar.errors);
-        } else {
-            console.log("Current intermediate solution is valid.");
-            return testedGrammar;
-        }
     }
 }
 
@@ -385,7 +357,6 @@ export async function doInferGrammar(directory: string, extension: string, outpu
                                             snippetsUsedInGuess,
                                             fileNamesThatDidntPass
                                         );
-    
 
     const snippetHistory: Snippet[] = [];
     let didWeGiveUp = false;
@@ -396,30 +367,23 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         fs.writeFileSync(tempLexerFilePath, currentIntermediateSolution.lexerSource);
         fs.writeFileSync(tempParserFilePath, currentIntermediateSolution.parserSource);
 
-        let nextIntermediateSolution: TestedGrammar | undefined = undefined;
-
-        for (let i = 0; i < maxRetries; i++) {
-            if (i > 0) {
-                console.error(` * Retry attempt ${i + 1}/${maxRetries}...`);
+        // Test current solution against this snippet and history
+        let testedGrammar = await testGrammarOnMany(currentIntermediateSolution, snippet, snippetHistory);
+        
+        if (!testedGrammar.success) {
+            console.log("Current solution failed tests, attempting repair...");
+            
+            // Try to repair the grammar
+            const repairedGrammar = await repairGrammar(openaiEnv, testedGrammar, snippet, snippetHistory);
+            
+            if (repairedGrammar?.success) {
+                console.log("Successfully repaired grammar");
+                currentIntermediateSolution = repairedGrammar.grammar;
+                testedGrammar = repairedGrammar;
+            } else {
+                throw new Error("Failed to repair grammar");
+                // TODO: handle this case
             }
-
-            nextIntermediateSolution = await generateNextIntermediateSolution(
-                openaiEnv,
-                currentIntermediateSolution,
-                snippet,
-                snippetHistory
-            );
-            if (nextIntermediateSolution) {
-                break;
-            }
-        }
-
-        if (nextIntermediateSolution) {
-            currentIntermediateSolution = nextIntermediateSolution.grammar;
-        } else {
-            didWeGiveUp = true;
-            lastSnippetBeforeGiveUp = snippet;
-            break;
         }
 
         snippetHistory.push(snippet);
