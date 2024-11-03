@@ -22,11 +22,18 @@ export function Ok<T>(value: T): Result<T> {
   };
 }
 
+export class UnwrapError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UnwrapError';
+  }
+}
+
 export function Err<T>(error: string): Result<T> {
   return {
     value: undefined,
     error,
-    unwrap: () => { throw new Error(error); },
+    unwrap: () => { throw new UnwrapError(error); },
     unwrapOr: (defaultValue) => defaultValue,
     unwrapOrElse: (defaultValueFn) => defaultValueFn(),
     isOk: () => false,
