@@ -5,6 +5,7 @@ interface CodeEdit {
   path: string;
   original: string;
   updated: string;
+  response: string;
 }
 
 interface FileContext {
@@ -12,7 +13,7 @@ interface FileContext {
   content: string;
 }
 
-class SmartCodeEditor {
+class DiffCodeEditor {
   private static readonly DEFAULT_FENCE: [string, string] = ['```', '```'];
 
   private static readonly PROMPT = `Act as an expert software developer.
@@ -111,7 +112,7 @@ mathweb/flask/app.py
   private openaiEnv: OpenAIEnv;
   public doLogging: boolean = false;
 
-  constructor(private files: FileContext[], openaiEnv: OpenAIEnv, private fence: [string, string] = SmartCodeEditor.DEFAULT_FENCE) {
+  constructor(private files: FileContext[], openaiEnv: OpenAIEnv, private fence: [string, string] = DiffCodeEditor.DEFAULT_FENCE) {
     this.openai = new OpenAI({
       baseURL: openaiEnv.baseUrl,
       apiKey: openaiEnv.apiKey,
@@ -159,12 +160,12 @@ mathweb/flask/app.py
         cleanOriginal,
         cleanUpdated
       );
-
       if (newContent) {
         edits.push({
           path,
           original: cleanOriginal,
-          updated: cleanUpdated
+          updated: cleanUpdated,
+          response: response
         });
       }
     }
@@ -382,10 +383,10 @@ mathweb/flask/app.py
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
     messages.push({
       role: 'system',
-      content: SmartCodeEditor.PROMPT
+      content: DiffCodeEditor.PROMPT
     });
 
-    messages.push(...SmartCodeEditor.EXAMPLES);
+    messages.push(...DiffCodeEditor.EXAMPLES);
 
     messages.push({
       role: 'user',
@@ -447,24 +448,176 @@ mathweb/flask/app.py
 
 async function main() {
   const files = [{
-    path: 'src/math.ts',
+    path: 'lexer.g4',
     content: `
-function add(a: number, b: number): number {
-    return a + b;
-}
+lexer grammar MyLexer;
 
-function subtract(a: number, b: number): number {
-    return a - b;
-}
-      `.trim()
-  }];
+// Keywords
+DEF: 'def';
+RET: 'ret';
+FOR: 'for';
+IN: 'in';
+IF: 'if';
+ELSE: 'else';
+PRINT: 'print';
 
-  const editor = new SmartCodeEditor(files, loadOpenAIEnvVars());
+// Types
+INT_TYPE: 'int';
+STRING_TYPE: 'string';
+LIST_TYPE: 'List';
+
+// Operators
+PLUS: '+';
+MINUS: '-';
+MULT: '*';
+DIV: '/';
+MOD: '%';
+ASSIGN: '=';
+LE: '<=';
+
+// Delimiters
+LPAREN: '(';
+RPAREN: ')';
+LBRACK: '[';
+RBRACK: ']';
+COLON: ':';
+COMMA: ',';
+LT: '<';
+GT: '>';
+
+// Literals
+INTEGER: [0-9]+;
+STRING: '"' (~["\\r\\n])* '"';
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+
+// Comments
+COMMENT: '#' ~[\\r\\n]* -> skip;
+
+// Whitespace
+WS: [ \\t\\r\\n]+ -> skip;
+`.trim()
+  },
+  {
+    path: 'parser.g4',
+    content: `
+parser grammar MyParser;
+options { tokenVocab=MyLexer; }
+
+program
+    : (statement | functionDef)*
+    ;
+
+functionDef
+    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON
+      block
+    ;
+
+paramList
+    : param (COMMA param)*
+    ;
+
+param
+    : IDENTIFIER typeAnnotation?
+    ;
+
+typeAnnotation
+    : LT type GT
+    ;
+
+type
+    : INT_TYPE
+    | STRING_TYPE
+    | LIST_TYPE typeAnnotation
+    | IDENTIFIER
+    ;
+
+block
+    : statement+
+    ;
+
+statement
+    : assignment
+    | forLoop
+    | ifStatement
+    | functionCall COMMENT?
+    | returnStatement
+    | printStatement
+    | COMMENT
+    ;
+
+assignment
+    : IDENTIFIER typeAnnotation? ASSIGN expression
+    ;
+
+forLoop
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON
+      block
+    ;
+
+ifStatement
+    : IF expression COLON
+      block
+      (ELSE COLON block)?
+    ;
+
+returnStatement
+    : RET typeAnnotation? expression
+    ;
+
+printStatement
+    : PRINT LPAREN expression RPAREN
+    ;
+
+expression
+    : MINUS expression
+    | expression (MULT | DIV | MOD) expression
+    | expression (PLUS | MINUS) expression
+    | expression LE expression
+    | LPAREN expression RPAREN
+    | list
+    | functionCall
+    ;
+
+functionCall
+    : IDENTIFIER LPAREN (expression (COMMA expression)*)? RPAREN
+    ;
+
+list
+    : LBRACK (expression (COMMA expression)*)? RBRACK
+    ;
+
+atom
+    : INTEGER
+    | STRING
+    | IDENTIFIER
+    ;
+`.trim()
+  }
+];
+
+  const editor = new DiffCodeEditor(files, loadOpenAIEnvVars());
   editor.doLogging = false;
 
-  const edits = await editor.edit(
-    "Add input validation to all math functions"
-  );
+  const prompt = `
+Fix the lexer and parser grammars to correctly parse the following code snippet:
+\`\`\`
+def fibonacci(n<int>)<int>:
+    if n <= 1:
+        ret n
+    else:
+        ret fibonacci(n - 1) + fibonacci(n - 2)
+
+# Test the function
+result<int> = fibonacci(10)
+print(result)  # Expected output: 55
+\`\`\`
+Got errors:
+Line 2: \`    if n <= 1:\` - mismatched input '<=' expecting '('
+Line 2: \`    if n <= 1:\` - mismatched input '1' expecting {'-', '(', '[', IDENTIFIER}
+Line 4: \`    else:\` - mismatched input 'else' expecting '('
+`;
+
+  const edits = await editor.edit(prompt);
 
 
   // The editor will handle:
@@ -473,11 +626,12 @@ function subtract(a: number, b: number): number {
   // - Partial matches with ...
   // - Validation of matches
   //console.log(edits);
+  console.log(edits.length, "edits generated");
 
   // Apply the edits
   const results = editor.applyEdits(edits);
   Object.entries(results).forEach(([path, content]) => {
-    console.log(`File ${path}:\n${content}`);
+    console.log(`<${path}>\n${content.trim()}\n</${path}>`);
   });
 }
 
