@@ -123,14 +123,16 @@ mathweb/flask/app.py
   }
 
   async edit(instruction: string): Promise<CodeEdit[]> {
-    const prompt = this.buildPrompt(instruction);
+    let prompt = this.buildPrompt(instruction);
     for (let i = 0; i < 3; i++) {
       const response = await this.callOpenAI(prompt);
       if (response) {
         if (this.doLogging) console.log(response);
-        return this.parseEdits(response);
+        const edits = this.parseEdits(response);
+        if (edits.length > 0) return edits;
+        console.warn('No edits generated, retrying...');
+        prompt = "You didn't give me any correctly formatted edits, please try again!";
       }
-      console.warn('Failed to generate edits, retrying...');
     }
     throw new Error('Failed to generate edits');
   }
@@ -143,7 +145,7 @@ mathweb/flask/app.py
     return `Files:\n${filesContext}\n\nInstruction: ${instruction}`;
   }
 
-  private parseEdits(response: string): CodeEdit[] {
+  parseEdits(response: string): CodeEdit[] {
     const edits: CodeEdit[] = [];
     const editBlocks = Array.from(this.findEditBlocks(response));
 
@@ -470,191 +472,126 @@ mathweb/flask/app.py
 
 export { DiffCodeEditor };
 
-async function main() {
-  const files = [{
-    path: 'lexer.g4',
-    content: `
+
+async function testEditParser() {
+  const source = `
 lexer grammar MyLexer;
 
 // Keywords
-DEF: 'def';
-RET: 'ret';
-FOR: 'for';
-IN: 'in';
-IF: 'if';
-ELSE: 'else';
-PRINT: 'print';
+SELECT: 'SELECT';
+FROM: 'FROM';
+WHERE: 'WHERE';
+JOIN: 'JOIN';
+ON: 'ON';
+UPDATE: 'UPDATE';
+SET: 'SET';
+INSERT: 'INSERT';
+INTO: 'INTO';
+VALUES: 'VALUES';
+CREATE: 'CREATE';
+TABLE: 'TABLE';
+VARCHAR: 'VARCHAR';
+INT: 'INT';
+DATE: 'DATE';
+PRIMARY: 'PRIMARY';
+KEY: 'KEY';
+FOREIGN: 'FOREIGN';
+REFERENCES: 'REFERENCES';
+AUTO_INCREMENT: 'AUTO_INCREMENT';
+NOT: 'NOT';
+NULL: 'NULL';
 
-// Types
-INT_TYPE: 'int';
-STRING_TYPE: 'string';
-LIST_TYPE: 'List';
-
-// Operators
-PLUS: '+';
-MINUS: '-';
-MULT: '*';
-DIV: '/';
-MOD: '%';
-ASSIGN: '=';
-LE: '<=';
-
-// Delimiters
+// Symbols
+STAR: '*';
+DOT: '.';
+COMMA: ',';
+SEMI: ';';
 LPAREN: '(';
 RPAREN: ')';
-LBRACK: '[';
-RBRACK: ']';
-COLON: ':';
-COMMA: ',';
+EQ: '=';
+NEQ: '!=';
 LT: '<';
 GT: '>';
+LTE: '<=';
+GTE: '>=';
 
 // Literals
-INTEGER: [0-9]+;
-STRING: '"' (~["\\r\\n])* '"';
-IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+STRING_LITERAL: '\\'' (~'\\'')* '\\'';
+DATE_LITERAL: '\\'' DIGIT DIGIT DIGIT DIGIT '-' DIGIT DIGIT '-' DIGIT DIGIT '\\'';
+NUMBER: DIGIT+;
+fragment DIGIT: [0-9];
 
-// Comments
-COMMENT: '#' ~[\\r\\n]* -> skip;
+// Identifiers
+IDENTIFIER: [a-zA-Z_] [a-zA-Z_0-9]*;
 
 // Whitespace
-WS: [ \\t\\r\\n]+ -> skip;
-`.trim()
-  },
-  {
-    path: 'parser.g4',
-    content: `
-parser grammar MyParser;
-options { tokenVocab=MyLexer; }
+WS: [ \\t\\r\
+]+ -> skip;
+`.trim();
 
-program
-    : (statement | functionDef)*
-    ;
+const files = [{
+  path: 'lexer.g4',
+  content: source
+}];
+const editor = new DiffCodeEditor(files, loadOpenAIEnvVars());
+editor.doLogging = true;
 
-functionDef
-    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON
-      block
-    ;
+const mockResponse = `
+The errors indicate that we need to define the tokens AVG, COUNT, AS, DELETE, GROUP, and BY in the lexer grammar. Let's add these tokens to the lexer grammar.
 
-paramList
-    : param (COMMA param)*
-    ;
-
-param
-    : IDENTIFIER typeAnnotation?
-    ;
-
-typeAnnotation
-    : LT type GT
-    ;
-
-type
-    : INT_TYPE
-    | STRING_TYPE
-    | LIST_TYPE typeAnnotation
-    | IDENTIFIER
-    ;
-
-block
-    : statement+
-    ;
-
-statement
-    : assignment
-    | forLoop
-    | ifStatement
-    | functionCall COMMENT?
-    | returnStatement
-    | printStatement
-    | COMMENT
-    ;
-
-assignment
-    : IDENTIFIER typeAnnotation? ASSIGN expression
-    ;
-
-forLoop
-    : FOR IDENTIFIER typeAnnotation? IN expression COLON
-      block
-    ;
-
-ifStatement
-    : IF expression COLON
-      block
-      (ELSE COLON block)?
-    ;
-
-returnStatement
-    : RET typeAnnotation? expression
-    ;
-
-printStatement
-    : PRINT LPAREN expression RPAREN
-    ;
-
-expression
-    : MINUS expression
-    | expression (MULT | DIV | MOD) expression
-    | expression (PLUS | MINUS) expression
-    | expression LE expression
-    | LPAREN expression RPAREN
-    | list
-    | functionCall
-    ;
-
-functionCall
-    : IDENTIFIER LPAREN (expression (COMMA expression)*)? RPAREN
-    ;
-
-list
-    : LBRACK (expression (COMMA expression)*)? RBRACK
-    ;
-
-atom
-    : INTEGER
-    | STRING
-    | IDENTIFIER
-    ;
-`.trim()
-  }
-];
-
-  const editor = new DiffCodeEditor(files, loadOpenAIEnvVars());
-  editor.doLogging = false;
-
-  const prompt = `
-Identify and fix the ANTLR4 lexer and parser grammars to correctly parse the following code snippet:
+lexer.g4
+\`\`\`antlr
+<<<<<<< SEARCH
+// Keywords
+SELECT: 'SELECT';
+FROM: 'FROM';
+WHERE: 'WHERE';
+JOIN: 'JOIN';
+ON: 'ON';
+UPDATE: 'UPDATE';
+SET: 'SET';
+INSERT: 'INSERT';
+INTO: 'INTO';
+VALUES: 'VALUES';
+CREATE: 'CREATE';
+TABLE: 'TABLE';
+=======
+// Keywords
+SELECT: 'SELECT';
+FROM: 'FROM';
+WHERE: 'WHERE';
+JOIN: 'JOIN';
+ON: 'ON';
+UPDATE: 'UPDATE';
+SET: 'SET';
+INSERT: 'INSERT';
+INTO: 'INTO';
+VALUES: 'VALUES';
+CREATE: 'CREATE';
+TABLE: 'TABLE';
+DELETE: 'DELETE';
+GROUP: 'GROUP';
+BY: 'BY';
+AVG: 'AVG';
+COUNT: 'COUNT';
+AS: 'AS';
+>>>>>>> REPLACE
 \`\`\`
-def fibonacci(n<int>)<int>:
-    if n <= 1:
-        ret n
-    else:
-        ret fibonacci(n - 1) + fibonacci(n - 2)
 
-# Test the function
-result<int> = fibonacci(10)
-print(result)  # Expected output: 55
-\`\`\`
-Got errors:
-Line 2: \`    if n <= 1:\` - mismatched input '<=' expecting '('
-Line 2: \`    if n <= 1:\` - mismatched input '1' expecting {'-', '(', '[', IDENTIFIER}
-Line 4: \`    else:\` - mismatched input 'else' expecting '('
-`;
+This change adds all the missing token definitions to the lexer grammar. The tokens are:
+1. DELETE - for DELETE statements
+2. GROUP - for GROUP BY clauses
+3. BY - for GROUP BY clauses
+4. AVG - for average aggregate function
+5. COUNT - for count aggregate function
+6. AS - for column aliases
 
-  const edits = await editor.edit(prompt);
+Now all tokens used in the parser grammar are properly defined in the lexer grammar, which should resolve the warnings.
+`.trim();
 
-
-  // The editor will handle:
-  // - Matching with proper indentation
-  // - Multiple edit blocks
-  // - Partial matches with ...
-  // - Validation of matches
-  //console.log(edits);
-  console.log(edits.length, "edits generated");
-
-  // Apply the edits
-  const results = editor.applyEdits(edits);
-  Object.entries(results).forEach(([path, content]) => {
-    console.log(`<${path}>\n${content.trim()}\n</${path}>`);
-  });
+const edits = editor.parseEdits(mockResponse);
+console.log(edits.length, "edits generated"); // This is currently giving me 0 edits, why?
+console.log(edits); // []
 }
+
+testEditParser();
