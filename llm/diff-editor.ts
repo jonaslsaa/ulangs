@@ -697,5 +697,3 @@ console.log(edits);
     console.log(`<${path}>\n${content.trim()}\n</${path}>\n`);
   }
 }
-
-testEditParser();
