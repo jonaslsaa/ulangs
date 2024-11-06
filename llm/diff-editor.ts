@@ -32,13 +32,13 @@ Every edit must use this format:
 
 Every *SEARCH/REPLACE block* must use this format:
 1. The *FULL* file path alone on a line, verbatim. No bold asterisks, no quotes around it, no escaping of characters, etc.
-2. The opening fence and code language, eg: {fence[0]}python
+2. The opening block and code language, eg: \`\`\`antlr
 3. The start of search block: <<<<<<< SEARCH
 4. A contiguous chunk of lines to search for in the existing source code
 5. The dividing line: =======
 6. The lines to replace into the source code
 7. The end of the replace block: >>>>>>> REPLACE
-8. The closing fence: {fence[1]}
+8. The closing block: \`\`\`fenc
 
 Use the *FULL* file path, as shown to you by the user.
 
@@ -74,17 +74,17 @@ To move code within a file, use 2 *SEARCH/REPLACE* blocks: 1 to delete it from i
 Here are the *SEARCH/REPLACE* blocks:
 
 mathweb/flask/app.py
-{fence[0]}python
+\`\`\`python
 <`+/*don't confuse the IDE*/`<<<<<< SEARCH
 from flask import Flask
 =======
 import math
 from flask import Flask
 >>>>>>> REPLACE
-{fence[1]}
+\`\`\`
 
 mathweb/flask/app.py
-{fence[0]}python
+\`\`\`python
 <`+/*don't confuse the IDE*/`<<<<<< SEARCH
 def factorial(n):
     "compute factorial"
@@ -96,17 +96,17 @@ def factorial(n):
 
 =======
 >>>>>>> REPLACE
-{fence[1]}
-
+\`\`\`
 mathweb/flask/app.py
-{fence[0]}python
+python
 <`+/*don't confuse the IDE*/`<<<<<< SEARCH
     return str(factorial(n))
 =======
     return str(math.factorial(n))
 >>>>>>> REPLACE
-{fence[1]}
-`}
+\`\`\`
+`.trim()
+    }
   ]
 
   private openai: OpenAI;
@@ -115,7 +115,7 @@ mathweb/flask/app.py
   public doLogging: boolean = false;
   public doLoggingOfEdits: boolean = false;
 
-  constructor(private files: FileContext[], openaiEnv: OpenAIEnv, private fence: [string, string] = DiffCodeEditor.DEFAULT_FENCE) {
+  constructor(openaiEnv: OpenAIEnv, private fence: [string, string] = DiffCodeEditor.DEFAULT_FENCE) {
     this.openai = new OpenAI({
       baseURL: openaiEnv.baseUrl,
       apiKey: openaiEnv.apiKey,
@@ -123,39 +123,56 @@ mathweb/flask/app.py
     this.openaiEnv = openaiEnv;
   }
 
-  async edit(instruction: string): Promise<CodeEdit[]> {
-    let prompt = this.buildPrompt(instruction);
+  private countEditBlocks(content: string): number {
+    const HEAD = /^<{5,9} SEARCH\s*$/;
+    const lines = content.split('\n');
+    return lines.filter(line => HEAD.test(line.trim())).length;
+  }
+
+  async edit(files: FileContext[], instruction: string): Promise<CodeEdit[]> {
+    let prompt = this.buildPrompt(files, instruction);
     for (let i = 0; i < 3; i++) {
       const response = await this.callOpenAI(prompt);
       if (response) {
         if (this.doLogging) console.log(response);
-        const edits = this.parseEdits(response);
-        if (edits.length > 0) return edits;
-        console.warn('No edits generated, retrying...');
-        prompt = "You didn't give me any correctly formatted edits, please try again!";
+        const expectedBlocks = this.countEditBlocks(response);
+        const edits = this.parseEdits(files, response);
+
+        if (edits.length === expectedBlocks && edits.length > 0) {
+          return edits;
+        }
+
+        if (edits.length !== expectedBlocks) {
+          console.warn(`Mismatch: ${edits.length} edits parsed but found ${expectedBlocks} edit blocks`);
+          // TODO: consume the edits we can and only try again those who failed
+          prompt = "The number of parsed edits doesn't match the number of edit blocks(```). Please provide properly formatted edits.";
+        } else {
+          console.warn('No edits generated, retrying...');
+          prompt = "You didn't give me any properly formatted edits, please try again!";
+        }
       }
     }
     throw new Error('Failed to generate edits');
   }
 
-  private buildPrompt(instruction: string): string {
-    const filesContext = this.files
+  private buildPrompt(files: FileContext[], instruction: string): string {
+    const filesContext = files
       .map(f => `${f.path}:\n${this.fence[0]}\n${f.content}\n${this.fence[1]}`)
       .join('\n\n');
 
     return `Files:\n${filesContext}\n\nInstruction: ${instruction}`;
   }
 
-  parseEdits(response: string): CodeEdit[] {
+  parseEdits(files: FileContext[], response: string): CodeEdit[] {
     if (this.doLoggingOfEdits) console.log("\nParsing edits from response length:", response.length);
     const edits: CodeEdit[] = [];
-    const editBlocks = Array.from(this.findEditBlocks(response));
+    const editBlocks = Array.from(this.findEditBlocks(files, response));
     if (this.doLoggingOfEdits) console.log("Found edit blocks:", editBlocks.length);
 
     for (const [path, original, updated] of editBlocks) {
       if (!path || !updated) continue;
 
-      const file = this.files.find(f => f.path === path);
+      const file = files.find(f => f.path === path);
       if (!file) continue;
 
       const cleanOriginal = this.stripQuotedWrapping(original, path);
@@ -180,7 +197,7 @@ mathweb/flask/app.py
     return edits;
   }
 
-  private *findEditBlocks(content: string): Generator<[string | null, string, string?]> {
+  private *findEditBlocks(files: FileContext[], content: string): Generator<[string | null, string, string?]> {
     const HEAD = /^<{5,9} SEARCH\s*$/;
     const DIVIDER = /^={5,9}\s*$/;
     const UPDATED = /^>{5,9} REPLACE\s*$/;
@@ -193,7 +210,7 @@ mathweb/flask/app.py
 
     while (i < lines.length) {
       const line = lines[i].trim();
-      
+
       if (HEAD.test(line)) {
         if (this.doLoggingOfEdits) console.log("Found HEAD marker at line", i, ":", line);
         try {
@@ -202,17 +219,17 @@ mathweb/flask/app.py
             .filter(line => line.trim().length > 0)
             .reverse();
           if (this.doLoggingOfEdits) console.log("Looking for path in previous lines:", searchLines);
-          
+
           const pathLine = searchLines.find(l => {
             // Try exact match first
-            const exactMatch = this.files.some(f => f.path === l.trim());
+            const exactMatch = files.some(f => f.path === l.trim());
             if (exactMatch) {
               if (this.doLoggingOfEdits) console.log("Found exact path match:", l.trim());
               return true;
             }
             // Try extracting path when it's on same line as code fence
             const parts = l.split('`');
-            const hasPath = parts.length > 0 && this.files.some(f => f.path === parts[0].trim());
+            const hasPath = parts.length > 0 && files.some(f => f.path === parts[0].trim());
             if (hasPath) {
               if (this.doLoggingOfEdits) console.log("Found path in code fence line:", parts[0].trim());
             }
@@ -226,7 +243,7 @@ mathweb/flask/app.py
             path = parts[0].trim();
             if (this.doLoggingOfEdits) console.log("Extracted path:", path);
           }
-          
+
           path = path || currentPath;
           if (!path) {
             if (this.doLoggingOfEdits) console.log("No path found, skipping block");
@@ -301,11 +318,11 @@ mathweb/flask/app.py
     // Normalize line endings and trim trailing whitespace
     const normalizeText = (text: string) => {
       return text.replace(/\r\n/g, '\n')
-                .split('\n')
-                .map(line => line.trimRight())
-                .join('\n');
+        .split('\n')
+        .map(line => line.trimRight())
+        .join('\n');
     };
-    
+
     const normalizedWhole = normalizeText(whole);
     const normalizedPart = normalizeText(part);
     const normalizedReplace = normalizeText(replace);
@@ -343,7 +360,7 @@ mathweb/flask/app.py
         if (this.doLoggingOfEdits) console.log("Found match with flexible whitespace at line:", i);
         // Preserve original indentation
         const indent = wholeLines[i].match(/^\s*/)?.[0] || '';
-        const indentedReplace = replaceLines.map(line => 
+        const indentedReplace = replaceLines.map(line =>
           line.trim() ? indent + line : line
         );
 
@@ -483,9 +500,9 @@ mathweb/flask/app.py
       content: prompt
     });
 
-    if (this.doLogging)console.log(messagesWithLatestPrompt.length, "messages:");
+    if (this.doLogging) console.log(messagesWithLatestPrompt.length, "messages:");
     if (this.doLogging) console.log(messagesWithLatestPrompt);
-    
+
     Stats.addRequest();
 
     const completion = await this.openai.chat.completions.create({
@@ -512,7 +529,7 @@ mathweb/flask/app.py
     return responseContent;
   }
 
-  applyEdits(edits: CodeEdit[]): Record<string, string> {
+  applyEdits(files: FileContext[], edits: CodeEdit[]): FileContext[] {
     const results: Record<string, string> = {};
 
     // Group edits by file
@@ -525,7 +542,7 @@ mathweb/flask/app.py
     }, {} as Record<string, CodeEdit[]>);
 
     // Apply edits for each file
-    for (const file of this.files) {
+    for (const file of files) {
       let content = file.content;
       const fileEdits = editsByFile[file.path] || [];
 
@@ -546,12 +563,16 @@ mathweb/flask/app.py
       results[file.path] = content;
     }
 
-    return results;
+    // Turn results into a file context
+    return Object.entries(results).map(([path, content]) => ({
+      path,
+      content
+    }));
   }
 
-  async editAndApply(instruction: string): Promise<Record<string, string>> {
-    const edits = await this.edit(instruction);
-    return this.applyEdits(edits);
+  async editAndApply(files: FileContext[], instruction: string) {
+    const edits = await this.edit(files, instruction);
+    return this.applyEdits(files, edits);
   }
 }
 
@@ -626,14 +647,14 @@ WS: [ \\t\\r\
 ]+ -> skip;
 `.trim();
 
-const files = [{
-  path: 'lexer.g4',
-  content: source
-}];
-const editor = new DiffCodeEditor(files, loadOpenAIEnvVars());
-editor.doLogging = true;
+  const files = [{
+    path: 'lexer.g4',
+    content: source
+  }];
+  const editor = new DiffCodeEditor(loadOpenAIEnvVars());
+  editor.doLogging = true;
 
-const mockResponse = `
+  const mockResponse = `
 The errors indicate that we need to define the tokens AVG, COUNT, AS, DELETE, GROUP, and BY in the lexer grammar. Let's add these tokens to the lexer grammar.
 
 lexer.g4
@@ -686,14 +707,14 @@ This change adds all the missing token definitions to the lexer grammar. The tok
 Now all tokens used in the parser grammar are properly defined in the lexer grammar, which should resolve the warnings.
 `.trim();
 
-const edits = editor.parseEdits(mockResponse);
-console.log(edits.length, "edits generated"); 
-console.log(edits); 
+  const edits = editor.parseEdits(files, mockResponse);
+  console.log(edits.length, "edits generated");
+  console.log(edits);
 
   // Apply the edits
-  const results = editor.applyEdits(edits);
+  const results = editor.applyEdits(files, edits);
   console.log("Results:");
-  for (const [path, content] of Object.entries(results)) {
+  results.forEach(({path, content}) => {
     console.log(`<${path}>\n${content.trim()}\n</${path}>\n`);
-  }
+  });
 }
