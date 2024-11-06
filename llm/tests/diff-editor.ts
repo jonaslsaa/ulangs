@@ -277,7 +277,7 @@ columnName
 `.trim();
 
   const files = [{
-    path: 'lexer.g4',
+    path: 'parser.g4',
     content: source
   }];
   const editor = new DiffCodeEditor(loadOpenAIEnvVars());
