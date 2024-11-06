@@ -159,8 +159,9 @@ python
     const filesContext = files
       .map(f => `${f.path}:\n${this.fence[0]}\n${f.content}\n${this.fence[1]}`)
       .join('\n\n');
+    if (this.messages.length == 0) return `Files:\n${filesContext}\n\nInstruction: ${instruction}`;
 
-    return `Files:\n${filesContext}\n\nInstruction: ${instruction}`;
+    return `Instruction: ${instruction}`;
   }
 
   parseEdits(files: FileContext[], response: string): CodeEdit[] {
@@ -172,25 +173,47 @@ python
     for (const [path, original, updated] of editBlocks) {
       if (!path || !updated) continue;
 
-      const file = files.find(f => f.path === path);
-      if (!file) continue;
-
       const cleanOriginal = this.stripQuotedWrapping(original, path);
       const cleanUpdated = this.stripQuotedWrapping(updated, path);
 
-      // Verify we can find and replace this edit
-      const newContent = this.replaceMostSimilarChunk(
-        file.content,
-        cleanOriginal,
-        cleanUpdated
-      );
-      if (newContent) {
-        edits.push({
-          path,
-          original: cleanOriginal,
-          updated: cleanUpdated,
-          response: response
-        });
+      // First try the specified file
+      const targetFile = files.find(f => f.path === path);
+      if (targetFile) {
+        const newContent = this.replaceMostSimilarChunk(
+          targetFile.content,
+          cleanOriginal,
+          cleanUpdated
+        );
+        if (newContent) {
+          edits.push({
+            path,
+            original: cleanOriginal,
+            updated: cleanUpdated,
+            response: response
+          });
+          continue;
+        }
+      }
+
+      // If no match in specified file, try other files
+      for (const file of files) {
+        if (file.path === path) continue; // Skip already tried file
+        
+        const newContent = this.replaceMostSimilarChunk(
+          file.content,
+          cleanOriginal,
+          cleanUpdated
+        );
+        if (newContent) {
+          console.warn(`Edit block specified for '${path}' but matched in '${file.path}'`);
+          edits.push({
+            path: file.path,
+            original: cleanOriginal,
+            updated: cleanUpdated,
+            response: response
+          });
+          break;
+        }
       }
     }
 
@@ -577,144 +600,3 @@ python
 }
 
 export { DiffCodeEditor };
-
-
-async function testEditParser() {
-  const source = `
-lexer grammar MyLexer;
-
-// Keywords
-SELECT: 'SELECT';
-FROM: 'FROM';
-WHERE: 'WHERE';
-JOIN: 'JOIN';
-ON: 'ON';
-UPDATE: 'UPDATE';
-SET: 'SET';
-INSERT: 'INSERT';
-INTO: 'INTO';
-VALUES: 'VALUES';
-CREATE: 'CREATE';
-TABLE: 'TABLE';
-DELETE: 'DELETE';
-GROUP: 'GROUP';
-BY: 'BY';
-AVG: 'AVG';
-COUNT: 'COUNT';
-AS: 'AS';
-DELETE: 'DELETE';
-GROUP: 'GROUP';
-BY: 'BY';
-AVG: 'AVG';
-COUNT: 'COUNT';
-AS: 'AS';
-VARCHAR: 'VARCHAR';
-INT: 'INT';
-DATE: 'DATE';
-PRIMARY: 'PRIMARY';
-KEY: 'KEY';
-FOREIGN: 'FOREIGN';
-REFERENCES: 'REFERENCES';
-AUTO_INCREMENT: 'AUTO_INCREMENT';
-NOT: 'NOT';
-NULL: 'NULL';
-
-// Symbols
-STAR: '*';
-DOT: '.';
-COMMA: ',';
-SEMI: ';';
-LPAREN: '(';
-RPAREN: ')';
-EQ: '=';
-NEQ: '!=';
-LT: '<';
-GT: '>';
-LTE: '<=';
-GTE: '>=';
-
-// Literals
-STRING_LITERAL: '\\'' (~'\\'')* '\\'';
-DATE_LITERAL: '\\'' DIGIT DIGIT DIGIT DIGIT '-' DIGIT DIGIT '-' DIGIT DIGIT '\\'';
-NUMBER: DIGIT+;
-fragment DIGIT: [0-9];
-
-// Identifiers
-IDENTIFIER: [a-zA-Z_] [a-zA-Z_0-9]*;
-
-// Whitespace
-WS: [ \\t\\r\
-]+ -> skip;
-`.trim();
-
-  const files = [{
-    path: 'lexer.g4',
-    content: source
-  }];
-  const editor = new DiffCodeEditor(loadOpenAIEnvVars());
-  editor.doLogging = true;
-
-  const mockResponse = `
-The errors indicate that we need to define the tokens AVG, COUNT, AS, DELETE, GROUP, and BY in the lexer grammar. Let's add these tokens to the lexer grammar.
-
-lexer.g4
-\`\`\`antlr
-<<<<<<< SEARCH
-// Keywords
-SELECT: 'SELECT';
-FROM: 'FROM';
-WHERE: 'WHERE';
-JOIN: 'JOIN';
-ON: 'ON';
-UPDATE: 'UPDATE';
-SET: 'SET';
-INSERT: 'INSERT';
-INTO: 'INTO';
-VALUES: 'VALUES';
-CREATE: 'CREATE';
-TABLE: 'TABLE';
-=======
-// Keywords
-SELECT: 'SELECT';
-FROM: 'FROM';
-WHERE: 'WHERE';
-JOIN: 'JOIN';
-ON: 'ON';
-UPDATE: 'UPDATE';
-SET: 'SET';
-INSERT: 'INSERT';
-INTO: 'INTO';
-VALUES: 'VALUES';
-CREATE: 'CREATE';
-TABLE: 'TABLE';
-DELETE: 'DELETE';
-GROUP: 'GROUP';
-BY: 'BY';
-AVG: 'AVG';
-COUNT: 'COUNT';
-AS: 'AS';
->>>>>>> REPLACE
-\`\`\`
-
-This change adds all the missing token definitions to the lexer grammar. The tokens are:
-1. DELETE - for DELETE statements
-2. GROUP - for GROUP BY clauses
-3. BY - for GROUP BY clauses
-4. AVG - for average aggregate function
-5. COUNT - for count aggregate function
-6. AS - for column aliases
-
-Now all tokens used in the parser grammar are properly defined in the lexer grammar, which should resolve the warnings.
-`.trim();
-
-  const edits = editor.parseEdits(files, mockResponse);
-  console.log(edits.length, "edits generated");
-  console.log(edits);
-
-  // Apply the edits
-  const results = editor.applyEdits(files, edits);
-  console.log("Results:");
-  results.forEach(({path, content}) => {
-    console.log(`<${path}>\n${content.trim()}\n</${path}>\n`);
-  });
-}
