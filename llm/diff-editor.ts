@@ -17,6 +17,18 @@ interface FileContext {
 class DiffCodeEditor {
   private static readonly DEFAULT_FENCE: [string, string] = ['```', '```'];
 
+  private static readonly FORMAT_REMINDER_PROMPT = `
+Remember to format the code in the following blocks:
+file-name-to-edit.g4
+\`\`\`antlr
+<<<<<<< SEARCH
+[code to find]
+=======
+[code to replace with]
+>>>>>>> REPLACE
+\`\`\`
+`;
+
   private static readonly PROMPT = `Act as an expert software developer.
 Always use best practices when coding.
 You will receive code files and modify them according to instructions.
@@ -38,7 +50,7 @@ Every *SEARCH/REPLACE block* must use this format:
 5. The dividing line: =======
 6. The lines to replace into the source code
 7. The end of the replace block: >>>>>>> REPLACE
-8. The closing block: \`\`\`fenc
+8. The closing block: \`\`\`
 
 Use the *FULL* file path, as shown to you by the user.
 
@@ -58,6 +70,7 @@ Only create *SEARCH/REPLACE* blocks for files that the user has added to the cha
 
 To move code within a file, use 2 *SEARCH/REPLACE* blocks: 1 to delete it from its current location, 1 to insert it in the new location.
 `
+
   private static readonly EXAMPLES: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'user',
@@ -145,10 +158,10 @@ python
         if (edits.length !== expectedBlocks) {
           console.warn(`Mismatch: ${edits.length} edits parsed but found ${expectedBlocks} edit blocks`);
           // TODO: consume the edits we can and only try again those who failed
-          prompt = "The number of parsed edits doesn't match the number of edit blocks(```). Please provide properly formatted edits.";
+          prompt = "The number of parsed edits doesn't match the number of edit blocks(```). Please provide properly formatted edits.\n" + DiffCodeEditor.FORMAT_REMINDER_PROMPT;
         } else {
           console.warn('No edits generated, retrying...');
-          prompt = "You didn't give me any properly formatted edits, please try again!";
+          prompt = "You didn't give me any properly formatted edits, please try again!\n" + DiffCodeEditor.FORMAT_REMINDER_PROMPT;
         }
       }
     }
@@ -159,9 +172,10 @@ python
     const filesContext = files
       .map(f => `${f.path}:\n${this.fence[0]}\n${f.content}\n${this.fence[1]}`)
       .join('\n\n');
-    if (this.messages.length == 0) return `Files:\n${filesContext}\n\nInstruction: ${instruction}`;
+    if (this.messages.length == 0) return `Files:\n${filesContext}\n\n${instruction}`;
+    if (this.messages.length > 5 && this.messages.length % 4 == 0) return `Current files:\n${filesContext}\n\n${instruction}`;
 
-    return `Instruction: ${instruction}`;
+    return `Thank you! ${instruction}`;
   }
 
   parseEdits(files: FileContext[], response: string): CodeEdit[] {

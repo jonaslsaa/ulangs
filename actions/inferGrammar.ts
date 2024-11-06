@@ -166,7 +166,7 @@ function errorToString(error: ANTLRError, lexerSource: string, parserSource: str
 }
 
 async function repairGrammar(openaiEnv: OpenAIEnv, testedGrammar: TestedGrammar, snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
-    const maxRetries = 10;
+    const maxRetries = 12;
     const lexerFileNameConstant = 'lexer.g4';
     const parserFileNameConstant = 'parser.g4';
     let files = [
@@ -184,12 +184,14 @@ async function repairGrammar(openaiEnv: OpenAIEnv, testedGrammar: TestedGrammar,
     }
     for (let i = 0; i < maxRetries; i++) {
         const prompt = `
-Identify and fix the ANTLR4 lexer and parser grammars to correctly parse the following code snippet:
+Identify issues and fix the ANTLR4 grammars (lexer and/or parser) to correctly parse the following code snippet:
 \`\`\`
 ${fixingSnippet.snippet}
 \`\`\`
 Got errors:
 ${errorsForFixingSnippet.map(error => errorToString(error, currentGrammar.lexerSource, currentGrammar.parserSource, snippet.snippet)).join('\n')}
+
+Start by listing the possible issues and solutions (write likelihood in braces, e.g., {likelihood}), then propose fixes to the files (using SEARCH/REPLACE blocks).
 `;
         const edits = await editor.edit(files, prompt);
         console.log(edits.length, "edits generated");
