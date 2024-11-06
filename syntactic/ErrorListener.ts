@@ -8,7 +8,7 @@ export type ANTLRError = {
     file?: string;
     line?: number;
     column?: number;
-};
+}
 
 export class CustomErrorListener extends ErrorListener<Token> {
     private errors: ANTLRError[] = [];

@@ -109,8 +109,8 @@ function constructPrompt(currentIntermediateSolution: Grammar,
 
     // Add error messages
     // Overlay the error messages on the code by adding a comment
-    const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER');
-    const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER');
+    const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'RUNTIME');
+    const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'RUNTIME');
     const lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
     const parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
 
