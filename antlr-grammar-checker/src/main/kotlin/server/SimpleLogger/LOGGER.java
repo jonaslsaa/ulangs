@@ -1,4 +1,4 @@
-package SimpleLogger;
+package server.SimpleLogger;
 
 public class LOGGER {
     public static void info(String message) {

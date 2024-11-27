@@ -1,6 +1,6 @@
 package server;
 
-import SimpleLogger.LOGGER;
+import server.SimpleLogger.LOGGER;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.antlr.runtime.RecognitionException;
