@@ -1,84 +1,119 @@
-convert_cst_to_ast(Root, program(Statements)) :-
-    children_of_type(Root, 'StatementContext', StmtNodes),
+% CST to AST conversion rules
+%% START OF CONVERSION.pl FILE
+
+% Start converting the CST to AST from the root node
+convert_cst_to_ast(Root, program(Functions)) :-
+    children_of_type(Root, 'FunctionDefContext', FunctionNodes),
+    convert_nodes(FunctionNodes, convert_function_def, Functions).
+
+% Function definition conversion
+convert_function_def(Node, function(Name, Params, ReturnType, Body)) :-
+    get_child_value(Node, 'IDENTIFIER', Name),
+    get_child_with_type(Node, 'ParamListContext', ParamsNode),
+    convert_param_list(ParamsNode, Params),
+    get_child_with_type(Node, 'TypeAnnotationContext', ReturnTypeNode),
+    convert_type_annotation(ReturnTypeNode, ReturnType),
+    get_child_with_type(Node, 'BlockContext', BodyNode),
+    convert_block(BodyNode, Body).
+
+% Parameter list conversion
+convert_param_list(Node, Params) :-
+    get_children_of_type(Node, 'ParamContext', ParamNodes),
+    convert_nodes(ParamNodes, convert_param, Params).
+
+% Parameter conversion
+convert_param(Node, param(Name, Type)) :-
+    get_child_value(Node, 'IDENTIFIER', Name),
+    get_child_with_type(Node, 'TypeAnnotationContext', TypeAnnNode),
+    convert_type_annotation(TypeAnnNode, Type).
+
+% Type annotation conversion
+convert_type_annotation(Node, Type) :-
+    get_child_with_type(Node, 'TypeContext', TypeNode),
+    get_child_value(TypeNode, 'INT_TYPE', Type).
+
+% Block conversion
+convert_block(Node, Statements) :-
+    children_of_type(Node, 'StatementContext', StmtNodes),
     convert_nodes(StmtNodes, convert_statement, Statements).
 
 % Statement conversion
-convert_statement(Node, ast_node(AST, Loc)) :-
-    node_location(Node, File, Line, Col, Len),
-    Loc = location(File, Line, Col, Len),
-    (get_child_with_type(Node, 'FunctionContext', FuncNode) ->
-        convert_function(FuncNode, AST)
+convert_statement(Node, Statement) :-
+    (get_child_with_type(Node, 'IfStatementContext', IfNode) ->
+        convert_if_statement(IfNode, Statement)
+    ; get_child_with_type(Node, 'ReturnStatementContext', ReturnNode) ->
+        convert_return_statement(ReturnNode, Statement)
     ; get_child_with_type(Node, 'AssignmentContext', AssignNode) ->
-        convert_assignment(AssignNode, AST)
-    ; get_child_with_type(Node, 'MethodCallContext', MethodNode) ->
-        convert_method_call(MethodNode, AST)
-    ; get_child_with_type(Node, 'FunctionCallContext', CallNode) ->  % Add this clause
-        convert_function_call(CallNode, AST)
+        convert_assignment(AssignNode, Statement)
+    ; get_child_with_type(Node, 'PrintStatementContext', PrintNode) ->
+        convert_print_statement(PrintNode, Statement)
     ).
 
-% Function conversion
-convert_function(Node, function(Name, Params, Body)) :-
-    child_value(Node, 'ID', Name),
-    first_child_of_type(Node, 'ParamsContext', ParamsNode),
-    child_values(ParamsNode, 'ID', Params),
-    first_child_of_type(Node, 'FunctionBodyContext', BodyNode),
-    first_child_of_type(BodyNode, 'IndentedStatementContext', IndentNode),
-    first_child_of_type(IndentNode, 'ReturnStatementContext', ReturnNode),
-    first_child_of_type(ReturnNode, 'ExpressionContext', ExprNode),
-    convert_expression(ExprNode, ReturnExpr),
-    Body = [return(ReturnExpr)].
+% If statement conversion
+convert_if_statement(Node, if(Condition, ThenBody, ElseBody)) :-
+    get_child_with_type(Node, 'ExpressionContext', CondNode),
+    convert_expression(CondNode, Condition),
+    get_children_of_type(Node, 'BlockContext', BlockNodes),
+    nth1(1, BlockNodes, ThenBlockNode),
+    convert_block(ThenBlockNode, ThenBody),
+    (nth1(2, BlockNodes, ElseBlockNode) ->
+        convert_block(ElseBlockNode, ElseBody)
+    ; ElseBody = []
+    ).
+
+% Return statement conversion
+convert_return_statement(Node, return(Expression)) :-
+    get_child_with_type(Node, 'ExpressionContext', ExprNode),
+    convert_expression(ExprNode, Expression).
 
 % Assignment conversion
-convert_assignment(Node, assign(Id, Value)) :-
-    get_child_value(Node, 'ID', Id),
+convert_assignment(Node, assign(Name, Type, Expression)) :-
+    get_child_value(Node, 'IDENTIFIER', Name),
+    (get_child_with_type(Node, 'TypeAnnotationContext', TypeAnnNode) ->
+        convert_type_annotation(TypeAnnNode, Type)
+    ; Type = none),
     get_child_with_type(Node, 'ExpressionContext', ExprNode),
-    convert_expression(ExprNode, Value).
+    convert_expression(ExprNode, Expression).
 
-% Method call conversion
-convert_method_call(Node, method_call(Object, Method, Args)) :-
-    get_child_value(Node, 'ID', Object),
-    get_child_with_type(Node, 'ID', MethodNode),
-    value(MethodNode, Method),
-    get_child_with_type(Node, 'ArgsContext', ArgsNode),
-    get_children_of_type(ArgsNode, 'ExpressionContext', ArgNodes),
-    convert_expression_list(ArgNodes, Args).
+% Print statement conversion
+convert_print_statement(Node, print(Expression)) :-
+    get_child_with_type(Node, 'ExpressionContext', ExprNode),
+    convert_expression(ExprNode, Expression).
 
 % Expression conversion
-convert_expression(Node, ast_node(Expr, Loc)) :-
-    node_location(Node, File, Line, Col, Len),
-    Loc = location(File, Line, Col, Len),
-    (get_child_with_type(Node, 'TermContext', TermNode) ->
-        convert_term(TermNode, Expr)
-    ; get_child_with_type(Node, 'ListLiteralContext', _) ->
-        Expr = list([])
-    ; get_child_with_type(Node, 'FunctionCallContext', CallNode) ->
-        convert_function_call(CallNode, Expr)
-    ; convert_binary_expression(Node, Expr)
+convert_expression(Node, Expression) :-
+    (get_child_with_type(Node, 'AtomContext', AtomNode) ->
+        convert_atom(AtomNode, Expression)
+    ; get_children_of_type(Node, 'ExpressionContext', ExprNodes),
+      length(ExprNodes, 2),
+      ExprNodes = [LeftNode, RightNode],
+      % Find operator node of any type that's not an expression
+      child(Node, OpNode),
+      \+ has_type(OpNode, 'ExpressionContext'),
+      value(OpNode, Op),
+      convert_expression(LeftNode, LeftExpr),
+      convert_expression(RightNode, RightExpr),
+      Expression = binary_op(Op, LeftExpr, RightExpr)
+    ; get_child_with_type(Node, 'FunctionCallContext', FuncCallNode) ->
+        convert_function_call(FuncCallNode, Expression)
     ).
+    
+% Atom conversion
+convert_atom(Node, id(Name)) :-
+    get_child_value(Node, 'IDENTIFIER', Name).
+convert_atom(Node, number(Value)) :-
+    get_child_value(Node, 'INTEGER', ValueAtom),
+    atom_number(ValueAtom, Value).
 
 % Function call conversion
 convert_function_call(Node, func_call(Name, Args)) :-
-    get_child_value(Node, 'ID', Name),
-    get_child_with_type(Node, 'ArgsContext', ArgsNode),
-    get_children_of_type(ArgsNode, 'ExpressionContext', ArgNodes),
+    get_child_value(Node, 'IDENTIFIER', Name),
+    get_children_of_type(Node, 'ExpressionContext', ArgNodes),
     convert_expression_list(ArgNodes, Args).
 
-% Binary operation conversion
-convert_binary_op(Node, binary_op(Op, Left, Right)) :-
-    get_child_with_type(Node, 'PLUS', _),
-    Op = '+',
-    get_child_with_type(Node, 'TermContext', LeftNode),
-    convert_term(LeftNode, Left),
-    get_children_of_type(Node, 'TermContext', [_, RightNode]),
-    convert_term(RightNode, Right).
+% Expression list conversion
+% (Remove duplicate definitions if already defined elsewhere)
+% (Ensure that the clauses are together or declare them as discontiguous)
+% Assuming the helper is defined, we don't redefine it here.
 
-% Term conversion
-convert_term(Node, Expr) :-
-    (get_child_with_type(Node, 'ID', IdNode) ->
-        value(IdNode, Value),
-        Expr = id(Value)
-    ; get_child_with_type(Node, 'NUMBER', NumNode) ->
-        value(NumNode, ValueAtom),
-        atom_number(ValueAtom, Value),
-        Expr = number(Value)
-    ).
+%% END OF CONVERSION.pl FILE
