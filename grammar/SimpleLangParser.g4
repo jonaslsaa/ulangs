@@ -1,12 +1,92 @@
 parser grammar SimpleLangParser;
 options { tokenVocab=SimpleLangLexer; }
 
-program: (forStmt | printStmt)*;
+program
+    : (statement | functionDef)*
+    ;
 
-forStmt: FOR ID LT INT GT IN ID COLON block;
+functionDef
+    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON
+      block
+    ;
 
-block: (printStmt)*;
+paramList
+    : param (COMMA param)*
+    ;
 
-printStmt: PRINT LPAREN expr RPAREN;
+param
+    : IDENTIFIER typeAnnotation?
+    ;
 
-expr: ID | NUMBER (PLUS NUMBER)*;
+typeAnnotation
+    : LT type GT
+    ;
+
+type
+    : INT_TYPE
+    | STRING_TYPE
+    | LIST_TYPE typeAnnotation
+    | IDENTIFIER
+    ;
+
+block
+    : statement+
+    ;
+
+statement
+    : assignment
+    | forLoop
+    | ifStatement
+    | functionCall COMMENT?
+    | returnStatement
+    | printStatement
+    | COMMENT
+    ;
+
+assignment
+    : IDENTIFIER typeAnnotation? ASSIGN expression
+    ;
+
+forLoop
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON
+      block
+    ;
+
+ifStatement
+    : IF expression COLON
+      block
+      (ELSE COLON block)?
+    ;
+
+returnStatement
+    : RET typeAnnotation? expression
+    ;
+
+printStatement
+    : PRINT LPAREN expression RPAREN
+    ;
+
+expression
+    : MINUS expression
+    | expression (MULT | DIV | MOD) expression
+    | expression (PLUS | MINUS) expression
+    | expression LE expression
+    | LPAREN expression RPAREN
+    | list
+    | functionCall
+    | atom
+    ;
+
+functionCall
+    : IDENTIFIER LPAREN (expression (COMMA expression)*)? RPAREN
+    ;
+
+list
+    : LBRACK (expression (COMMA expression)*)? RBRACK
+    ;
+
+atom
+    : INTEGER
+    | STRING
+    | IDENTIFIER
+    ;
