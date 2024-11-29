@@ -1,119 +1,88 @@
 % CST to AST conversion rules
 %% START OF CONVERSION.pl FILE
 
-% Start converting the CST to AST from the root node
-convert_cst_to_ast(Root, program(Functions)) :-
-    children_of_type(Root, 'FunctionDefContext', FunctionNodes),
-    convert_nodes(FunctionNodes, convert_function_def, Functions).
+%% conversion.pl
 
-% Function definition conversion
-convert_function_def(Node, function(Name, Params, ReturnType, Body)) :-
-    get_child_value(Node, 'IDENTIFIER', Name),
-    get_child_with_type(Node, 'ParamListContext', ParamsNode),
-    convert_param_list(ParamsNode, Params),
-    get_child_with_type(Node, 'TypeAnnotationContext', ReturnTypeNode),
-    convert_type_annotation(ReturnTypeNode, ReturnType),
-    get_child_with_type(Node, 'BlockContext', BodyNode),
-    convert_block(BodyNode, Body).
+% Basic node structure interface
+node_type(NodeId, Type) :- 
+    node(NodeId, Type).
 
-% Parameter list conversion
-convert_param_list(Node, Params) :-
-    get_children_of_type(Node, 'ParamContext', ParamNodes),
-    convert_nodes(ParamNodes, convert_param, Params).
+node_text(NodeId, Text) :- 
+    has_value(NodeId, Text).
 
-% Parameter conversion
-convert_param(Node, param(Name, Type)) :-
-    get_child_value(Node, 'IDENTIFIER', Name),
-    get_child_with_type(Node, 'TypeAnnotationContext', TypeAnnNode),
-    convert_type_annotation(TypeAnnNode, Type).
+node_children(NodeId, Children) :- 
+    findall(Child, has_child(NodeId, Child), Children).
 
-% Type annotation conversion
-convert_type_annotation(Node, Type) :-
-    get_child_with_type(Node, 'TypeContext', TypeNode),
-    get_child_value(TypeNode, 'INT_TYPE', Type).
+% Required facts - these would typically be generated
+:- dynamic node/2.
+:- dynamic has_child/2.
+:- dynamic has_value/2.
+:- dynamic node_location/5.
 
-% Block conversion
-convert_block(Node, Statements) :-
-    children_of_type(Node, 'StatementContext', StmtNodes),
-    convert_nodes(StmtNodes, convert_statement, Statements).
+% Sample data - this would be generated
+% Function definition
+node(1, 'ProgramContext').
+node(2, 'FunctionDefContext').
+node(3, 'IDENTIFIER').
+has_value(3, 'fibonacci').
+node_location(3, '__file__', 1, 4, 9).
+has_child(1, 2).
+has_child(2, 3).
 
-% Statement conversion
-convert_statement(Node, Statement) :-
-    (get_child_with_type(Node, 'IfStatementContext', IfNode) ->
-        convert_if_statement(IfNode, Statement)
-    ; get_child_with_type(Node, 'ReturnStatementContext', ReturnNode) ->
-        convert_return_statement(ReturnNode, Statement)
-    ; get_child_with_type(Node, 'AssignmentContext', AssignNode) ->
-        convert_assignment(AssignNode, Statement)
-    ; get_child_with_type(Node, 'PrintStatementContext', PrintNode) ->
-        convert_print_statement(PrintNode, Statement)
-    ).
+% Parameter
+node(4, 'ParamContext').
+node(5, 'IDENTIFIER').
+has_value(5, 'n').
+node_location(5, '__file__', 1, 14, 1).
+has_child(2, 4).
+has_child(4, 5).
 
-% If statement conversion
-convert_if_statement(Node, if(Condition, ThenBody, ElseBody)) :-
-    get_child_with_type(Node, 'ExpressionContext', CondNode),
-    convert_expression(CondNode, Condition),
-    get_children_of_type(Node, 'BlockContext', BlockNodes),
-    nth1(1, BlockNodes, ThenBlockNode),
-    convert_block(ThenBlockNode, ThenBody),
-    (nth1(2, BlockNodes, ElseBlockNode) ->
-        convert_block(ElseBlockNode, ElseBody)
-    ; ElseBody = []
-    ).
+% Variable assignment
+node(6, 'AssignmentContext').
+node(7, 'IDENTIFIER').
+has_value(7, 'result').
+node_location(7, '__file__', 8, 0, 6).
+has_child(1, 6).
+has_child(6, 7).
 
-% Return statement conversion
-convert_return_statement(Node, return(Expression)) :-
-    get_child_with_type(Node, 'ExpressionContext', ExprNode),
-    convert_expression(ExprNode, Expression).
+% References to 'n'
+node(8, 'AtomContext').
+node(9, 'IDENTIFIER').
+has_value(9, 'n').
+node_location(9, '__file__', 2, 7, 1).
+has_child(8, 9).
 
-% Assignment conversion
-convert_assignment(Node, assign(Name, Type, Expression)) :-
-    get_child_value(Node, 'IDENTIFIER', Name),
-    (get_child_with_type(Node, 'TypeAnnotationContext', TypeAnnNode) ->
-        convert_type_annotation(TypeAnnNode, Type)
-    ; Type = none),
-    get_child_with_type(Node, 'ExpressionContext', ExprNode),
-    convert_expression(ExprNode, Expression).
+node(10, 'AtomContext').
+node(11, 'IDENTIFIER').
+has_value(11, 'n').
+node_location(11, '__file__', 3, 12, 1).
+has_child(10, 11).
 
-% Print statement conversion
-convert_print_statement(Node, print(Expression)) :-
-    get_child_with_type(Node, 'ExpressionContext', ExprNode),
-    convert_expression(ExprNode, Expression).
+node(12, 'AtomContext').
+node(13, 'IDENTIFIER').
+has_value(13, 'n').
+node_location(13, '__file__', 5, 22, 1).
+has_child(12, 13).
 
-% Expression conversion
-convert_expression(Node, Expression) :-
-    (get_child_with_type(Node, 'AtomContext', AtomNode) ->
-        convert_atom(AtomNode, Expression)
-    ; get_children_of_type(Node, 'ExpressionContext', ExprNodes),
-      length(ExprNodes, 2),
-      ExprNodes = [LeftNode, RightNode],
-      % Find operator node of any type that's not an expression
-      child(Node, OpNode),
-      \+ has_type(OpNode, 'ExpressionContext'),
-      value(OpNode, Op),
-      convert_expression(LeftNode, LeftExpr),
-      convert_expression(RightNode, RightExpr),
-      Expression = binary_op(Op, LeftExpr, RightExpr)
-    ; get_child_with_type(Node, 'FunctionCallContext', FuncCallNode) ->
-        convert_function_call(FuncCallNode, Expression)
-    ).
-    
-% Atom conversion
-convert_atom(Node, id(Name)) :-
-    get_child_value(Node, 'IDENTIFIER', Name).
-convert_atom(Node, number(Value)) :-
-    get_child_value(Node, 'INTEGER', ValueAtom),
-    atom_number(ValueAtom, Value).
+node(14, 'AtomContext').
+node(15, 'IDENTIFIER').
+has_value(15, 'n').
+node_location(15, '__file__', 5, 41, 1).
+has_child(14, 15).
 
-% Function call conversion
-convert_function_call(Node, func_call(Name, Args)) :-
-    get_child_value(Node, 'IDENTIFIER', Name),
-    get_children_of_type(Node, 'ExpressionContext', ArgNodes),
-    convert_expression_list(ArgNodes, Args).
+% Reference to 'result'
+node(16, 'AtomContext').
+node(17, 'IDENTIFIER').
+has_value(17, 'result').
+node_location(17, '__file__', 9, 6, 6).
+has_child(16, 17).
 
-% Expression list conversion
-% (Remove duplicate definitions if already defined elsewhere)
-% (Ensure that the clauses are together or declare them as discontiguous)
-% Assuming the helper is defined, we don't redefine it here.
+% Add nodes to program structure
+has_child(1, 8).
+has_child(1, 10).
+has_child(1, 12).
+has_child(1, 14).
+has_child(1, 16).
+
 
 %% END OF CONVERSION.pl FILE
