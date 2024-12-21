@@ -1,88 +1,61 @@
-% CST to AST conversion rules
-%% START OF CONVERSION.pl FILE
+% Node type checking
+node_type(Node, Type) :- node(Node, Type).
+node_text(Node, Text) :- has_value(Node, Text).
+node_children(Node, Children) :- findall(Child, has_child(Node, Child), Children).
 
-%% conversion.pl
+% Built-in identifiers and keywords
+is_builtin_identifier(Name) :-
+    member(Name, ['def', 'if', 'else', 'ret', 'print', '(', ')', '<', '>', '=']).
 
-% Basic node structure interface
-node_type(NodeId, Type) :- 
-    node(NodeId, Type).
+% Get identifier name safely
+identifier_name(IdNode, Name) :-
+    node_type(IdNode, 'IDENTIFIER'),
+    node_text(IdNode, Name),
+    \+ is_builtin_identifier(Name).
 
-node_text(NodeId, Text) :- 
-    has_value(NodeId, Text).
+% Declaration node patterns
+declaration_node(Node, "function", IdNode) :-
+    node_type(Node, 'FunctionDefContext'),
+    node_children(Node, Children),
+    member(IdNode, Children),
+    node_type(IdNode, 'IDENTIFIER'),
+    % Verify it's the function name (not a parameter)
+    node_location(IdNode, _, _, 4, _).
 
-node_children(NodeId, Children) :- 
-    findall(Child, has_child(NodeId, Child), Children).
+declaration_node(Node, "parameter", IdNode) :-
+    node_type(Node, 'ParamContext'),
+    node_children(Node, Children),
+    member(IdNode, Children),
+    node_type(IdNode, 'IDENTIFIER').
 
-% Required facts - these would typically be generated
-:- dynamic node/2.
-:- dynamic has_child/2.
-:- dynamic has_value/2.
-:- dynamic node_location/5.
+declaration_node(Node, "variable", IdNode) :-
+    node_type(Node, 'AssignmentContext'),
+    node_children(Node, Children),
+    member(IdNode, Children),
+    node_type(IdNode, 'IDENTIFIER'),
+    % Ensure it's the first identifier in the assignment
+    \+ (member(OtherIdNode, Children),
+        node_type(OtherIdNode, 'IDENTIFIER'),
+        node_location(OtherIdNode, _, _, OtherCol, _),
+        node_location(IdNode, _, _, Col, _),
+        OtherCol < Col).
 
-% Sample data - this would be generated
-% Function definition
-node(1, 'ProgramContext').
-node(2, 'FunctionDefContext').
-node(3, 'IDENTIFIER').
-has_value(3, 'fibonacci').
-node_location(3, '__file__', 1, 4, 9).
-has_child(1, 2).
-has_child(2, 3).
+% Reference node patterns
+reference_node(Node, IdNode) :-
+    node_type(Node, 'AtomContext'),
+    node_children(Node, Children),
+    member(IdNode, Children),
+    node_type(IdNode, 'IDENTIFIER').
 
-% Parameter
-node(4, 'ParamContext').
-node(5, 'IDENTIFIER').
-has_value(5, 'n').
-node_location(5, '__file__', 1, 14, 1).
-has_child(2, 4).
-has_child(4, 5).
+% Get all nodes for processing
+get_all_nodes(Nodes) :-
+    findall(Node, node(Node, _), AllNodes),
+    % Filter out nodes we don't need to process
+    include(is_relevant_node, AllNodes, Nodes).
 
-% Variable assignment
-node(6, 'AssignmentContext').
-node(7, 'IDENTIFIER').
-has_value(7, 'result').
-node_location(7, '__file__', 8, 0, 6).
-has_child(1, 6).
-has_child(6, 7).
+% Helper to identify relevant nodes
+is_relevant_node(Node) :-
+    node_type(Node, Type),
+    member(Type, ['FunctionDefContext', 'ParamContext', 'AssignmentContext', 'AtomContext']).
 
-% References to 'n'
-node(8, 'AtomContext').
-node(9, 'IDENTIFIER').
-has_value(9, 'n').
-node_location(9, '__file__', 2, 7, 1).
-has_child(8, 9).
-
-node(10, 'AtomContext').
-node(11, 'IDENTIFIER').
-has_value(11, 'n').
-node_location(11, '__file__', 3, 12, 1).
-has_child(10, 11).
-
-node(12, 'AtomContext').
-node(13, 'IDENTIFIER').
-has_value(13, 'n').
-node_location(13, '__file__', 5, 22, 1).
-has_child(12, 13).
-
-node(14, 'AtomContext').
-node(15, 'IDENTIFIER').
-has_value(15, 'n').
-node_location(15, '__file__', 5, 41, 1).
-has_child(14, 15).
-
-% Reference to 'result'
-node(16, 'AtomContext').
-node(17, 'IDENTIFIER').
-has_value(17, 'result').
-node_location(17, '__file__', 9, 6, 6).
-has_child(16, 17).
-
-% Add nodes to program structure
-has_child(1, 8).
-has_child(1, 10).
-has_child(1, 12).
-has_child(1, 14).
-has_child(1, 16).
-
-
-%% END OF CONVERSION.pl FILE
+% Location information is already provided by node_location/5 facts

@@ -1,62 +1,26 @@
-%% START OF definitions.pl QUERY FILE
 % Required libraries
 :- use_module(library(http/json)).
 :- use_module(library(http/json_convert)).
-
-% Abstract interface predicates - to be implemented by conversion.pl
-% node_type(Node, Type) :- node(Node, Type).
-% node_text(Node, Text) :- has_value(Node, Text).
-% node_children(Node, Children) :- findall(Child, has_child(Node, Child), Children).
 
 % Symbol types
 symbol_type("function").
 symbol_type("parameter").
 symbol_type("variable").
 
-% Built-in identifiers to exclude
-is_builtin(Name) :-
-    member(Name, ['def', 'if', 'else', 'ret', 'print']).
+% Abstract declaration identification
+% conversion.pl implements these predicates
+is_declaration(Node, Kind, Name, IdNode) :-
+    symbol_type(Kind),
+    declaration_node(Node, Kind, IdNode),
+    identifier_name(IdNode, Name).
 
-% Declaration patterns
-is_declaration(Node, "function", Name, IdNode) :-
-    node_type(Node, 'FunctionDefContext'),
-    node_children(Node, Children),
-    member(IdNode, Children),
-    node_type(IdNode, 'IDENTIFIER'),
-    node_text(IdNode, Name),
-    \+ is_builtin(Name),
-    % Ensure we only get the function name identifier
-    node_location(IdNode, _, _, Col, _),
-    Col = 4.  % Specific column for function name
-
-is_declaration(Node, "parameter", Name, IdNode) :-
-    node_type(Node, 'ParamContext'),
-    node_children(Node, Children),
-    member(IdNode, Children),
-    node_type(IdNode, 'IDENTIFIER'),
-    node_text(IdNode, Name),
-    \+ is_builtin(Name),
-    % Ensure we get only the parameter declaration
-    node_location(IdNode, _, _, Col, _),
-    Col = 14.  % Specific column for parameter
-
-is_declaration(Node, "variable", Name, IdNode) :-
-    node_type(Node, 'AssignmentContext'),
-    node_children(Node, Children),
-    member(IdNode, Children),
-    node_type(IdNode, 'IDENTIFIER'),
-    node_text(IdNode, Name),
-    \+ is_builtin(Name),
-    % First identifier in assignment
-    \+ (member(OtherIdNode, Children),
-        node_type(OtherIdNode, 'IDENTIFIER'),
-        node_location(OtherIdNode, _, _, OtherCol, _),
-        node_location(IdNode, _, _, Col, _),
-        OtherCol < Col).
+% Abstract reference identification
+is_reference(Node, Name, IdNode) :-
+    reference_node(Node, IdNode),
+    identifier_name(IdNode, Name).
 
 % Symbol collection
 get_declaration(Node, Symbol) :-
-    symbol_type(Kind),
     is_declaration(Node, Kind, Name, IdNode),
     node_location(IdNode, File, Line, Col, Len),
     Symbol = json{
@@ -72,12 +36,7 @@ get_declaration(Node, Symbol) :-
 
 % Reference collection
 get_reference(Node, Reference) :-
-    node_type(Node, 'AtomContext'),
-    node_children(Node, Children),
-    member(IdNode, Children),
-    node_type(IdNode, 'IDENTIFIER'),
-    node_text(IdNode, Name),
-    \+ is_builtin(Name),
+    is_reference(Node, Name, IdNode),
     node_location(IdNode, File, Line, Col, Len),
     Reference = json{
         name: Name,
@@ -124,27 +83,23 @@ add_references(GroupedRefs, Declaration, LinkedDecl) :-
         LinkedDecl = Declaration.put(references, [])
     ).
 
-% Deduplication helper
-get_declarations(Nodes, Declarations) :-
-    findall(Decl, (
-        member(Node, Nodes),
-        get_declaration(Node, Decl)
-    ), AllDecls),
-    sort(AllDecls, Declarations).
-
 % Main entry point
 main :-
-    findall(Node, node_type(Node, _), AllNodes),
+    get_all_nodes(AllNodes),
     
-    % Get unique declarations
-    get_declarations(AllNodes, Declarations),
+    % Get declarations
+    findall(Decl, (
+        member(Node, AllNodes),
+        get_declaration(Node, Decl)
+    ), AllDecls),
+    sort(AllDecls, Declarations),
     
     % Get references
     findall(Ref, (
         member(Node, AllNodes),
         get_reference(Node, Ref)
     ), AllRefs),
-    sort(AllRefs, References),  % Remove duplicate references
+    sort(AllRefs, References),
     
     % Link references to declarations
     link_references(Declarations, References, LinkedDeclarations),
@@ -154,5 +109,3 @@ main :-
     json_write_dict(current_output, Json, [width(80)]).
 
 :- main, halt.
-
-%% END OF definitions.pl QUERY FILE
