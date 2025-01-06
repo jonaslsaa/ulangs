@@ -82,7 +82,10 @@ selectStmt
     : SELECT distinctClause? selectList FROM tableName (joinClause)* (whereClause)? (groupByClause)? (orderByClause)?
     ;
 
-// e.g. SELECT DISTINCT ...
+/*
+  Optionally allow "DISTINCT".
+  e.g. SELECT DISTINCT *
+*/
 distinctClause
     : DISTINCT
     ;
@@ -91,9 +94,14 @@ selectList
     : selectItem (COMMA selectItem)*
     ;
 
-// e.g. "Books.title", or "AVG(Books.price) AS avg_price"
+/*
+  We explicitly allow the '*' token as a selectItem
+  or expression (with optional AS alias).
+  e.g. SELECT *, SELECT table.*, SELECT expression AS alias
+*/
 selectItem
-    : expression (AS? ID)?
+    : STAR
+    | expression (AS? ID)?
     ;
 
 joinClause
@@ -141,13 +149,6 @@ deleteStmt
 // -----------------------------
 //   EXPRESSIONS & CONDITIONS
 // -----------------------------
-/*
-  A basic expression approach, allowing:
-    - function calls (SUM(...), AVG(...), etc.)
-    - dotted identifiers (table.column)
-    - literal values
-    - parentheses
-*/
 expression
     : functionCall
     | qualifiedName
