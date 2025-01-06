@@ -302,10 +302,8 @@ function createTemporaryFile(dir: string, fileName: string): string {
     return tempFilePath;
 }
 
-export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
-    // const maxRetries = 3;
-
-    const files = findAllCodeFiles(directory, extension, options.recursive);
+async function loadSnippetsByComplexity(directory: string, extension: string, recursive: boolean) {
+    const files = findAllCodeFiles(directory, extension, recursive);
     const snippets = loadFilesToSnippets(files.map(file => path.join(directory, file)));
     if (snippets.length === 0) {
         console.error('No files found with the specified extension!');
@@ -318,6 +316,18 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const highestComplexity = sortedSnippets[sortedSnippets.length - 1];
     console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
     console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
+    
+    return sortedSnippets;
+}
+
+export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
+    // const maxRetries = 3;
+
+    const sortedSnippets = await loadSnippetsByComplexity(directory, extension, options.recursive);
+    if (sortedSnippets === undefined || sortedSnippets.length === 0) {
+        console.error('No files found with the given extension.');
+        return;
+    }
 
     // Create temporary lexer and parser files
     const tempLexerFilePath = createTemporaryFile(outputDir, 'MyLexer.tmp.g4');
@@ -331,7 +341,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const initialParser = loadFile(options.initialParser);
 
     // If both initial lexer and parser are provided, let's just check if they already are syntactically valid
-    let fileNamesThatDidntPass: string[] = [];
+    let fileNamesThatDidntPass: Set<string> = new Set();
     if (initialLexer && initialParser && options.initialLexer && options.initialParser) {
         const errors = await checkGrammarOnMany(options.initialLexer, options.initialParser, sortedSnippets.map(snippet => snippet.filePath));
         if (errors.length === 0) {
@@ -340,7 +350,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         } else {
             console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
-        errors.forEach(error => error.file && fileNamesThatDidntPass.push(error.file));
+        errors.forEach(error => error.file && fileNamesThatDidntPass.add(error.file));
     }
 
     // Build our first intermediate solution.
@@ -356,7 +366,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         initialParser,
         !options.skipFirstGuess,
         snippetsUsedInGuess,
-        fileNamesThatDidntPass
+        [...fileNamesThatDidntPass]
     );
 
     const snippetHistory: Snippet[] = [];
@@ -413,4 +423,29 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     fs.writeFileSync(outputParserFilePath, finalGrammar.parserSource);
     console.log("Wrote final grammar to", outputLexerFilePath, "and", outputParserFilePath);
     ExitAndLogStats();
+}
+
+export async function doVerboseCheck(directory: string, extension: string, lexerPath: string, parserPath: string) {
+    // Check all files in directory with given extension are successfully parsed by the antlr grammar given
+    const snippets = await loadSnippetsByComplexity(directory, extension, true);
+    if (snippets === undefined || snippets.length === 0) {
+        console.error('No files found with the given extension.');
+        return;
+    }
+
+    // Check grammars
+    let fileNamesThatDidntPass: Set<string> = new Set();
+    const errors = await checkGrammarOnMany(lexerPath, parserPath, snippets.map(snippet => snippet.filePath));
+    if (errors.length === 0) {
+        console.log("Loaded grammar (lexer and parser) is syntactically valid!");
+        return;
+    } else {
+        console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
+        console.log("=== Errors ===");
+        console.log(errors);
+    }
+
+    errors.forEach(error => error.file && fileNamesThatDidntPass.add(error.file));
+    console.log(`The following files did not pass the grammar check: ${[...fileNamesThatDidntPass].join(', ')}`);
+    process.exit(1);
 }

@@ -3,12 +3,7 @@ import { assert } from 'console';
 import { callSWIProlog } from '../semantic/call';
 
 import type { CLIGenerateArguments } from '../cli';
-import { checkGrammar } from '../syntactic/check-grammar';
 import { compileANTLRFiles } from '../syntactic/build';
-
-export async function doCheck(file: string) {
-    console.log(await checkGrammar('grammar/SimpleLangLexer.g4', 'grammar/SimpleLangParser.g4', file));
-}
 
 export async function doQuery(file: string, options: CLIGenerateArguments) {
     // TODO: check grammar first
