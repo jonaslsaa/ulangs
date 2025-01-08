@@ -2,9 +2,9 @@ import path from "path";
 import type { CLIInferGrammarArguments } from "../cli";
 import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
-import { loadOpenAIEnvVars, type OpenAIEnv } from "../llm/utils";
+import { loadOpenAIEnvVars, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateCandidateSolutions, generateInitalGuess, repairCandidateSolution, Stats, type GrammarWithMessageHistory, type Grammar, type Snippet } from '../llm/grammar';
+import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
@@ -53,17 +53,13 @@ function createTemporaryDirectory(name: string): string {
     return tempPath;
 }
 
-type TestedGrammar = {
-    grammarWithHistory: GrammarWithMessageHistory;
-    errors?: ANTLRError[];
-    success: boolean;
-    complexity: number;
-};
+type Candidate = {
+    grammar: Grammar;
+    snippets: TestedSnippet[];
+    score: number; // Number of successful tested grammars
+}
 
-async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippet: Snippet): Promise<TestedGrammar> {
-    if (grammarWithHistory.grammar === undefined) {
-        throw new Error("Grammar is undefined");
-    }
+async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedSnippet> {
     // try to build the grammar 
     // by creating temporary directory
     // write grammars to file
@@ -74,11 +70,10 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     // trying to parse the snippet to a tree
     // check if errorlistener has errors
     // return result
-    const grammar = grammarWithHistory.grammar;
-    const testedGrammar: TestedGrammar = {
-        grammarWithHistory: grammarWithHistory,
+    const testedSnippet: TestedSnippet = {
+        onSnippet: snippet,
+        usedGrammar: grammar,
         success: false,
-        complexity: calculateComplexity(`${grammar.lexerSource}\n${grammar.parserSource}`)
     };
 
     const timestamp = new Date().toISOString().replaceAll(':', '-');
@@ -91,13 +86,13 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
     fs.writeFileSync(lexerFilePath, grammar.lexerSource);
     fs.writeFileSync(parserFilePath, grammar.parserSource);
     fs.writeFileSync(codeSnippetFilePath, snippet.snippet);
+    await new Promise(resolve => setTimeout(resolve, 250));
 
-    await new Promise(resolve => setTimeout(resolve, 500));
     try {
-        testedGrammar.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
+        testedSnippet.errors = await checkGrammar(lexerFilePath, parserFilePath, codeSnippetFilePath);
     } catch (error: any) {
         console.error("Failed to check grammar:", error);
-        testedGrammar.errors = [{
+        testedSnippet.errors = [{
             grammarType: 'UNKNOWN',
             source: 'BUILD',
             message: error['message'],
@@ -106,173 +101,189 @@ async function testGrammar(grammarWithHistory: GrammarWithMessageHistory, snippe
             column: undefined,
         }];
     }
-    if (testedGrammar.errors.length > 0) {
-        //console.log("Errors found in grammar:", testedGrammar.errors);
-        return testedGrammar;
-    }
-
-    // console.log(` - ${lexerFilePath}\n - ${parserFilePath}`);
-    testedGrammar.success = true;
-    return testedGrammar;
+    testedSnippet.success = testedSnippet.errors.length === 0;
+    return testedSnippet;
 }
 
-async function testGrammarOnMany(grammarWithHistory: GrammarWithMessageHistory,
-                                    newSnippet: Snippet,
-                                    previousSnippets: Snippet[]): Promise<TestedGrammar> {
+async function testGrammarOnMany(grammar: Grammar,
+    newSnippet: Snippet | undefined,
+    previousSnippets: Snippet[],
+    stopOnFirstFailure: boolean = false): Promise<TestedSnippet[]> {
+
     let numberOfTestsPassed = 0;
     let numberOfTestsTotal = 1 + previousSnippets.length;
-    // Test first on new snippets
-    const TestedGrammarMain = await testGrammar(grammarWithHistory, newSnippet);
-    if (!TestedGrammarMain.success) {
-        console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests. Failed on ${newSnippet.fileName}!`);
-        return TestedGrammarMain;
-    }
-    numberOfTestsPassed++;
-    // Now test all previous snippets
-    const TestedGrammarPrevious = await Promise.all(previousSnippets.map(async previousSnippet => {
-        const TestedGrammarPrevious = await testGrammar(grammarWithHistory, previousSnippet);
-        // TODO: do something with the history/messages?´
-        return TestedGrammarPrevious;
-    }));
-    // If any previous snippets failed, return the first failed snippet
-    for (const TestedGrammar of TestedGrammarPrevious) {
-        if (!TestedGrammar.success) {
-            console.log(`[FAILED] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests."`);
-            return TestedGrammar;
+
+    let newTested: TestedSnippet | undefined = undefined;
+    if (newSnippet) {
+        // Test first on new snippets
+        newTested = await testGrammar(grammar, newSnippet);
+        if (!newTested.success) {
+            console.log(`[FAIL] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests. Failed on ${newSnippet.fileName}!`);
+            if (stopOnFirstFailure) return [newTested];
+        } else {
+            numberOfTestsPassed++;
         }
-        numberOfTestsPassed++;
     }
-    // If all previous snippets succeeded, return the main snippet
-    console.log(`[PASS] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests!`);
-    return TestedGrammarMain;
+
+    // Now test all previous snippets
+    if (stopOnFirstFailure) {
+        for (const previousSnippet of previousSnippets) {
+            const tested = await testGrammar(grammar, previousSnippet);
+            if (!tested.success) return [tested];
+        }
+    }
+    // else, test all previous snippets in parallel
+    const TestedPrevious = await Promise.all(previousSnippets.map(async previousSnippet => {
+        return await testGrammar(grammar, previousSnippet);;
+    }));
+    // Count all the other tests
+    for (const tested of TestedPrevious) {
+        if (tested.success) {
+            numberOfTestsPassed++;
+        }
+    }
+    const failOrPass = numberOfTestsPassed === numberOfTestsTotal ? 'PASS' : 'FAIL';
+    console.log(`[${failOrPass}] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests.`);
+
+    // Return all grammars
+    if (newTested) {
+        return [...TestedPrevious, newTested];
+    } else {
+        return TestedPrevious;
+    }
 }
 
+function getLineOfSource(source: string, lineNumber: number): string {
+    const lines = source.split('\n');
+    if (lineNumber < 1 || lineNumber > lines.length) {
+        throw new Error(`Invalid line number: ${lineNumber}`);
+    }
+    return lines[lineNumber - 1];
+}
 
-async function repairGrammars(openaiEnv: OpenAIEnv, testedGrammars: TestedGrammar[], snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedGrammar | undefined> {
-    console.log("Attempting to repair invalid grammars based on errors...");
-    const maxRetries = 6;
-    const validRepairedGrammars: TestedGrammar[] = [];
-    for (let i = 0; i < maxRetries; i++) {
-        if (i > 0) console.error(` * Repair attempt ${i + 1}/${maxRetries}...`);
-        // Repair all candidate grammars
-        const repairedCandidateGrammars = await Promise.all(testedGrammars.map(async testedGrammar => {
-            const newErrors: ANTLRError[] = [...(testedGrammar.errors ?? [])]
-            // TODO: check that correct errors are being passed, should we filter out errors that are not in the snippet?
-            const r = await repairCandidateSolution(openaiEnv, testedGrammar.grammarWithHistory, newErrors);
-            testedGrammar.grammarWithHistory.messages = r.messages;
-            return r;
-        }));
+function errorToString(error: ANTLRError, lexerSource: string, parserSource: string, codeSnippet: string, showGrammarType: boolean = true): string {
+    const msg = error.message.replaceAll('\n', ' ');
+    const firstPart = error.source === 'BUILD' ? 'While building' : 'Under parsing';
+    const grammarPart = showGrammarType ? ` the ${error.grammarType.toLowerCase()} grammar` : '';
+    let onLine = '';
+    if (error.line) {
+        let sourceCodeLine = '';
+        if (error.source === 'BUILD' && error.grammarType === 'LEXER') sourceCodeLine = getLineOfSource(lexerSource, error.line);
+        if (error.source === 'BUILD' && error.grammarType === 'PARSER') sourceCodeLine = getLineOfSource(parserSource, error.line);
+        if (error.source === 'RUNTIME') sourceCodeLine = getLineOfSource(codeSnippet, error.line);
+        onLine = ` on line ${error.line + 1}: \`${sourceCodeLine}\'`;
+    }
+    return `${firstPart}${grammarPart}${onLine} - ${msg}`;
+}
 
-        // Filter out undefined grammars
-        const repairedCandidateGrammarsFiltered = repairedCandidateGrammars.filter(candidateGrammar =>
-            candidateGrammar.grammar !== undefined
-        );
+export async function repairGrammar(
+    openaiEnv: OpenAIEnv,
+    messages: OpenAIMessage[],  // prior LLM messages or relevant conversation context
+    testedSnippets: TestedSnippet[],       // result(s) after the grammar failed on the `snippet`
+    snippet: Snippet,                      // the snippet that triggered the “need repair” scenario
+    previousSnippets: Snippet[]            // the ones that have passed so far (and must remain passing)
+): Promise<TestedSnippet[]> {
+    /**
+     * This function tries to fix the grammar to parse `snippet` successfully without
+     * breaking previous snippets that were already passing. It uses GPT (or another OpenAI model)
+     * in a loop, up to `maxRetries` times, asking it to “repair” the grammar. Each iteration:
+     *   1. Identifies the first failing snippet (usually `snippet` if `stopOnFirstFailure=true`).
+     *   2. Asks the LLM for a repaired grammar (by constructing a “repair mode” prompt).
+     *   3. Tries the new grammar on the snippet (and re-checks all previously passing snippets).
+     *   4. If it still fails, tries again until success or max attempts.
+     */
+    const maxRetries = 5;
 
-        // Test each repaired candidate grammar
-        const repairedTestedGrammars = await Promise.all(repairedCandidateGrammarsFiltered.map(async candidateGrammar => {
-            const grammar = candidateGrammar.grammar;
-            if (grammar === undefined) {
-                throw new Error('Grammar is undefined');
-            }
-            const g: GrammarWithMessageHistory = {
-                grammar: grammar,
-                messages: candidateGrammar.messages
-            }
-            return await testGrammarOnMany(g, snippet, previousSnippets);
-        }));
+    // Start from the grammar used in the failing test. Typically `testedSnippets[0]` is the new snippet test result
+    // if `stopOnFirstFailure` was used. But if multiple snippets are tested simultaneously,
+    // you might want to find the first one that failed in the array:
+    const firstFailIndex = testedSnippets.findIndex(ts => !ts.success);
+    if (firstFailIndex < 0) {
+        // If everything is already passing, just return what we got:
+        return testedSnippets;
+    }
 
-        // Filter out invalid grammars
-        validRepairedGrammars.push(...repairedTestedGrammars.filter(g => g.success));
-        console.log(`Generated ${repairedTestedGrammars.length} candidate repairs - ${validRepairedGrammars.length} succeeded`);
+    let currentGrammar: Grammar = { ...testedSnippets[firstFailIndex].usedGrammar };
+    let currentTestedSnippets = testedSnippets;
 
-        // Add the score of the repaired grammars to the overall score
-        validRepairedGrammars.forEach(g => Stats.addScore(g.grammarWithHistory.grammar.generatedWithModel));
+    // Attempt to fix the grammar up to maxRetries times
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        console.log(`\n[Repair Attempt ${attempt}/${maxRetries}] Trying to fix grammar for snippet: ${snippet.fileName}`);
 
-        if (validRepairedGrammars.length > 0) {
+        // We build a “repair prompt” that includes the errors from the first failing snippet
+        // (or whichever snippet is failing). We set `repairMode = true` and `includeErrors = true`.
+        // This prompt helps GPT see the current grammar, the snippet, and the error messages
+        // overlaid on the appropriate lines.
+
+        const firstFailTest = currentTestedSnippets.find(ts => !ts.success);
+        if (!firstFailTest) {
+            // No snippet is failing => everything is good, break out early
+            console.log(`All snippets are now passing; no need for further repairs.`);
             break;
         }
-    }
 
-    if (validRepairedGrammars.length === 0) {
-        return undefined;
-    }
+        // Construct a “repair mode” prompt focusing on the first failing snippet.
+        constructPrompt(
+            currentGrammar,
+            firstFailTest,               // the failing TestedSnippet
+            undefined,                   // we pass undefined as the snippets are already included in the conversation history
+            messages,                    // we pass the prior conversation history, this will be updated within this function
+        /* repairMode */ true,
+        /* includeErrors */ true,
+        /* appendToMessage */ `\n(Repair attempt #${attempt}, please correct any mistakes so the code snippet parses successfully without breaking previously passing snippets.)`
+        );
 
-    // Select the best repaired grammar based on complexity
-    let bestRepairedGrammar = validRepairedGrammars[0];
-    if (validRepairedGrammars.length > 1) {
-        console.log("Selecting the best repaired grammar...");
-        for (const grammar of validRepairedGrammars) {
-            if (grammar.complexity < bestRepairedGrammar.complexity) {
-                bestRepairedGrammar = grammar;
-            }
+        // Now we ask the LLM for a repaired grammar
+        console.log(messages);
+        const completionResult = await makeCompletionRequest(
+            openaiEnv,
+            messages,
+            openaiEnv.model,
+        /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
+        /* timeoutSeconds */ 60 * 5
+        );
+
+        if (completionResult.isErr()) {
+            // Something went wrong with the LLM request (e.g., API error or timeout)
+            console.error(`[Repair Attempt ${attempt}] LLM request failed: ${completionResult.error}`);
+            // Decide if you want to continue or break. Here we just break:
+            break;
         }
-    }
 
-    return bestRepairedGrammar;
-}
+        // If we got a successful completion, parse the returned grammar
+        const newGrammar = completionResult.unwrap();
 
-async function generateNextIntermediateSolution(
-    openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar,
-    snippet: Snippet,
-    previousSnippets: Snippet[]
-): Promise<TestedGrammar | undefined> {
-    console.log(`Inferring grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
+        // Update currentGrammar
+        currentGrammar = {
+            ...newGrammar,
+            generatedWithModel: openaiEnv.model,  // e.g., track which model generated it
+        };
 
-    // First see if the current intermediate solution is valid
-    const errors: ANTLRError[] = [];
-    if (currentIntermediateSolution) {
-        const testedGrammar = await testGrammarOnMany({ grammar: currentIntermediateSolution, messages: [] }, snippet, previousSnippets);
-        if (!testedGrammar.success) {
-            console.log("Current intermediate solution is invalid, trying to generate a new one.");
-            if (testedGrammar.errors === undefined || testedGrammar.errors.length === 0) {
-                throw new Error('No errors found in the grammar, but it failed?');
-            }
-            errors.push(...testedGrammar.errors);
+        // Now test the new grammar on (1) the new snippet and (2) the previously passing snippets
+        // If we do “stopOnFirstFailure: true” we only get the first failing snippet. Otherwise we get them all.
+        // Here we do “stopOnFirstFailure: true” so we short-circuit if the snippet fails again.
+        currentTestedSnippets = await testGrammarOnMany(
+            currentGrammar,
+            snippet,
+            previousSnippets,
+        /* stopOnFirstFailure */ true
+        );
+
+        // If the new snippet is now passing, re-check that none of the previously passing snippets
+        // are broken. (If you already used testGrammarOnMany with all snippets at once, you can skip this part.)
+        const stillFailing = currentTestedSnippets.filter(ts => !ts.success);
+        if (stillFailing.length === 0) {
+            console.log(`[Repair Attempt ${attempt}] ✅ Grammar repaired successfully for snippet: ${snippet.fileName}`);
+            return currentTestedSnippets;
         } else {
-            console.log("Current intermediate solution is valid.");
-            return testedGrammar;
+            // The snippet still fails or we broke something else. Try again.
+            console.log(`[Repair Attempt ${attempt}] ❌ Still failing. Will attempt another repair.`);
         }
     }
 
-    // Generate candidate grammars from LLM
-    const N = 20;
-    const candidateGrammars = await generateCandidateSolutions(openaiEnv,
-        currentIntermediateSolution,
-        snippet.snippet,
-        errors,
-        N
-    );
-    console.log(`Generated ${candidateGrammars.length}/${N} candidate grammars`);
-
-    // Test each candidate grammar
-    const testedGrammars = await Promise.all(candidateGrammars.map(async candidateGrammar => {
-        return await testGrammarOnMany(candidateGrammar, snippet, previousSnippets);
-    }));
-
-    // Filter out invalid grammars
-    const validGrammars = testedGrammars.filter(g => g.success);
-    console.log(`Tested ${testedGrammars.length} candidate grammars - ${validGrammars.length} succeeded`);
-
-    // If no valid grammars were found, try to repair them
-    if (validGrammars.length === 0) {
-        return await repairGrammars(openaiEnv, testedGrammars, snippet, previousSnippets);
-    }
-
-    // Give models points for correct grammars
-    validGrammars.forEach(g => Stats.addScore(g.grammarWithHistory.grammar.generatedWithModel));
-
-    // Select the best grammar based on complexity
-    let bestGrammar = validGrammars[0];
-    for (const grammar of validGrammars) {
-        if (grammar.complexity < bestGrammar.complexity) {
-            bestGrammar = grammar;
-        }
-    }
-    if (validGrammars.length > 1) {
-        console.log(`Selected best grammar with complexity ${bestGrammar.complexity}`);
-    }
-    return bestGrammar;
+    // If we reach here, we exhausted the allowed attempts without fully fixing the grammar.
+    console.warn(`\n[Repair] Max attempts (${maxRetries}) reached; returning last tested result.`);
+    return currentTestedSnippets;
 }
 
 const temporaryFileDirectoryRecords = new Set<string>();
@@ -304,29 +315,32 @@ function loadFile(filePath: string | undefined): string | undefined {
 }
 
 async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
-                                                initalLexer: string | undefined,
-                                                initalParser: string | undefined,
-                                                tryOneShot: boolean = false,
-                                                snippets: Snippet[] = [],
-                                                fileNamesThatDidntPass: string[] = []
-                                            ): Promise<Grammar> {
+    initalLexer: string | undefined,
+    initalParser: string | undefined,
+    messages: OpenAIMessage[],
+    snippets: Snippet[] = []
+): Promise<Grammar> {
     let g: Grammar = {
         lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
         parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
     if (initalLexer) g.lexerSource = initalLexer;
     if (initalParser) g.parserSource = initalParser;
+    const includeErrors = !!(initalLexer && initalParser);
 
-    if (tryOneShot) {
-        console.log("Generating initial guess for the first intermediate solution...");
-        const newG = (await generateInitalGuess(openaiEnv, snippets, g.lexerSource, g.parserSource, fileNamesThatDidntPass)).grammar;
-        if (newG === undefined) {
-            throw new Error('Failed to generate initial guess');
-        }
-        g = newG;
+    let firstNonWorkingTestedSnippet: TestedSnippet = {
+        onSnippet: snippets[0],
+        usedGrammar: g,
+        errors: undefined,
+        success: false,
+    };
+    if (initalLexer && initalParser) {
+        firstNonWorkingTestedSnippet = (await testGrammarOnMany(g, undefined, snippets, true))[0];
+        if (firstNonWorkingTestedSnippet.success) throw new Error("First non working snippet should fail!");
     }
 
-    return g;
+    console.log("Generating initial guess for the first intermediate solution...");
+    return await generateInitalGuess(openaiEnv, firstNonWorkingTestedSnippet, snippets, messages, g.lexerSource, g.parserSource, includeErrors);
 }
 
 async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePaths: string[]): Promise<ANTLRError[]> {
@@ -347,10 +361,8 @@ function createTemporaryFile(dir: string, fileName: string): string {
     return tempFilePath;
 }
 
-export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
-    const maxRetries = 3;
-
-    const files = findAllCodeFiles(directory, extension, options.recursive);
+async function loadSnippetsByComplexity(directory: string, extension: string, recursive: boolean) {
+    const files = findAllCodeFiles(directory, extension, recursive);
     const snippets = loadFilesToSnippets(files.map(file => path.join(directory, file)));
     if (snippets.length === 0) {
         console.error('No files found with the specified extension!');
@@ -364,9 +376,75 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
     console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
 
+    return sortedSnippets;
+}
+
+
+async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[]): Promise<Candidate> {
+    if (allSnippets.length === 0) {
+        throw new Error('No tested snippets given.');
+    }
+    console.log(`Saving a candidate, with following score:`);
+    const testedSnippets = await testGrammarOnMany(grammar, undefined, allSnippets);
+    const candidate: Candidate = {
+        grammar: grammar,
+        snippets: testedSnippets,
+        score: testedSnippets.filter(testedSnippet => testedSnippet.success).length,
+    };
+    return candidate;
+}
+
+function compressCodeBlock(message: string): string {
+    const placeholder = "... omitted code block for brevity ...";
+
+    // This regex looks for:
+    // 1) Opening triple backticks ```
+    // 2) Optional language specifier (captured as group #1)
+    // 3) Any text (captured as group #2) until
+    // 4) The closing triple backticks ```
+    //
+    // Explanation:
+    // - `[^\n\r]*` means capture up to a newline (language can be letters, numbers, underscores, etc.)
+    // - `([\s\S]*?)` is a "lazy" match for everything (including newlines) until the first occurrence of ```
+    // - The 'g' flag applies globally so it will replace all code blocks.
+    const codeBlockRegex = /```([^\n\r]*)\n([\s\S]*?)```/g;
+
+    return message.replace(codeBlockRegex, (match, maybeLang, content) => {
+        // maybeLang might be an empty string if no language was specified
+        // Build the replacement:
+        // If there's a language, we keep it on the same line as ```
+        // Then put our placeholder on a new line, and finally close with ```
+        const language = maybeLang.trim();
+        return language
+            ? `\`\`\`${language}\n${placeholder}\n\`\`\``
+            : `\`\`\`\n${placeholder}\n\`\`\``;
+    });
+}
+
+function compressMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
+    return messages.map((message, index) => {
+        if (index === 0 || index === messages.length - 1 || index === messages.length - 2) {
+            // Don't compress the first or last two messages
+            return message;
+        }
+        // Only compress messages with role 'user'
+        if (message.role !== 'user') return message;
+        if (message.content) message.content = compressCodeBlock(message.content.toString());
+        return message;
+    });
+}
+
+export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
+
+    const sortedSnippets = await loadSnippetsByComplexity(directory, extension, options.recursive);
+    if (sortedSnippets === undefined || sortedSnippets.length === 0) {
+        console.error('No files found with the given extension.');
+        return;
+    }
+
     // Create temporary lexer and parser files
-    const tempLexerFilePath = createTemporaryFile(outputDir, 'MyLexer.tmp.g4');
-    const tempParserFilePath = createTemporaryFile(outputDir, 'MyParser.tmp.g4');
+    const partialLexerFilePath = createTemporaryFile(outputDir, 'MyLexer.partial.g4');
+    const partialParserFilePath = createTemporaryFile(outputDir, 'MyParser.partial.g4');
 
     // Load OpenAI environment variables
     const openaiEnv = loadOpenAIEnvVars();
@@ -376,7 +454,6 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const initialParser = loadFile(options.initialParser);
 
     // If both initial lexer and parser are provided, let's just check if they already are syntactically valid
-    let fileNamesThatDidntPass: string[] = [];
     if (initialLexer && initialParser && options.initialLexer && options.initialParser) {
         const errors = await checkGrammarOnMany(options.initialLexer, options.initialParser, sortedSnippets.map(snippet => snippet.filePath));
         if (errors.length === 0) {
@@ -385,85 +462,100 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         } else {
             console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
-        errors.forEach(error => error.file && fileNamesThatDidntPass.push(error.file));
     }
 
+    let messages: OpenAIMessage[] = [];
+
     // Build our first intermediate solution.
-    // Static initialization:
+    // Static initialization (controlled by `options.skipFirstGuess`):
     //      1. Empty grammar (just a template)
     //      2. The initial lexer and parser
     // Dynamic initialization:
     //      1. Guess based on all the snippets
     //      2. Guess based on the snippets and the initial lexer and parser
-    const snippetsUsedInGuess = sortedSnippets.map(snippet => snippet); // TODO: shouldn't be all files ...
+    const snippetsUsedInGuess = sortedSnippets; // TODO:   shouldn't be all the files when building first candidate
+    // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
     let currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
-                                            initialLexer,
-                                            initialParser,
-                                            !options.skipFirstGuess,
-                                            snippetsUsedInGuess,
-                                            fileNamesThatDidntPass
-                                        );
-    
+        initialLexer,
+        initialParser,
+        messages,
+        snippetsUsedInGuess
+    );
 
     const snippetHistory: Snippet[] = [];
-    let didWeGiveUp = false;
-    let lastSnippetBeforeGiveUp: Snippet | undefined = undefined;
+    const candiateHistory: Candidate[] = [];
+
+    candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
 
     for (const snippet of sortedSnippets) {
-        // Write snippet to temporary files
-        fs.writeFileSync(tempLexerFilePath, currentIntermediateSolution.lexerSource);
-        fs.writeFileSync(tempParserFilePath, currentIntermediateSolution.parserSource);
+        // Write grammar to temporary files (lexer and parser)
+        fs.writeFileSync(partialLexerFilePath, currentIntermediateSolution.lexerSource);
+        fs.writeFileSync(partialParserFilePath, currentIntermediateSolution.parserSource);
 
-        let nextIntermediateSolution: TestedGrammar | undefined = undefined;
+        // Test current solution against this snippet and history
+        const testedSnippets = await testGrammarOnMany(currentIntermediateSolution, snippet, snippetHistory);
+        const completeSuccess = testedSnippets.every(testedSnippet => testedSnippet.success);
 
-        for (let i = 0; i < maxRetries; i++) {
-            if (i > 0) {
-                console.error(` * Retry attempt ${i + 1}/${maxRetries}...`);
+        if (!completeSuccess) {
+            console.log("Current solution failed some tests, attempting repair...");
+            // Try to repair the grammar
+            const repairedTestedSnippets = await repairGrammar(openaiEnv, messages, testedSnippets, snippet, snippetHistory);
+            if (repairedTestedSnippets.length === 0) {
+                throw new Error("What happened to all the repaired snippets?");
             }
+            currentIntermediateSolution = repairedTestedSnippets[0].usedGrammar;
+            candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
 
-            nextIntermediateSolution = await generateNextIntermediateSolution(
-                openaiEnv,
-                currentIntermediateSolution,
-                snippet,
-                snippetHistory
-            );
-            if (nextIntermediateSolution) {
-                break;
-            }
-        }
-
-        if (nextIntermediateSolution) {
-            currentIntermediateSolution = nextIntermediateSolution.grammarWithHistory.grammar;
-        } else {
-            didWeGiveUp = true;
-            lastSnippetBeforeGiveUp = snippet;
-            break;
+            // Compress the messages
+            messages = compressMessages(messages);
         }
 
         snippetHistory.push(snippet);
         console.log(`[New intermediate solution] Inferred grammar from ${snippet.fileName} (complexity=${calculateComplexity(snippet.snippet)})`);
     }
 
-    const finalGrammar = currentIntermediateSolution;
-    if (finalGrammar === undefined) {
+    // Find the best scored candidate
+    const bestCandidate = candiateHistory.sort((a, b) => b.score - a.score)[0];
+    if (bestCandidate.snippets.length === 0) {
         console.error("Failed to find ANY valid grammar!");
         ExitAndLogStats(1);
         return;
     }
-
-    if (didWeGiveUp) {
-        console.log("Couldn't pass following snippets:", [...snippetHistory, lastSnippetBeforeGiveUp!].map(snippet => snippet.fileName).join(', '));
-        console.error("Failed to find a final grammar.");
-        ExitAndLogStats(1);
-    } else {
-        console.log("A final solution found with complexity", calculateComplexity(finalGrammar.lexerSource + finalGrammar.parserSource));
+    console.log("A final solution found with complexity", calculateComplexity(bestCandidate.grammar.lexerSource + bestCandidate.grammar.parserSource));
+    if (bestCandidate.score !== bestCandidate.snippets.length) {
+        console.log("NOTE: this isn't a perfect solution, it only covers", bestCandidate.score, "of", bestCandidate.snippets.length, "snippets.");
     }
 
     // Write to current directory
     const outputLexerFilePath = path.join(outputDir, 'MyLexer.g4');
     const outputParserFilePath = path.join(outputDir, 'MyParser.g4');
-    fs.writeFileSync(outputLexerFilePath, finalGrammar.lexerSource);
-    fs.writeFileSync(outputParserFilePath, finalGrammar.parserSource);
+    fs.writeFileSync(outputLexerFilePath, bestCandidate.grammar.lexerSource);
+    fs.writeFileSync(outputParserFilePath, bestCandidate.grammar.parserSource);
     console.log("Wrote final grammar to", outputLexerFilePath, "and", outputParserFilePath);
     ExitAndLogStats();
+}
+
+export async function doVerboseCheck(directory: string, extension: string, lexerPath: string, parserPath: string) {
+    // Check all files in directory with given extension are successfully parsed by the antlr grammar given
+    const snippets = await loadSnippetsByComplexity(directory, extension, true);
+    if (snippets === undefined || snippets.length === 0) {
+        console.error('No files found with the given extension.');
+        return;
+    }
+
+    // Check grammars
+    let fileNamesThatDidntPass: Set<string> = new Set();
+    const errors = await checkGrammarOnMany(lexerPath, parserPath, snippets.map(snippet => snippet.filePath));
+    if (errors.length === 0) {
+        console.log("Loaded grammar (lexer and parser) is syntactically valid!");
+        return;
+    } else {
+        console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
+        console.log("=== Errors ===");
+        console.log(errors);
+    }
+
+    errors.forEach(error => error.file && fileNamesThatDidntPass.add(error.file));
+    console.log(`The following files did not pass the grammar check: ${[...fileNamesThatDidntPass].join(', ')}`);
+    process.exit(1);
 }

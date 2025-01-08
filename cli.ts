@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { doCheck, doQuery } from './actions/query';
-import { doInferGrammar } from './actions/inferGrammar';
+import { doQuery } from './actions/query';
+import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
 
 const cli = new Command();
@@ -27,10 +27,13 @@ cli.command('query')
     });
 
 cli.command('check')
-    .description('Check if a file is syntactically valid')
-    .argument('<file>', 'File to check')
-    .action(async (file: string) => {
-        doCheck(file);
+    .description('Checks if source files can be parsed by given grammar')
+    .argument('<directory>', 'Directory to check')
+    .argument('<extension>', 'File extension to check, ex: .pyl')
+    .argument('<lexer>', 'Lexer file to use')
+    .argument('<parser>', 'Parser file to use')
+    .action(async (directory: string, extension: string, lexer: string, parser: string) => {
+        doVerboseCheck(directory, extension, lexer, parser);
     });
 
 
@@ -38,7 +41,6 @@ export type CLIInferGrammarArguments = {
     recursive: boolean;
     initialLexer: string | undefined;
     initialParser: string | undefined;
-    skipFirstGuess: boolean;
 };
 
 cli.command('infer-grammar')
@@ -49,7 +51,7 @@ cli.command('infer-grammar')
     .option('-iL, --initial-lexer <path>', 'Use a file as a starting point for the lexer', undefined)
     .option('-iP, --initial-parser <path>', 'Use a file as a starting point for the parser', undefined)
     .option('-R, --recursive', 'Detect grammar from subdirectories', false)
-    .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
+    // .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
     .action(async (directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) => {
         // Check if the directory exists
         if (!fs.existsSync(directory)) {

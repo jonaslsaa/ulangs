@@ -28,10 +28,10 @@ LPAREN: '(';
 RPAREN: ')';
 LBRACK: '[';
 RBRACK: ']';
-LANGLE: '<';
-RANGLE: '>';
 COLON: ':';
 COMMA: ',';
+LT: '<';
+GT: '>';
 
 // Literals
 INTEGER: [0-9]+;

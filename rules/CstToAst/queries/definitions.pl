@@ -1,66 +1,111 @@
-% Core helpers for symbol gathering
-get_declaration(Node, json{
-    name: Name,
-    kind: Type,
-    location: json{file: File, line: Line, col: Col, len: Len}
-}) :-
-    (
-        % Function declaration
-        (get_child_with_type(Node, 'FunctionContext', FuncNode),
-        get_child_with_type(FuncNode, 'ID', IdNode),
-        Type = "function")
-    ;
-        % Parameter declarations
-        (get_child_with_type(Node, 'ParamsContext', ParamsNode),
-        get_child_with_type(ParamsNode, 'ID', IdNode),
-        Type = "parameter")
-    ),
-    value(IdNode, Name),
-    node_location(IdNode, File, Line, Col, Len).
+% Required libraries
+:- use_module(library(http/json)).
+:- use_module(library(http/json_convert)).
 
-get_reference(Node, json{
-    name: Name,
-    location: json{file: File, line: Line, col: Col, len: Len}
-}) :-
-    get_child_with_type(Node, 'ID', IdNode),
-    value(IdNode, Name),
-    % Exclude declaration locations
+% Symbol types
+symbol_type("function").
+symbol_type("parameter").
+symbol_type("variable").
+
+% Abstract declaration identification
+% conversion.pl implements these predicates
+is_declaration(Node, Kind, Name, IdNode) :-
+    symbol_type(Kind),
+    declaration_node(Node, Kind, IdNode),
+    identifier_name(IdNode, Name).
+
+% Abstract reference identification
+is_reference(Node, Name, IdNode) :-
+    reference_node(Node, IdNode),
+    identifier_name(IdNode, Name).
+
+% Symbol collection
+get_declaration(Node, Symbol) :-
+    is_declaration(Node, Kind, Name, IdNode),
     node_location(IdNode, File, Line, Col, Len),
-    \+ ((get_declaration(_, Decl),
-         Decl.name = Name,
-         Decl.location = json{file: File, line: Line, col: Col, len: Len})).
+    Symbol = json{
+        name: Name,
+        kind: Kind,
+        location: json{
+            file: File,
+            line: Line,
+            col: Col,
+            len: Len
+        }
+    }.
 
+% Reference collection
+get_reference(Node, Reference) :-
+    is_reference(Node, Name, IdNode),
+    node_location(IdNode, File, Line, Col, Len),
+    Reference = json{
+        name: Name,
+        location: json{
+            file: File,
+            line: Line,
+            col: Col,
+            len: Len
+        }
+    },
+    % Exclude declarations
+    \+ (get_declaration(_, json{
+        name: Name,
+        location: json{
+            file: File,
+            line: Line,
+            col: Col,
+            len: Len
+        }
+    })).
+
+% Reference linking
 link_references(Declarations, References, LinkedDeclarations) :-
-    maplist(add_references(References), Declarations, LinkedDeclarations).
+    group_references(References, GroupedRefs),
+    maplist(add_references(GroupedRefs), Declarations, LinkedDeclarations).
 
-add_references(AllRefs, Decl, LinkedDecl) :-
-    findall(Ref, (
-        member(Ref, AllRefs),
-        Ref.name = Decl.name
-    ), DeclRefs),
-    LinkedDecl = Decl.put(references, DeclRefs).
+group_references(References, GroupedRefs) :-
+    findall(Name-Refs, (
+        member(Ref, References),
+        Ref.name = Name,
+        findall(RefLoc, (
+            member(R, References),
+            R.name = Name,
+            R.location = RefLoc
+        ), Refs)
+    ), Pairs),
+    list_to_set(Pairs, GroupedRefs).
 
+add_references(GroupedRefs, Declaration, LinkedDecl) :-
+    Declaration.name = Name,
+    (member(Name-Refs, GroupedRefs) ->
+        LinkedDecl = Declaration.put(references, Refs)
+    ;
+        LinkedDecl = Declaration.put(references, [])
+    ).
+
+% Main entry point
 main :-
-    % Collect all declarations and references
-    findall(Decl, (
-        get_all_descendants(1, Descendants),
-        member(Node, Descendants),
-        get_declaration(Node, Decl)
-    ), Declarations),
+    get_all_nodes(AllNodes),
     
+    % Get declarations
+    findall(Decl, (
+        member(Node, AllNodes),
+        get_declaration(Node, Decl)
+    ), AllDecls),
+    sort(AllDecls, Declarations),
+    
+    % Get references
     findall(Ref, (
-        get_all_descendants(1, Descendants),
-        member(Node, Descendants),
+        member(Node, AllNodes),
         get_reference(Node, Ref)
-    ), References),
+    ), AllRefs),
+    sort(AllRefs, References),
     
     % Link references to declarations
     link_references(Declarations, References, LinkedDeclarations),
     
-    % Create final JSON structure
+    % Output JSON
     Json = json{symbols: LinkedDeclarations},
-    
-    % Output as JSON
     json_write_dict(current_output, Json, [width(80)]).
 
 :- main, halt.

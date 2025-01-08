@@ -1,8 +1,9 @@
 import OpenAI from "openai";
-import { type OpenAIEnv } from "./utils";
+import { type OpenAIEnv, type OpenAIMessage, loadOpenAIEnvVars } from './utils';
 import { TimeoutError, timeout } from 'promise-timeout';
-import { grammarGenerationSystemMessage } from "./prompts";
+import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
+import { Err, Ok, type Result } from "../result";
 
 export type Grammar = {
     lexerSource: string;
@@ -10,23 +11,18 @@ export type Grammar = {
     generatedWithModel?: string;
 };
 
-export type GrammarWithMessageHistory = {
-    grammar: Grammar;
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-};
-
-export type MaybeGrammarWithHistory = {
-    grammar?: Grammar;
-    error?: string;
-    completion?: string;
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
-};
-
 export type Snippet = {
     snippet: string;
     fileName: string;
     filePath: string;
 }
+
+export type TestedSnippet = {
+    onSnippet: Snippet;
+    usedGrammar: Grammar;
+    errors?: ANTLRError[];
+    success: boolean;
+};
 
 export const Stats = {
     totalRequests: 0,
@@ -50,18 +46,7 @@ export const Stats = {
         this.totalCompletedRequests++;
         this.inputTokens += inputTokens;
         this.outputTokens += outputTokens;
-    },
-    addScore(modelName: string | undefined) {
-        if (!modelName) {
-            console.error('addScore: Model name is undefined');
-            return;
-        }
-        if (this.score.has(modelName)) {
-            this.score.set(modelName, this.score.get(modelName)! + 1);
-        } else {
-            this.score.set(modelName, 1);
-        }
-    },
+    }
 }
 
 function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
@@ -77,12 +62,14 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     // add errors to the errorOnLineMap
     for (const error of errors) {
         if (error.line === undefined) {
-            throw new Error(`Error line number is undefined, this shouldn't happen!!!`);
+            throw new Error(`Error line number is undefined, this really shouldn't happen!!!: ${error.message}`);
         }
         const lineNumber = error.line - 1;
         // check if the line number is valid
         if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
-            throw new Error(`Invalid line number: ${lineNumber}, this shouldn't happen!!!`);
+            console.warn(`Invalid line number: ${lineNumber}: ${error.message}`);
+            error.grammarType = 'UNKNOWN';
+            //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
         }
         if (!errorOnLineMap.has(lineNumber)) {
             errorOnLineMap.set(lineNumber, []);
@@ -93,8 +80,9 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     // for each line in map, add a comment with the errors
     for (const [lineNumber, errorsOnLine] of errorOnLineMap.entries()) {
         const line = newCodeLines[lineNumber];
-        let allErrors = errorsOnLine.map(error => errorToString(error, false)).join(', ');
-        const trimLength = 64;
+        // todo: de-dupe errors
+        let allErrors = errorsOnLine.map(error => error.message).join(', ');
+        const trimLength = 256;
         if (allErrors.length >= trimLength) {
             allErrors = allErrors.substring(0, trimLength-1) + '...';
         }
@@ -104,125 +92,150 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     return newCodeLines.join('\n');   
 }
 
-function constructPrompt(currentIntermediateSolution: Grammar, 
-    codeSnippet: string, 
-    errors: ANTLRError[],
-    appendToMessage: string = ''
+export function constructPrompt(currentIntermediateSolution: Grammar,
+                        firstNonWorkingTestedSnippet: TestedSnippet,
+                        allTestedSnippets: Snippet[] | undefined,
+                        messages: OpenAIMessage[],
+                        repairMode: boolean = false,
+                        includeErrors: boolean = false,
+                        appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
+    if (allTestedSnippets?.length === 0) {
+        throw new Error('No tested snippets given.');
+    }
 
     // Add system message
-    messages.push({
-        role: 'system',
-        content: grammarGenerationSystemMessage
-    });
-
-    // Add error messages
-    // Overlay the error messages on the code by adding a comment
-    const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER');
-    const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER');
-    const lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
-    const parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
-
-    // Put other error messages in its own block
-    const otherErrorMessages = errors.filter(error => error.line === undefined || error.grammarType === 'UNKNOWN')
-    let otherErrorsBlock = '';
-    if (otherErrorMessages.length > 0) {
-        otherErrorsBlock = `<OtherErrors>
-${otherErrorMessages.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
-</OtherErrors>`;
+    if (messages.length === 0) {
+        messages.push({
+            role: 'user',
+            content: grammarGenerationDeveloperMessage
+        },
+        {
+            role: 'assistant',
+            content: 'Understood, I\'m ready.'
+        });
     }
+
+    let lexerSource = currentIntermediateSolution.lexerSource;
+    let parserSource = currentIntermediateSolution.parserSource;
+    let snippetWithErrors = firstNonWorkingTestedSnippet.onSnippet.snippet;
+    let strThereAreErrorsInSnippets = '';
+    let strThereAreErrorsInLexerOrParser = '';
+    let otherErrorsBlock = '';
+
+    if (includeErrors) {
+        const errors = firstNonWorkingTestedSnippet.errors;
+        const codeSnippet = firstNonWorkingTestedSnippet.onSnippet.snippet;
+        if (errors == undefined) throw new Error('No errors found in firstNonWorkingTestedSnippet');
+
+        // Add error messages
+        // Overlay the error messages on the code by adding a comment
+        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'BUILD');
+        const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'BUILD');
+        lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
+        parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
+
+        const runtimeErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'RUNTIME');
+
+        const remainingErrors = errors.filter(error => !(lexerErrorsWithLine.includes(error) || parserErrorsWithLine.includes(error) || runtimeErrorsWithLine.includes(error)));
+
+        // Overlay the runtime errors on the code snippet
+        snippetWithErrors = overlayErrorsOnCode(codeSnippet, runtimeErrorsWithLine);
+
+        // Put other error messages in its own block
+        if (remainingErrors.length > 0) {
+            otherErrorsBlock = `<OtherErrors>
+    ${remainingErrors.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
+    </OtherErrors>`;
+        }
+
+        const isLexerOrParserErrors = lexerErrorsWithLine.length > 0 || parserErrorsWithLine.length > 0;
+        const isRuntimeErrors = runtimeErrorsWithLine.length > 0;
+
+        strThereAreErrorsInSnippets = isRuntimeErrors ? '(I\'ve put the errors in // comments)' : '';
+        strThereAreErrorsInLexerOrParser = isLexerOrParserErrors ? '(I\'ve put the errors in // comments)' : '';
+    }
+
+    const endMsg = repairMode ? 'What\'s wrong here? Repair my ANTLR4 lexer and parser grammars so that the code snippets can be parsed.'
+                            : 'Write the complete ANTLR4 lexer and parser grammars so that all the code snippets can be parsed!';
 
     // Add user message
     messages.push({
         role: 'user',
-        content: `Here is my current ANTLR4 code:
-<LexerGrammar>
+        content: `<AllCodeSnippets>
+${allTestedSnippets ? allTestedSnippets.map(s => s.snippet).join('\n\n=== next file ===\n\n') : '... previously given ...'}
+</AllCodeSnippets>
+
+Right now, I'm trying to parse the following code snippet ${strThereAreErrorsInSnippets}:
+\`\`\`
+${snippetWithErrors}
+\`\`\`
+Here is my current ANTLR4 code ${strThereAreErrorsInLexerOrParser}:
+<MyLexer.g4>
 \`\`\`antlr
 ${lexerSource}
 \`\`\`
-</LexerGrammar>
-<ParserGrammar>
+</MyLexer.g4>
+<MyParser.g4>
 \`\`\`antlr
 ${parserSource}
 \`\`\`
-</ParserGrammar>
+</MyParser.g4>
 ${otherErrorsBlock}
-Complete the ANTLR4 lexer and parser grammars for the following code snippet. ${appendToMessage}
-\`\`\`
-${codeSnippet}
-\`\`\`
-Start by shortly thinking step-by-step.`
+
+${endMsg} ${appendToMessage}
+`
     });
     return messages;
 }
 
-function parseCompletionToGrammar(completion: string | null): MaybeGrammarWithHistory {
+function parseCompletionToGrammar(completion: string | null): Result<Grammar> {
     if (completion === null) {
-        return {
-            error: 'No completion provided',
-            messages: []
-        };
+        return Err('No completion provided');
     }
     // Find all ```antlr blocks
     const antlrBlocks = completion.match(/```antlr\n([\s\S]*?)```/g);
     if (antlrBlocks === null) {
-        return {
-            error: 'No Antlr blocks found in completion',
-            completion: completion,
-            messages: []
-        };
+        return Err('No Antlr blocks found in completion');
     }
 
     // Identify the lexer and parser blocks
-    const lexerBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('lexer grammar'));
-    const parserBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('parser grammar'));
-    if (lexerBlock === undefined || parserBlock === undefined) {
-        return {
-            error: 'No lexer or parser block found in completion',
-            completion: completion,
-            messages: []
-        };
+    const lexerBlocks = antlrBlocks.filter(block => block.trim().substring(0, 64).includes('lexer grammar'));
+    const parserBlocks = antlrBlocks.filter(block => block.trim().substring(0, 64).includes('parser grammar'));
+    if (lexerBlocks.length === 0 || parserBlocks.length === 0) {
+        return Err('No lexer or parser blocks found in completion');
     }
+    // Choose the largest lexer and parser blocks
+    const lexerBlock = lexerBlocks.sort((a, b) => b.length - a.length)[0];
+    const parserBlock = parserBlocks.sort((a, b) => b.length - a.length)[0];
 
     // Extract the lexer and parser to just the code without the Antlr block
     const lexerSource = lexerBlock.replace('```antlr\n', '').replace('```', '');
     const parserSource = parserBlock.replace('```antlr\n', '').replace('```', '');
 
-    return {
-        grammar: {
-            lexerSource,
-            parserSource,
-        },
-        completion: completion,
-        messages: []
-    };
+    return Ok({
+        lexerSource,
+        parserSource,
+    })
 }
 
-async function makeCompletionRequest(
+export async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-    model?: string,
+    model: string,
     debug: undefined | 'input' | 'output' | 'both' = undefined,
-    timeoutSeconds: number = 60,
-): Promise<MaybeGrammarWithHistory> {
-    // random sleep to avoid rate limiting
-    const randomSleep = Math.floor(Math.random() * 5000); // Up to 5 seconds
-    await new Promise(resolve => setTimeout(resolve, randomSleep));
-    const models = ["ai21/jamba-1-5-mini", "google/gemini-flash-1.5", "openai/gpt-4o-mini-2024-07-18"];
-    let usingModel: string;
-    if (model !== undefined) { usingModel = model; }
-    else { usingModel = models[Math.floor(Math.random() * models.length)]; }
+    timeoutSeconds: number = 240,
+): Promise<Result<Grammar>> {
     try {
         const openai = new OpenAI({
             baseURL: openaiEnv.baseUrl,
             apiKey: openaiEnv.apiKey,
         });
         const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-            model: model || usingModel, // If no model is provided, use a random one
+            model: model,
             messages: messages,
-            max_tokens: 4096,
-            temperature: 0.8,
+            max_completion_tokens: 32000,
+            //temperature: 0.8,
         };
 
         Stats.addRequest();
@@ -235,121 +248,40 @@ async function makeCompletionRequest(
         if (debug === 'input' || debug === 'both') console.log(messages);
         if (debug === 'output' || debug === 'both') console.log(content);
         
-        // Create new messages array with assistant's response
-        const updatedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
-            role: 'assistant',
-            content: content
-        }];
-        
         const result = parseCompletionToGrammar(content);
-        result.messages = [...messages, ...updatedMessages];
-        if (result.grammar) result.grammar.generatedWithModel = usingModel;
 
         if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
+
+        // Add the assistant completion to the messages
+        messages.push({
+            role: 'assistant',
+            content: content
+        });
 
         return result;
     } catch (error) {
         if (error instanceof TimeoutError) {
-            return {
-                error: `Request timed out after ${timeoutSeconds} seconds (model: ${usingModel}).`,
-                messages: messages
-            };
+            return Err(`Request timed out after ${timeoutSeconds} seconds (model: ${model}).`);
         }
         console.error(error);
-        return {
-            error: `API request failed: ${error instanceof Error ? error.message : String(error)}`,
-            messages: messages
-        };
+        return Err(`API request failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
-export async function generateCandidateSolutions(
-    openaiEnv: OpenAIEnv,
-    currentIntermediateSolution: Grammar,
-    codeSnippet: string,
-    errors: ANTLRError[] = [],
-    n = 2
-): Promise<GrammarWithMessageHistory[]> { 
-
-    const messages = constructPrompt(currentIntermediateSolution, codeSnippet, errors);
-
-    // Create array of n identical requests
-    const requests = Array(n).fill(null).map(() => 
-        makeCompletionRequest(openaiEnv, messages)
-    );
-
-    // Execute all requests in parallel
-    const results = await Promise.all(requests);
-
-    // Extract the grammars that were parsed successfully
-    const successfulGrammars = results.filter(result => result.error === undefined && result.grammar !== undefined);
-    
-    // Log bad grammars
-    const badGrammars = results.filter(result => result.error !== undefined);
-    if (badGrammars.length > 0) {
-        console.error('Bad grammar generations:');
-        badGrammars.forEach(result => {
-            console.error(result.error);
-            if (result.completion) {
-                console.log(result.completion);
-            }
-        });
-    }
-
-    if (successfulGrammars.length === 0) {
-        throw new Error('No successful grammars found');
-    }
-
-    // Convert successful results to GrammarWithMessageHistory
-    return successfulGrammars.map(result => ({
-        grammar: result.grammar!, // ! is fine since we filtered out the ones that didn't have a grammar
-        messages: result.messages
-    }));
-}
-
-export async function repairCandidateSolution(
-    openaiEnv: OpenAIEnv,
-    candidateSolution: GrammarWithMessageHistory,
-    newErrors: ANTLRError[]
-) {
-    if (newErrors.length === 0) {
-        throw new Error('No new errors provided');
-    }
-    const messages = candidateSolution.messages;
-    messages.push({
-        role: 'user',
-        content: `I got some errors:
-<Errors>
-${newErrors.map(error => errorToString(error)).join('\n')}
-</Errors>
-Repair the grammar to fix the errors (same output format as before).`
-    });
-    const repairedGrammar = await makeCompletionRequest(openaiEnv, messages);
-    return {
-        grammar: repairedGrammar.grammar,
-        messages: repairedGrammar.messages
-    };
-}
-
-export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: Snippet[], initalLexer: string | undefined, initalParser: string | undefined, fileNamesThatDidntPass: string[] = []) {
-    const combinedSnippets = snippets.map(snippet => {
-        const didNotPass = fileNamesThatDidntPass.includes(snippet.filePath); // TODO: not the best way to do this
-        const didNotPassString = didNotPass ? '// This snippet did not pass the grammar check!\n' : '';
-        return `<File: ${snippet.fileName}>
-${didNotPassString}
-${snippet.snippet}
-</File>`;
-    }).join('\n');
+export async function generateInitalGuess(openaiEnv: OpenAIEnv,
+                                        firstNonWorkingTestedSnippet: TestedSnippet,
+                                        allTestedSnippets: Snippet[],
+                                        messages: OpenAIMessage[],
+                                        initalLexer: string | undefined,
+                                        initalParser: string | undefined,
+                                        includeErrors: boolean = false,
+                                        ) {
     const tempSolution: Grammar = {
         lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
-    const appendToMessage = "Write a complete solution by analyzing the semantics of the code and choosing the appropriate abstractions, and the use of generic rules. You are Terence Parr, the creator of ANTLR.";
-    const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
-    // console.log("LAST MESSAGE\n", messages[messages.length - 1], "\n-----------");
-    const completion = await makeCompletionRequest(openaiEnv, messages, "anthropic/claude-3.5-sonnet", undefined, 60*5);
-    return {
-        grammar: completion.grammar,
-        messages: completion.messages
-    };
+
+    constructPrompt(tempSolution, firstNonWorkingTestedSnippet, allTestedSnippets, messages, false, includeErrors);
+    const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, undefined, 60*5);
+    return completion.unwrap();
 }

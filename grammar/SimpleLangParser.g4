@@ -2,21 +2,12 @@ parser grammar MyParser;
 options { tokenVocab=MyLexer; }
 
 program
-    : statement*
-    ;
-
-statement
-    : functionDef
-    | assignment
-    | expression
-    | forLoop
-    | ifStatement
-    | returnStatement
-    | printStatement
+    : (statement | functionDef)*
     ;
 
 functionDef
-    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON block
+    : DEF IDENTIFIER LPAREN paramList? RPAREN typeAnnotation? COLON
+      block
     ;
 
 paramList
@@ -28,13 +19,13 @@ param
     ;
 
 typeAnnotation
-    : LANGLE type RANGLE
+    : LT type GT
     ;
 
 type
     : INT_TYPE
     | STRING_TYPE
-    | LIST_TYPE LANGLE type RANGLE
+    | LIST_TYPE typeAnnotation
     | IDENTIFIER
     ;
 
@@ -42,20 +33,33 @@ block
     : statement+
     ;
 
+statement
+    : assignment
+    | forLoop
+    | ifStatement
+    | functionCall COMMENT?
+    | returnStatement
+    | printStatement
+    | COMMENT
+    ;
+
 assignment
     : IDENTIFIER typeAnnotation? ASSIGN expression
     ;
 
 forLoop
-    : FOR IDENTIFIER typeAnnotation? IN expression COLON block
+    : FOR IDENTIFIER typeAnnotation? IN expression COLON
+      block
     ;
 
 ifStatement
-    : IF expression COLON block (ELSE COLON block)?
+    : IF expression COLON
+      block
+      (ELSE COLON block)?
     ;
 
 returnStatement
-    : RET typeAnnotation? expression?
+    : RET typeAnnotation? expression
     ;
 
 printStatement
@@ -63,28 +67,26 @@ printStatement
     ;
 
 expression
-    : primary
-    | expression operator expression
-    | MINUS expression
-    | functionCall
-    | listLiteral
-    ;
-
-primary
-    : INTEGER
-    | STRING
-    | IDENTIFIER
+    : MINUS expression
+    | expression (MULT | DIV | MOD) expression
+    | expression (PLUS | MINUS) expression
+    | expression LE expression
     | LPAREN expression RPAREN
-    ;
-
-operator
-    : PLUS | MINUS | MULT | DIV | MOD | LE
+    | list
+    | functionCall
+    | atom
     ;
 
 functionCall
     : IDENTIFIER LPAREN (expression (COMMA expression)*)? RPAREN
     ;
 
-listLiteral
+list
     : LBRACK (expression (COMMA expression)*)? RBRACK
+    ;
+
+atom
+    : INTEGER
+    | STRING
+    | IDENTIFIER
     ;
