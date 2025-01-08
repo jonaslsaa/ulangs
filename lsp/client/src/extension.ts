@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import { workspace, ExtensionContext, commands, window, StatusBarAlignment } from 'vscode';
 
 import {
 	LanguageClient,
@@ -43,10 +43,25 @@ export function activate(context: ExtensionContext) {
 		}
 	};
 
+	// Add status bar
+	context.subscriptions.push(
+		commands.registerCommand('uLangs.showStatus', () => {
+			window.showInformationMessage('Universal Language Server is running');
+		})
+	);
+	const myStatusBar = window.createStatusBarItem(StatusBarAlignment.Right, 100);
+	myStatusBar.command = 'uLangs.showStatus';
+	myStatusBar.text = 'uLangs';
+	context.subscriptions.push(myStatusBar);
+	myStatusBar.show();
+
+	// Get extension configuration
+	// TODO
+
 	// Create the language client and start the client.
 	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
+		'uLangsLSP',
+		'uLangs',
 		serverOptions,
 		clientOptions
 	);
