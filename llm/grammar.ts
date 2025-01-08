@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { type OpenAIEnv } from "./utils";
+import { type OpenAIEnv, type OpenAIMessage } from "./utils";
 import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
@@ -78,8 +78,9 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     // for each line in map, add a comment with the errors
     for (const [lineNumber, errorsOnLine] of errorOnLineMap.entries()) {
         const line = newCodeLines[lineNumber];
-        let allErrors = errorsOnLine.map(error => errorToString(error, false)).join(', ');
-        const trimLength = 64;
+        // todo: de-dupe errors
+        let allErrors = errorsOnLine.map(error => error.message).join(', ');
+        const trimLength = 256;
         if (allErrors.length >= trimLength) {
             allErrors = allErrors.substring(0, trimLength-1) + '...';
         }
@@ -92,21 +93,23 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
 export function constructPrompt(currentIntermediateSolution: Grammar,
                         firstNonWorkingTestedSnippet: TestedSnippet,
                         allTestedSnippets: Snippet[] | undefined,
+                        messages: OpenAIMessage[],
                         repairMode: boolean = false,
                         includeErrors: boolean = false,
                         appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
     // Add system message
-    messages.push({
-        role: 'user',
-        content: grammarGenerationDeveloperMessage
-    },
-    {
-        role: 'assistant',
-        content: 'Understood, I\'m ready.'
-    });
+    if (messages.length === 0) {
+        messages.push({
+            role: 'user',
+            content: grammarGenerationDeveloperMessage
+        },
+        {
+            role: 'assistant',
+            content: 'Understood, I\'m ready.'
+        });
+    }
 
     let lexerSource = currentIntermediateSolution.lexerSource;
     let parserSource = currentIntermediateSolution.parserSource;
@@ -149,8 +152,8 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
         strThereAreErrorsInLexerOrParser = isLexerOrParserErrors ? '(I\'ve put the errors in // comments)' : '';
     }
 
-    const endMsg = repairMode ? 'Repair my ANTLR4 lexer and parser grammars so that the code snippets can be parsed'
-                            : 'Complete the ANTLR4 lexer and parser grammars so that the code snippets can be parsed';
+    const endMsg = repairMode ? 'What\'s wrong here? Repair my ANTLR4 lexer and parser grammars so that the code snippets can be parsed.'
+                            : 'Write the complete ANTLR4 lexer and parser grammars so that all the code snippets can be parsed!';
 
     // Add user message
     messages.push({
@@ -261,15 +264,17 @@ export async function makeCompletionRequest(
 export async function generateInitalGuess(openaiEnv: OpenAIEnv,
                                         firstNonWorkingTestedSnippet: TestedSnippet,
                                         allTestedSnippets: Snippet[],
+                                        messages: OpenAIMessage[],
                                         initalLexer: string | undefined,
                                         initalParser: string | undefined,
-                                        includeErrors: boolean = false) {
+                                        includeErrors: boolean = false,
+                                        ) {
     const tempSolution: Grammar = {
         lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
 
-    const messages = constructPrompt(tempSolution, firstNonWorkingTestedSnippet, allTestedSnippets, includeErrors);
+    constructPrompt(tempSolution, firstNonWorkingTestedSnippet, allTestedSnippets, messages, false, includeErrors);
     const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, undefined, 60*5);
-    return [messages, completion.unwrap()] as const;
+    return completion.unwrap();
 }

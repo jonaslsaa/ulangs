@@ -178,7 +178,7 @@ function errorToString(error: ANTLRError, lexerSource: string, parserSource: str
 
 export async function repairGrammar(
     openaiEnv: OpenAIEnv,
-    conversationHistory: OpenAIMessage[],  // prior LLM messages or relevant conversation context
+    messages: OpenAIMessage[],  // prior LLM messages or relevant conversation context
     testedSnippets: TestedSnippet[],       // result(s) after the grammar failed on the `snippet`
     snippet: Snippet,                      // the snippet that triggered the “need repair” scenario
     previousSnippets: Snippet[]            // the ones that have passed so far (and must remain passing)
@@ -223,23 +223,21 @@ export async function repairGrammar(
         }
 
         // Construct a “repair mode” prompt focusing on the first failing snippet.
-        const repairPrompt = constructPrompt(
+        constructPrompt(
             currentGrammar,
             firstFailTest,               // the failing TestedSnippet
             previousSnippets,            // we pass these as "AllCodeSnippets" so GPT sees them, or pass all if you like
+            messages,                    // we pass the prior conversation history, this will be updated within this function
         /* repairMode */ true,
         /* includeErrors */ true,
         /* appendToMessage */ `\n(Repair attempt #${attempt}, please correct any mistakes so the code snippet parses successfully without breaking previously passing snippets.)`
         );
 
-        // We merge the new “repairPrompt” with the existing conversation history to keep continuity.
-        // Typically, you want to preserve the conversation flow so GPT “remembers” prior instructions:
-        const fullConversation = conversationHistory.concat(repairPrompt);
-
         // Now we ask the LLM for a repaired grammar
+        console.log(messages);
         const completionResult = await makeCompletionRequest(
             openaiEnv,
-            fullConversation,
+            messages,
             openaiEnv.model,
         /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
         /* timeoutSeconds */ 60 * 5
@@ -319,8 +317,9 @@ function loadFile(filePath: string | undefined): string | undefined {
 async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
     initalLexer: string | undefined,
     initalParser: string | undefined,
+    messages: OpenAIMessage[],
     snippets: Snippet[] = []
-): Promise<[OpenAIMessage[], Grammar]> {
+): Promise<Grammar> {
     let g: Grammar = {
         lexerSource: 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE\n',
         parserSource: 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
@@ -341,9 +340,7 @@ async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
     }
 
     console.log("Generating initial guess for the first intermediate solution...");
-    const [messages, initialGrammar] = await generateInitalGuess(openaiEnv, firstNonWorkingTestedSnippet, snippets, g.lexerSource, g.parserSource, includeErrors);
-
-    return [messages, initialGrammar];
+    return await generateInitalGuess(openaiEnv, firstNonWorkingTestedSnippet, snippets, messages, g.lexerSource, g.parserSource, includeErrors);
 }
 
 async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePaths: string[]): Promise<ANTLRError[]> {
@@ -387,6 +384,7 @@ async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[])
     if (allSnippets.length === 0) {
         throw new Error('No tested snippets given.');
     }
+    console.log(`Saving a candidate, with following score:`);
     const testedSnippets = await testGrammarOnMany(grammar, undefined, allSnippets);
     const candidate: Candidate = {
         grammar: grammar,
@@ -426,6 +424,8 @@ export async function doInferGrammar(directory: string, extension: string, outpu
             console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
     }
+    
+    let messages: OpenAIMessage[] = [];
 
 
     // Build our first intermediate solution.
@@ -437,14 +437,17 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     //      2. Guess based on the snippets and the initial lexer and parser
     const snippetsUsedInGuess = sortedSnippets; // TODO:   shouldn't be all the files when building first candidate
     // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
-    let [messages, currentIntermediateSolution] = await buildFirstIntermediateSolution(openaiEnv,
+    let currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
         initialLexer,
         initialParser,
+        messages,
         snippetsUsedInGuess
     );
 
     const snippetHistory: Snippet[] = [];
     const candiateHistory: Candidate[] = [];
+
+    candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
 
     for (const snippet of sortedSnippets) {
         // Write grammar to temporary files (lexer and parser)
@@ -455,8 +458,6 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         const testedSnippets = await testGrammarOnMany(currentIntermediateSolution, snippet, snippetHistory);
         const completeSuccess = testedSnippets.every(testedSnippet => testedSnippet.success);
 
-        candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
-
         if (!completeSuccess) {
             console.log("Current solution failed some tests, attempting repair...");
             // Try to repair the grammar
@@ -465,6 +466,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
                 throw new Error("What happened to all the repaired snippets?");
             }
             currentIntermediateSolution = repairedTestedSnippets[0].usedGrammar;
+            candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
         }
 
         snippetHistory.push(snippet);
