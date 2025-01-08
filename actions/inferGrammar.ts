@@ -226,7 +226,7 @@ export async function repairGrammar(
         constructPrompt(
             currentGrammar,
             firstFailTest,               // the failing TestedSnippet
-            previousSnippets,            // we pass these as "AllCodeSnippets" so GPT sees them, or pass all if you like
+            undefined,                   // we pass undefined as the snippets are already included in the conversation history
             messages,                    // we pass the prior conversation history, this will be updated within this function
         /* repairMode */ true,
         /* includeErrors */ true,
