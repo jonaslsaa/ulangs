@@ -36,3 +36,5 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
 export function stripSystemMessage(messages: OpenAI.Chat.ChatCompletionMessageParam[]): OpenAI.Chat.ChatCompletionMessageParam[] {
     return messages.filter(m => m.role !== 'system');
 }
+
+export type OpenAIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
