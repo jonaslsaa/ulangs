@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { type OpenAIEnv } from "./utils";
 import { TimeoutError, timeout } from 'promise-timeout';
-import { grammarGenerationSystemMessage } from "./prompts";
+import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
 import { Err, Ok, type Result } from "../result";
 
@@ -16,6 +16,13 @@ export type Snippet = {
     fileName: string;
     filePath: string;
 }
+
+export type TestedSnippet = {
+    onSnippet: Snippet;
+    usedGrammar: Grammar;
+    errors?: ANTLRError[];
+    success: boolean;
+};
 
 export const Stats = {
     totalRequests: 0,
@@ -82,55 +89,89 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     return newCodeLines.join('\n');   
 }
 
-function constructPrompt(currentIntermediateSolution: Grammar, 
-    codeSnippet: string, 
-    errors: ANTLRError[],
-    appendToMessage: string = ''
+function constructPrompt(currentIntermediateSolution: Grammar,
+                        firstNonWorkingTestedSnippet: TestedSnippet,
+                        allTestedSnippets: Snippet[] | undefined,
+                        includeErrors: boolean = false,
+                        appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
     // Add system message
     messages.push({
-        role: 'system',
-        content: grammarGenerationSystemMessage
+        role: 'user',
+        content: grammarGenerationDeveloperMessage
+    },
+    {
+        role: 'assistant',
+        content: 'Understood, I\'m ready.'
     });
 
-    // Add error messages
-    // Overlay the error messages on the code by adding a comment
-    const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'RUNTIME');
-    const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'RUNTIME');
-    const lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
-    const parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
-
-    // Put other error messages in its own block
-    const otherErrorMessages = errors.filter(error => error.line === undefined || error.grammarType === 'UNKNOWN')
+    let lexerSource = currentIntermediateSolution.lexerSource;
+    let parserSource = currentIntermediateSolution.parserSource;
+    let snippetWithErrors = firstNonWorkingTestedSnippet.onSnippet.snippet;
+    let strThereAreErrors = '';
     let otherErrorsBlock = '';
-    if (otherErrorMessages.length > 0) {
-        otherErrorsBlock = `<OtherErrors>
-${otherErrorMessages.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
-</OtherErrors>`;
+
+    if (includeErrors) {
+        const errors = firstNonWorkingTestedSnippet.errors;
+        const codeSnippet = firstNonWorkingTestedSnippet.onSnippet.snippet;
+        if (errors == undefined) throw new Error('No errors found in firstNonWorkingTestedSnippet');
+
+        // Add error messages
+        // Overlay the error messages on the code by adding a comment
+        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'BUILD'); // TODO: i think RUNTIME is wrong to overlay on lexer/parser
+        const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'BUILD');
+        lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
+        parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
+
+        const runtimeErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'RUNTIME');
+
+        const remainingErrors = errors.filter(error => !(lexerErrorsWithLine.includes(error) || parserErrorsWithLine.includes(error) || runtimeErrorsWithLine.includes(error)));
+
+        // Overlay the runtime errors on the code snippet
+        snippetWithErrors = overlayErrorsOnCode(codeSnippet, runtimeErrorsWithLine);
+
+        // Put other error messages in its own block
+        if (remainingErrors.length > 0) {
+            otherErrorsBlock = `<OtherErrors>
+    ${remainingErrors.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
+    </OtherErrors>`;
+        }
+
+        const isLexerOrParserErrors = lexerErrorsWithLine.length > 0 || parserErrorsWithLine.length > 0;
+        const isRuntimeErrors = runtimeErrorsWithLine.length > 0;
+        const isOverlayErrors = isLexerOrParserErrors || isRuntimeErrors;
+
+        strThereAreErrors = isOverlayErrors ? '(I\'ve put the errors in // comments)' : '';
     }
 
     // Add user message
     messages.push({
         role: 'user',
-        content: `Here is my current ANTLR4 code:
-<LexerGrammar>
+        content: `<AllCodeSnippets>
+${allTestedSnippets?.map(s => s.snippet).join('\n\n=== next file ===\n\n')}
+</AllCodeSnippets>
+
+Right now, I'm trying to parse the following code snippet ${strThereAreErrors}:
+\`\`\`
+${snippetWithErrors}
+\`\`\`
+Here is my current ANTLR4 code ${strThereAreErrors}:
+<MyLexer.g4>
 \`\`\`antlr
 ${lexerSource}
 \`\`\`
-</LexerGrammar>
-<ParserGrammar>
+</MyLexer.g4>
+<MyParser.g4>
 \`\`\`antlr
 ${parserSource}
 \`\`\`
-</ParserGrammar>
+</MyParser.g4>
 ${otherErrorsBlock}
-Complete the ANTLR4 lexer and parser grammars for the following code snippet. ${appendToMessage}
-\`\`\`
-${codeSnippet}
-\`\`\`
-Start by shortly thinking step-by-step.`
+
+Complete the ANTLR4 lexer and parser grammars so that the code snippets can be parsed. ${appendToMessage}
+`
     });
     return messages;
 }
@@ -167,7 +208,7 @@ async function makeCompletionRequest(
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string,
     debug: undefined | 'input' | 'output' | 'both' = undefined,
-    timeoutSeconds: number = 60,
+    timeoutSeconds: number = 240,
 ): Promise<Result<Grammar>> {
     try {
         const openai = new OpenAI({
@@ -177,8 +218,8 @@ async function makeCompletionRequest(
         const completionBody: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
             model: model,
             messages: messages,
-            max_tokens: 4096,
-            temperature: 0.8,
+            max_completion_tokens: 32000,
+            //temperature: 0.8,
         };
 
         Stats.addRequest();
@@ -195,6 +236,12 @@ async function makeCompletionRequest(
 
         if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
 
+        // Add the assistant completion to the messages
+        messages.push({
+            role: 'assistant',
+            content: content
+        });
+
         return result;
     } catch (error) {
         if (error instanceof TimeoutError) {
@@ -205,21 +252,18 @@ async function makeCompletionRequest(
     }
 }
 
-export async function generateInitalGuess(openaiEnv: OpenAIEnv, snippets: Snippet[], initalLexer: string | undefined, initalParser: string | undefined, fileNamesThatDidntPass: string[] = []) {
-    const combinedSnippets = snippets.map(snippet => {
-        const didNotPass = fileNamesThatDidntPass.includes(snippet.filePath); // TODO: not the best way to do this
-        const didNotPassString = didNotPass ? '// This snippet did not pass the grammar check!\n' : '';
-        return `<File: ${snippet.fileName}>
-${didNotPassString}
-${snippet.snippet}
-</File>`;
-    }).join('\n');
+export async function generateInitalGuess(openaiEnv: OpenAIEnv,
+                                        firstNonWorkingTestedSnippet: TestedSnippet,
+                                        allTestedSnippets: Snippet[],
+                                        initalLexer: string | undefined,
+                                        initalParser: string | undefined,
+                                        includeErrors: boolean = false) {
     const tempSolution: Grammar = {
         lexerSource: initalLexer ?? 'lexer grammar MyLexer;\n\n// WRITE LEXER RULES HERE (make it as general as possible as the language is more complex than this snippet)\n',
         parserSource: initalParser ?? 'parser grammar MyParser;\noptions { tokenVocab=SimpleLangLexer; }\n\n// WRITE PARSER RULES HERE, Start rule must be called "program"\n',
     };
-    const appendToMessage = "Write a complete solution by analyzing the semantics of the code and choosing the appropriate abstractions, and the use of generic rules. You are Terence Parr, the creator of ANTLR.";
-    const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
+
+    const messages = constructPrompt(tempSolution, firstNonWorkingTestedSnippet, allTestedSnippets, includeErrors);
     const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, undefined, 60*5);
     return [messages, completion.unwrap()] as const;
 }
