@@ -129,7 +129,7 @@ async function testGrammarOnMany(grammar: Grammar,
     if (stopOnFirstFailure) {
         for (const previousSnippet of previousSnippets) {
             const tested = await testGrammar(grammar, previousSnippet);
-            if (tested.success) return [tested];
+            if (!tested.success) return [tested];
         }
     }
     // else, test all previous snippets in parallel
