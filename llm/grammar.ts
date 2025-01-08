@@ -146,9 +146,8 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
 
         const isLexerOrParserErrors = lexerErrorsWithLine.length > 0 || parserErrorsWithLine.length > 0;
         const isRuntimeErrors = runtimeErrorsWithLine.length > 0;
-        const isOverlayErrors = isLexerOrParserErrors || isRuntimeErrors;
 
-        strThereAreErrorsInSnippets = isOverlayErrors ? '(I\'ve put the errors in // comments)' : '';
+        strThereAreErrorsInSnippets = isRuntimeErrors ? '(I\'ve put the errors in // comments)' : '';
         strThereAreErrorsInLexerOrParser = isLexerOrParserErrors ? '(I\'ve put the errors in // comments)' : '';
     }
 
