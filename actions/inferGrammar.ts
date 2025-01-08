@@ -192,7 +192,7 @@ export async function repairGrammar(
      *   3. Tries the new grammar on the snippet (and re-checks all previously passing snippets).
      *   4. If it still fails, tries again until success or max attempts.
      */
-    const maxRetries = 8;
+    const maxRetries = 5;
 
     // Start from the grammar used in the failing test. Typically `testedSnippets[0]` is the new snippet test result
     // if `stopOnFirstFailure` was used. But if multiple snippets are tested simultaneously,
@@ -394,8 +394,47 @@ async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[])
     return candidate;
 }
 
+function compressCodeBlock(message: string): string {
+    const placeholder = "... omitted code block for brevity ...";
+
+    // This regex looks for:
+    // 1) Opening triple backticks ```
+    // 2) Optional language specifier (captured as group #1)
+    // 3) Any text (captured as group #2) until
+    // 4) The closing triple backticks ```
+    //
+    // Explanation:
+    // - `[^\n\r]*` means capture up to a newline (language can be letters, numbers, underscores, etc.)
+    // - `([\s\S]*?)` is a "lazy" match for everything (including newlines) until the first occurrence of ```
+    // - The 'g' flag applies globally so it will replace all code blocks.
+    const codeBlockRegex = /```([^\n\r]*)\n([\s\S]*?)```/g;
+
+    return message.replace(codeBlockRegex, (match, maybeLang, content) => {
+        // maybeLang might be an empty string if no language was specified
+        // Build the replacement:
+        // If there's a language, we keep it on the same line as ```
+        // Then put our placeholder on a new line, and finally close with ```
+        const language = maybeLang.trim();
+        return language
+            ? `\`\`\`${language}\n${placeholder}\n\`\`\``
+            : `\`\`\`\n${placeholder}\n\`\`\``;
+    });
+}
+
+function compressMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
+    return messages.map((message, index) => {
+        if (index === 0 || index === messages.length - 1 || index === messages.length - 2) {
+            // Don't compress the first or last two messages
+            return message;
+        }
+        // Only compress messages with role 'user'
+        if (message.role !== 'user') return message;
+        if (message.content) message.content = compressCodeBlock(message.content.toString());
+        return message;
+    });
+}
+
 export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
-    // const maxRetries = 3;
 
     const sortedSnippets = await loadSnippetsByComplexity(directory, extension, options.recursive);
     if (sortedSnippets === undefined || sortedSnippets.length === 0) {
@@ -424,9 +463,8 @@ export async function doInferGrammar(directory: string, extension: string, outpu
             console.error("Loaded grammar (lexer and parser) are NOT syntactically valid!");
         }
     }
-    
-    let messages: OpenAIMessage[] = [];
 
+    let messages: OpenAIMessage[] = [];
 
     // Build our first intermediate solution.
     // Static initialization (controlled by `options.skipFirstGuess`):
@@ -467,6 +505,9 @@ export async function doInferGrammar(directory: string, extension: string, outpu
             }
             currentIntermediateSolution = repairedTestedSnippets[0].usedGrammar;
             candiateHistory.push(await createQualifiedCandiate(currentIntermediateSolution, sortedSnippets));
+
+            // Compress the messages
+            messages = compressMessages(messages);
         }
 
         snippetHistory.push(snippet);

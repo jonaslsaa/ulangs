@@ -62,12 +62,14 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     // add errors to the errorOnLineMap
     for (const error of errors) {
         if (error.line === undefined) {
-            throw new Error(`Error line number is undefined, this shouldn't happen!!!`);
+            throw new Error(`Error line number is undefined, this really shouldn't happen!!!: ${error.message}`);
         }
         const lineNumber = error.line - 1;
         // check if the line number is valid
         if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
-            throw new Error(`Invalid line number: ${lineNumber}, this shouldn't happen!!!`);
+            console.warn(`Invalid line number: ${lineNumber}: ${error.message}`);
+            error.grammarType = 'UNKNOWN';
+            //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
         }
         if (!errorOnLineMap.has(lineNumber)) {
             errorOnLineMap.set(lineNumber, []);
@@ -198,11 +200,14 @@ function parseCompletionToGrammar(completion: string | null): Result<Grammar> {
     }
 
     // Identify the lexer and parser blocks
-    const lexerBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('lexer grammar'));
-    const parserBlock = antlrBlocks.find(block => block.trim().substring(0, 64).includes('parser grammar'));
-    if (lexerBlock === undefined || parserBlock === undefined) {
-        return Err('No lexer or parser block found in completion');
+    const lexerBlocks = antlrBlocks.filter(block => block.trim().substring(0, 64).includes('lexer grammar'));
+    const parserBlocks = antlrBlocks.filter(block => block.trim().substring(0, 64).includes('parser grammar'));
+    if (lexerBlocks.length === 0 || parserBlocks.length === 0) {
+        return Err('No lexer or parser blocks found in completion');
     }
+    // Choose the largest lexer and parser blocks
+    const lexerBlock = lexerBlocks.sort((a, b) => b.length - a.length)[0];
+    const parserBlock = parserBlocks.sort((a, b) => b.length - a.length)[0];
 
     // Extract the lexer and parser to just the code without the Antlr block
     const lexerSource = lexerBlock.replace('```antlr\n', '').replace('```', '');
