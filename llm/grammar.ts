@@ -110,7 +110,8 @@ function constructPrompt(currentIntermediateSolution: Grammar,
     let lexerSource = currentIntermediateSolution.lexerSource;
     let parserSource = currentIntermediateSolution.parserSource;
     let snippetWithErrors = firstNonWorkingTestedSnippet.onSnippet.snippet;
-    let strThereAreErrors = '';
+    let strThereAreErrorsInSnippets = '';
+    let strThereAreErrorsInLexerOrParser = '';
     let otherErrorsBlock = '';
 
     if (includeErrors) {
@@ -143,7 +144,8 @@ function constructPrompt(currentIntermediateSolution: Grammar,
         const isRuntimeErrors = runtimeErrorsWithLine.length > 0;
         const isOverlayErrors = isLexerOrParserErrors || isRuntimeErrors;
 
-        strThereAreErrors = isOverlayErrors ? '(I\'ve put the errors in // comments)' : '';
+        strThereAreErrorsInSnippets = isOverlayErrors ? '(I\'ve put the errors in // comments)' : '';
+        strThereAreErrorsInLexerOrParser = isLexerOrParserErrors ? '(I\'ve put the errors in // comments)' : '';
     }
 
     // Add user message
@@ -153,11 +155,11 @@ function constructPrompt(currentIntermediateSolution: Grammar,
 ${allTestedSnippets?.map(s => s.snippet).join('\n\n=== next file ===\n\n')}
 </AllCodeSnippets>
 
-Right now, I'm trying to parse the following code snippet ${strThereAreErrors}:
+Right now, I'm trying to parse the following code snippet ${strThereAreErrorsInSnippets}:
 \`\`\`
 ${snippetWithErrors}
 \`\`\`
-Here is my current ANTLR4 code ${strThereAreErrors}:
+Here is my current ANTLR4 code ${strThereAreErrorsInLexerOrParser}:
 <MyLexer.g4>
 \`\`\`antlr
 ${lexerSource}
