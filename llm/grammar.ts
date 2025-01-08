@@ -89,9 +89,10 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
     return newCodeLines.join('\n');   
 }
 
-function constructPrompt(currentIntermediateSolution: Grammar,
+export function constructPrompt(currentIntermediateSolution: Grammar,
                         firstNonWorkingTestedSnippet: TestedSnippet,
                         allTestedSnippets: Snippet[] | undefined,
+                        repairMode: boolean = false,
                         includeErrors: boolean = false,
                         appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
@@ -148,11 +149,14 @@ function constructPrompt(currentIntermediateSolution: Grammar,
         strThereAreErrorsInLexerOrParser = isLexerOrParserErrors ? '(I\'ve put the errors in // comments)' : '';
     }
 
+    const endMsg = repairMode ? 'Repair my ANTLR4 lexer and parser grammars so that the code snippets can be parsed'
+                            : 'Complete the ANTLR4 lexer and parser grammars so that the code snippets can be parsed';
+
     // Add user message
     messages.push({
         role: 'user',
         content: `<AllCodeSnippets>
-${allTestedSnippets?.map(s => s.snippet).join('\n\n=== next file ===\n\n')}
+${allTestedSnippets ? allTestedSnippets.map(s => s.snippet).join('\n\n=== next file ===\n\n') : '... previously given ...'}
 </AllCodeSnippets>
 
 Right now, I'm trying to parse the following code snippet ${strThereAreErrorsInSnippets}:
@@ -172,7 +176,7 @@ ${parserSource}
 </MyParser.g4>
 ${otherErrorsBlock}
 
-Complete the ANTLR4 lexer and parser grammars so that the code snippets can be parsed. ${appendToMessage}
+${endMsg} ${appendToMessage}
 `
     });
     return messages;
@@ -205,7 +209,7 @@ function parseCompletionToGrammar(completion: string | null): Result<Grammar> {
     })
 }
 
-async function makeCompletionRequest(
+export async function makeCompletionRequest(
     openaiEnv: OpenAIEnv,
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     model: string,

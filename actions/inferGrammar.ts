@@ -4,7 +4,7 @@ import fs from 'fs';
 import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { generateInitalGuess, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
+import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 
 function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
@@ -106,9 +106,9 @@ async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedSn
 }
 
 async function testGrammarOnMany(grammar: Grammar,
-        newSnippet: Snippet | undefined,
-        previousSnippets: Snippet[],
-        stopOnFirstFailure: boolean = false): Promise<TestedSnippet[]> {
+    newSnippet: Snippet | undefined,
+    previousSnippets: Snippet[],
+    stopOnFirstFailure: boolean = false): Promise<TestedSnippet[]> {
 
     let numberOfTestsPassed = 0;
     let numberOfTestsTotal = 1 + previousSnippets.length;
@@ -176,23 +176,115 @@ function errorToString(error: ANTLRError, lexerSource: string, parserSource: str
     return `${firstPart}${grammarPart}${onLine} - ${msg}`;
 }
 
-async function repairGrammar(openaiEnv: OpenAIEnv, messages: OpenAIMessage[], testedSnippets: TestedSnippet[], snippet: Snippet, previousSnippets: Snippet[]): Promise<TestedSnippet[]> {
-    console.log(messages);
-    throw new Error("Not implemented");
+export async function repairGrammar(
+    openaiEnv: OpenAIEnv,
+    conversationHistory: OpenAIMessage[],  // prior LLM messages or relevant conversation context
+    testedSnippets: TestedSnippet[],       // result(s) after the grammar failed on the `snippet`
+    snippet: Snippet,                      // the snippet that triggered the “need repair” scenario
+    previousSnippets: Snippet[]            // the ones that have passed so far (and must remain passing)
+): Promise<TestedSnippet[]> {
+    /**
+     * This function tries to fix the grammar to parse `snippet` successfully without
+     * breaking previous snippets that were already passing. It uses GPT (or another OpenAI model)
+     * in a loop, up to `maxRetries` times, asking it to “repair” the grammar. Each iteration:
+     *   1. Identifies the first failing snippet (usually `snippet` if `stopOnFirstFailure=true`).
+     *   2. Asks the LLM for a repaired grammar (by constructing a “repair mode” prompt).
+     *   3. Tries the new grammar on the snippet (and re-checks all previously passing snippets).
+     *   4. If it still fails, tries again until success or max attempts.
+     */
     const maxRetries = 8;
-    
-    let currentGrammar: Grammar = { ...testedSnippets[0].usedGrammar };
-    let currentTestedSnippets = testedSnippets;
-    for (let i = 0; i < maxRetries; i++) {
-        const prompt = `fix this shit`;
 
-        // TODO: Get repaired lexer and parser from llm
-        
-        // TODO: Check if there are any new errors
-
-        // TODO: If there are new errors, update currentTestedSnippets
+    // Start from the grammar used in the failing test. Typically `testedSnippets[0]` is the new snippet test result
+    // if `stopOnFirstFailure` was used. But if multiple snippets are tested simultaneously,
+    // you might want to find the first one that failed in the array:
+    const firstFailIndex = testedSnippets.findIndex(ts => !ts.success);
+    if (firstFailIndex < 0) {
+        // If everything is already passing, just return what we got:
+        return testedSnippets;
     }
 
+    let currentGrammar: Grammar = { ...testedSnippets[firstFailIndex].usedGrammar };
+    let currentTestedSnippets = testedSnippets;
+
+    // Attempt to fix the grammar up to maxRetries times
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        console.log(`\n[Repair Attempt ${attempt}/${maxRetries}] Trying to fix grammar for snippet: ${snippet.fileName}`);
+
+        // We build a “repair prompt” that includes the errors from the first failing snippet
+        // (or whichever snippet is failing). We set `repairMode = true` and `includeErrors = true`.
+        // This prompt helps GPT see the current grammar, the snippet, and the error messages
+        // overlaid on the appropriate lines.
+
+        const firstFailTest = currentTestedSnippets.find(ts => !ts.success);
+        if (!firstFailTest) {
+            // No snippet is failing => everything is good, break out early
+            console.log(`All snippets are now passing; no need for further repairs.`);
+            break;
+        }
+
+        // Construct a “repair mode” prompt focusing on the first failing snippet.
+        const repairPrompt = constructPrompt(
+            currentGrammar,
+            firstFailTest,               // the failing TestedSnippet
+            previousSnippets,            // we pass these as "AllCodeSnippets" so GPT sees them, or pass all if you like
+        /* repairMode */ true,
+        /* includeErrors */ true,
+        /* appendToMessage */ `\n(Repair attempt #${attempt}, please correct any mistakes so the code snippet parses successfully without breaking previously passing snippets.)`
+        );
+
+        // We merge the new “repairPrompt” with the existing conversation history to keep continuity.
+        // Typically, you want to preserve the conversation flow so GPT “remembers” prior instructions:
+        const fullConversation = conversationHistory.concat(repairPrompt);
+
+        // Now we ask the LLM for a repaired grammar
+        const completionResult = await makeCompletionRequest(
+            openaiEnv,
+            fullConversation,
+            openaiEnv.model,
+        /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
+        /* timeoutSeconds */ 60 * 5
+        );
+
+        if (completionResult.isErr()) {
+            // Something went wrong with the LLM request (e.g., API error or timeout)
+            console.error(`[Repair Attempt ${attempt}] LLM request failed: ${completionResult.error}`);
+            // Decide if you want to continue or break. Here we just break:
+            break;
+        }
+
+        // If we got a successful completion, parse the returned grammar
+        const newGrammar = completionResult.unwrap();
+
+        // Update currentGrammar
+        currentGrammar = {
+            ...newGrammar,
+            generatedWithModel: openaiEnv.model,  // e.g., track which model generated it
+        };
+
+        // Now test the new grammar on (1) the new snippet and (2) the previously passing snippets
+        // If we do “stopOnFirstFailure: true” we only get the first failing snippet. Otherwise we get them all.
+        // Here we do “stopOnFirstFailure: true” so we short-circuit if the snippet fails again.
+        currentTestedSnippets = await testGrammarOnMany(
+            currentGrammar,
+            snippet,
+            previousSnippets,
+        /* stopOnFirstFailure */ true
+        );
+
+        // If the new snippet is now passing, re-check that none of the previously passing snippets
+        // are broken. (If you already used testGrammarOnMany with all snippets at once, you can skip this part.)
+        const stillFailing = currentTestedSnippets.filter(ts => !ts.success);
+        if (stillFailing.length === 0) {
+            console.log(`[Repair Attempt ${attempt}] ✅ Grammar repaired successfully for snippet: ${snippet.fileName}`);
+            return currentTestedSnippets;
+        } else {
+            // The snippet still fails or we broke something else. Try again.
+            console.log(`[Repair Attempt ${attempt}] ❌ Still failing. Will attempt another repair.`);
+        }
+    }
+
+    // If we reach here, we exhausted the allowed attempts without fully fixing the grammar.
+    console.warn(`\n[Repair] Max attempts (${maxRetries}) reached; returning last tested result.`);
     return currentTestedSnippets;
 }
 
@@ -286,7 +378,7 @@ async function loadSnippetsByComplexity(directory: string, extension: string, re
     const highestComplexity = sortedSnippets[sortedSnippets.length - 1];
     console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
     console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
-    
+
     return sortedSnippets;
 }
 
@@ -344,7 +436,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     //      1. Guess based on all the snippets
     //      2. Guess based on the snippets and the initial lexer and parser
     const snippetsUsedInGuess = sortedSnippets; // TODO:   shouldn't be all the files when building first candidate
-                                                // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
+    // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
     let [messages, currentIntermediateSolution] = await buildFirstIntermediateSolution(openaiEnv,
         initialLexer,
         initialParser,
