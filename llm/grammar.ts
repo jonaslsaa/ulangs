@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { type OpenAIEnv, type OpenAIMessage } from "./utils";
+import { type OpenAIEnv, type OpenAIMessage, loadOpenAIEnvVars } from './utils';
 import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
@@ -98,6 +98,9 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
                         includeErrors: boolean = false,
                         appendToMessage: string = ''
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    if (allTestedSnippets?.length === 0) {
+        throw new Error('No tested snippets given.');
+    }
 
     // Add system message
     if (messages.length === 0) {
