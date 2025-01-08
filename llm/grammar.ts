@@ -11,7 +11,6 @@ export type Grammar = {
     generatedWithModel?: string;
 };
 
-
 export type Snippet = {
     snippet: string;
     fileName: string;
@@ -40,18 +39,7 @@ export const Stats = {
         this.totalCompletedRequests++;
         this.inputTokens += inputTokens;
         this.outputTokens += outputTokens;
-    },
-    addScore(modelName: string | undefined) {
-        if (!modelName) {
-            console.error('addScore: Model name is undefined');
-            return;
-        }
-        if (this.score.has(modelName)) {
-            this.score.set(modelName, this.score.get(modelName)! + 1);
-        } else {
-            this.score.set(modelName, 1);
-        }
-    },
+    }
 }
 
 function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
@@ -233,5 +221,5 @@ ${snippet.snippet}
     const appendToMessage = "Write a complete solution by analyzing the semantics of the code and choosing the appropriate abstractions, and the use of generic rules. You are Terence Parr, the creator of ANTLR.";
     const messages = constructPrompt(tempSolution, combinedSnippets, [], appendToMessage);
     const completion = await makeCompletionRequest(openaiEnv, messages, openaiEnv.model, undefined, 60*5);
-    return completion.unwrap();
+    return [messages, completion.unwrap()] as const;
 }
