@@ -128,7 +128,7 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
 
         // Add error messages
         // Overlay the error messages on the code by adding a comment
-        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'BUILD'); // TODO: i think RUNTIME is wrong to overlay on lexer/parser
+        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'BUILD');
         const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'BUILD');
         lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
         parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
