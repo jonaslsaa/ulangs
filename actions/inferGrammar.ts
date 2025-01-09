@@ -111,10 +111,11 @@ async function testGrammarOnMany(grammar: Grammar,
     stopOnFirstFailure: boolean = false): Promise<TestedSnippet[]> {
 
     let numberOfTestsPassed = 0;
-    let numberOfTestsTotal = 1 + previousSnippets.length;
+    let numberOfTestsTotal = previousSnippets.length;
 
     let newTested: TestedSnippet | undefined = undefined;
     if (newSnippet) {
+        numberOfTestsTotal += 1; // add one for the new snippet if defined
         // Test first on new snippets
         newTested = await testGrammar(grammar, newSnippet);
         if (!newTested.success) {
