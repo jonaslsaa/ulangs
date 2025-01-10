@@ -6,52 +6,15 @@ import { loadOpenAIEnvVars, type OpenAIEnv, type OpenAIMessage } from "../llm/ut
 import type { ANTLRError } from "../syntactic/ErrorListener";
 import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
+import { _createTemporaryDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
+import { compressMessages } from '../llm/compress-messages';
+import { loadSnippetsByComplexity } from './utils/snippets';
 
-function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
-    if (extension.startsWith('.')) {
-        extension = extension.substring(1);
-    }
+const temporaryFileDirectoryRecords = new Set<string>();
 
-    const files = fs.readdirSync(directory); // Get all files in the directory
-    const codeFiles = files.filter(file => file.endsWith(`.${extension}`)); // Filter for code files
+const createTemporaryDirectory = (name: string) => _createTemporaryDirectory(name, '.grammar-tmp');
 
-    if (recursive) { // If recursive, search subdirectories
-        const subdirectories = files.filter(file => fs.statSync(path.join(directory, file)).isDirectory()); // Get subdirectories
-        subdirectories.forEach(subdir => { // Iterate over subdirectories and search for code files
-            codeFiles.push(...findAllCodeFiles(path.join(directory, subdir), extension, recursive));
-        });
-    }
-    return codeFiles;
-}
-
-function loadFilesToSnippets(files: string[]): Snippet[] {
-    return files.map(file => {
-        const fileContent = fs.readFileSync(file, 'utf8');
-        return {
-            snippet: fileContent,
-            fileName: path.basename(file),
-            filePath: file
-        };
-    });
-}
-
-function sortByComplexity(snippets: Snippet[]): Snippet[] {
-    // Sort snippets by complexity (ascending)
-    return snippets.sort((a, b) => calculateComplexity(b.snippet) - calculateComplexity(a.snippet)).reverse();
-}
-
-function createTemporaryDirectory(name: string): string {
-    const baseRelPath = path.join('.grammar-tmp');
-    const basePath = path.join(process.cwd(), baseRelPath);
-    if (!fs.existsSync(basePath)) {
-        fs.mkdirSync(basePath);
-    }
-    const tempPath = path.join(basePath, name);
-    if (!fs.existsSync(tempPath)) {
-        fs.mkdirSync(tempPath);
-    }
-    return tempPath;
-}
+const createTemporaryFile = (dir: string, fileName: string) => _createTemporaryFile(dir, fileName, temporaryFileDirectoryRecords);
 
 type Candidate = {
     grammar: Grammar;
@@ -152,29 +115,6 @@ async function testGrammarOnMany(grammar: Grammar,
     } else {
         return TestedPrevious;
     }
-}
-
-function getLineOfSource(source: string, lineNumber: number): string {
-    const lines = source.split('\n');
-    if (lineNumber < 1 || lineNumber > lines.length) {
-        throw new Error(`Invalid line number: ${lineNumber}`);
-    }
-    return lines[lineNumber - 1];
-}
-
-function errorToString(error: ANTLRError, lexerSource: string, parserSource: string, codeSnippet: string, showGrammarType: boolean = true): string {
-    const msg = error.message.replaceAll('\n', ' ');
-    const firstPart = error.source === 'BUILD' ? 'While building' : 'Under parsing';
-    const grammarPart = showGrammarType ? ` the ${error.grammarType.toLowerCase()} grammar` : '';
-    let onLine = '';
-    if (error.line) {
-        let sourceCodeLine = '';
-        if (error.source === 'BUILD' && error.grammarType === 'LEXER') sourceCodeLine = getLineOfSource(lexerSource, error.line);
-        if (error.source === 'BUILD' && error.grammarType === 'PARSER') sourceCodeLine = getLineOfSource(parserSource, error.line);
-        if (error.source === 'RUNTIME') sourceCodeLine = getLineOfSource(codeSnippet, error.line);
-        onLine = ` on line ${error.line + 1}: \`${sourceCodeLine}\'`;
-    }
-    return `${firstPart}${grammarPart}${onLine} - ${msg}`;
 }
 
 export async function repairGrammar(
@@ -287,8 +227,6 @@ export async function repairGrammar(
     return currentTestedSnippets;
 }
 
-const temporaryFileDirectoryRecords = new Set<string>();
-
 function ExitAndLogStats(exitCode: number = 0) {
     // Remove temporary file directory
     for (const tempPath of temporaryFileDirectoryRecords) {
@@ -306,13 +244,6 @@ function ExitAndLogStats(exitCode: number = 0) {
             console.log(`    - ${modelName}: ${score}`);
         });
     process.exit(exitCode);
-}
-
-function loadFile(filePath: string | undefined): string | undefined {
-    if (filePath === undefined) return undefined;
-    if (!fs.existsSync(filePath)) return undefined;
-    console.log(`Loading initial grammar file from ${filePath}`);
-    return fs.readFileSync(filePath, 'utf8');
 }
 
 async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
@@ -349,38 +280,6 @@ async function checkGrammarOnMany(lexerPath: string, parserPath: string, codePat
     return results.flat();
 }
 
-function createTemporaryFile(dir: string, fileName: string): string {
-    const tempPath = path.join(dir, '.tmp');
-    if (!fs.existsSync(tempPath)) {
-        fs.mkdirSync(tempPath);
-    }
-    temporaryFileDirectoryRecords.add(tempPath);
-    const tempFilePath = path.join(tempPath, fileName);
-    if (!fs.existsSync(tempFilePath)) {
-        fs.writeFileSync(tempFilePath, '');
-    }
-    return tempFilePath;
-}
-
-async function loadSnippetsByComplexity(directory: string, extension: string, recursive: boolean) {
-    const files = findAllCodeFiles(directory, extension, recursive);
-    const snippets = loadFilesToSnippets(files.map(file => path.join(directory, file)));
-    if (snippets.length === 0) {
-        console.error('No files found with the specified extension!');
-        return;
-    }
-
-    const sortedSnippets = sortByComplexity(snippets);
-
-    const lowestComplexity = sortedSnippets[0];
-    const highestComplexity = sortedSnippets[sortedSnippets.length - 1];
-    console.log(`Loaded ${files.length} files and sorted them by complexity: ${calculateComplexity(lowestComplexity.snippet)} to ${calculateComplexity(highestComplexity.snippet)}`);
-    console.log(`Analysing the files in the following order: ${sortedSnippets.map(snippet => snippet.fileName).join(', ')}`);
-
-    return sortedSnippets;
-}
-
-
 async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[]): Promise<Candidate> {
     if (allSnippets.length === 0) {
         throw new Error('No tested snippets given.');
@@ -395,45 +294,6 @@ async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[])
     return candidate;
 }
 
-function compressCodeBlock(message: string): string {
-    const placeholder = "... omitted code block for brevity ...";
-
-    // This regex looks for:
-    // 1) Opening triple backticks ```
-    // 2) Optional language specifier (captured as group #1)
-    // 3) Any text (captured as group #2) until
-    // 4) The closing triple backticks ```
-    //
-    // Explanation:
-    // - `[^\n\r]*` means capture up to a newline (language can be letters, numbers, underscores, etc.)
-    // - `([\s\S]*?)` is a "lazy" match for everything (including newlines) until the first occurrence of ```
-    // - The 'g' flag applies globally so it will replace all code blocks.
-    const codeBlockRegex = /```([^\n\r]*)\n([\s\S]*?)```/g;
-
-    return message.replace(codeBlockRegex, (match, maybeLang, content) => {
-        // maybeLang might be an empty string if no language was specified
-        // Build the replacement:
-        // If there's a language, we keep it on the same line as ```
-        // Then put our placeholder on a new line, and finally close with ```
-        const language = maybeLang.trim();
-        return language
-            ? `\`\`\`${language}\n${placeholder}\n\`\`\``
-            : `\`\`\`\n${placeholder}\n\`\`\``;
-    });
-}
-
-function compressMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
-    return messages.map((message, index) => {
-        if (index === 0 || index === messages.length - 1 || index === messages.length - 2) {
-            // Don't compress the first or last two messages
-            return message;
-        }
-        // Only compress messages with role 'user'
-        if (message.role !== 'user') return message;
-        if (message.content) message.content = compressCodeBlock(message.content.toString());
-        return message;
-    });
-}
 
 export async function doInferGrammar(directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) {
 
