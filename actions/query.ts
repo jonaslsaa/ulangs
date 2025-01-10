@@ -4,8 +4,13 @@ import { callSWIProlog } from '../semantic/call';
 
 import type { CLIGenerateArguments } from '../cli';
 import { compileANTLRFiles } from '../syntactic/build';
+import { _createTemporaryDirectory, _createTemporaryFile } from './utils/io';
 
-export async function doQuery(file: string, options: CLIGenerateArguments) {
+const createTemporaryDirectory = (name: string) => _createTemporaryDirectory(name, '.prolog-tmp');
+const createTemporaryFile = (name: string) => _createTemporaryFile(name, '.prolog-tmp', new Set());
+
+export async function doQuery(targetPath: string, lexerPath: string, parserPath: string, adapterPath: string, options: CLIGenerateArguments) {
+    throw new Error('Not implemented');
     // TODO: check grammar first
     if (options.compileAntlr) {
         const errors = await compileANTLRFiles('grammar');
@@ -19,7 +24,7 @@ export async function doQuery(file: string, options: CLIGenerateArguments) {
     }
 
     // Import from parser.ts an prolog.ts
-    const { createParserFromGrammar } = await import('../syntactic/parser');
+    const { createParserFromGrammar } = await import('../syntactic/context-free-parser.ts');
     const { cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
 
     const fileNoExt = file.replace(/\.[^/.]+$/, '');

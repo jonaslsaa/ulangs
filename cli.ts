@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { doQuery } from './actions/query';
 import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
+import assert from 'assert';
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -9,21 +10,24 @@ cli.description('Universal Language Server Toolkit');
 cli.version('0.1.0');
 
 export type CLIGenerateArguments = {
-    excludeConversion: boolean;
-    runProlog: boolean;
     query: string;
-    compileAntlr: boolean
+    excludeConversion: boolean;
 };
 
 cli.command('query')
     .description('Generates Prolog from file with a given query')
-    .argument('<file>', 'File to generate facts from')
-    .option('-q, --query <query>', 'Query file to run after generating facts', "CstToAst/queries/printAST.pl")
+    .argument('<target>', 'File to generate facts from')
+    .argument('<lexer>', 'Lexer (path) file to use')
+    .argument('<parser>', 'Parser (path) file to use')
+    .argument('<adapter>', 'Adapter (path) file to use')
+    .option('-q, --query <query>', 'Query file to run after generating facts', "printAST.pl")
     .option('-ec, --exclude-conversion', 'Exclude conversion clauses', false)
-    .option('-r, --run-prolog', 'Run prolog after generating facts', false)
-    .option('-a, --compile-antlr', 'Generate ANTLR files', false)
-    .action(async (file: string, options: CLIGenerateArguments) => {
-        doQuery(file, options);
+    .action(async (target: string, lexer: string, parser: string, adapter: string, options: CLIGenerateArguments) => {
+        assert(fs.existsSync(target), 'Target file does not exist');
+        assert(fs.existsSync(lexer), 'Lexer file does not exist');
+        assert(fs.existsSync(parser), 'Parser file does not exist');
+        assert(fs.existsSync(adapter), 'Adapter file does not exist');
+        doQuery(target, lexer, parser, adapter, options);
     });
 
 cli.command('check')
