@@ -27,11 +27,11 @@ export function cstToAstGeneratorClauses(cstTree: ParserRuleContext,
                                         adapterPath: string | undefined,
                                         ): string[] {
 
-    const basePath = path.join('rules', 'CstToAst');
+    const builtinBasePath = path.join('rules', 'adapter');
     
-    const libraries = wrapWithComment(fileToLines(path.join(basePath, 'libraries.pl')), 'Libraries')
+    const libraries = wrapWithComment(fileToLines(path.join(builtinBasePath, 'libraries.pl')), 'Libraries')
     const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Prolog facts for CST tree');
-    const helpers = wrapWithComment(fileToLines(path.join(basePath, 'genericHelpers.pl')), 'Generic helpers');
+    const helpers = wrapWithComment(fileToLines(path.join(builtinBasePath, 'genericHelpers.pl')), 'Generic helpers');
 
     if (adapterPath) {
         const adapterClauses = fileToLines(adapterPath);
@@ -51,7 +51,11 @@ export function cstToAstGeneratorClauses(cstTree: ParserRuleContext,
 
 export function queryClauses(queryFile: string): string[] {
     console.log("Query file:", queryFile);
-    const basePathQueries = path.join('rules');
+    const basePathQueries = path.join('rules', 'queries');
+    if (!fs.existsSync(basePathQueries)) {
+        console.error(`Query file ${queryFile} not found`);
+        process.exit(1);
+    }
     const query = wrapWithComment(fileToLines(path.join(basePathQueries, queryFile)), 'Main query');
     return query;
 }
