@@ -6,13 +6,13 @@ import { loadOpenAIEnvVars, type OpenAIEnv, type OpenAIMessage } from "../llm/ut
 import type { ANTLRError } from "../syntactic/ErrorListener";
 import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
-import { _createTemporaryDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
+import { _createWorkingDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
 import { compressMessages } from '../llm/compress-messages';
 import { loadSnippetsByComplexity } from './utils/snippets';
 
 const temporaryFileDirectoryRecords = new Set<string>();
 
-const createTemporaryDirectory = (name: string) => _createTemporaryDirectory(name, '.grammar-tmp');
+const createWorkingDirectory = () => _createWorkingDirectory('grammar');
 
 const createTemporaryFile = (dir: string, fileName: string) => _createTemporaryFile(dir, fileName, temporaryFileDirectoryRecords);
 
@@ -39,8 +39,7 @@ async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedSn
         success: false,
     };
 
-    const timestamp = new Date().toISOString().replaceAll(':', '-');
-    const tempPath = createTemporaryDirectory(timestamp);
+    const tempPath = createWorkingDirectory();
 
     const lexerFilePath = path.join(tempPath, 'MyLexer.g4');
     const parserFilePath = path.join(tempPath, 'MyParser.g4');

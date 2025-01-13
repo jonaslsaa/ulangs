@@ -1,8 +1,8 @@
 import path from "path";
 import fs from 'fs';
 
-export function _createTemporaryDirectory(name: string, rootDirectory: string) {
-		const baseRelPath = path.join(rootDirectory);
+export function _createDirectory(name: string, baseDirectory: string) {
+		const baseRelPath = path.join('.tmp', baseDirectory);
 		const basePath = path.join(process.cwd(), baseRelPath);
 		if (!fs.existsSync(basePath)) {
 				fs.mkdirSync(basePath);
@@ -12,6 +12,11 @@ export function _createTemporaryDirectory(name: string, rootDirectory: string) {
 				fs.mkdirSync(tempPath);
 		}
 		return tempPath;
+}
+
+export function _createWorkingDirectory(baseDirectory: string) {
+		const timestamp = new Date().toISOString().replaceAll(':', '-');
+		return _createDirectory(timestamp, baseDirectory);
 }
 
 export function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
