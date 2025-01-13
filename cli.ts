@@ -10,8 +10,8 @@ cli.description('Universal Language Server Toolkit');
 cli.version('0.1.0');
 
 export type CLIGenerateArguments = {
+    adapter: string | undefined;
     query: string;
-    excludeConversion: boolean;
 };
 
 cli.command('query')
@@ -19,15 +19,16 @@ cli.command('query')
     .argument('<target>', 'File to generate facts from')
     .argument('<lexer>', 'Lexer (path) file to use')
     .argument('<parser>', 'Parser (path) file to use')
-    .argument('<adapter>', 'Adapter (path) file to use')
+    .option('-a, --adapter <adapter>', 'Adapter (path) file to use')
     .option('-q, --query <query>', 'Query file to run after generating facts', "printAST.pl")
-    .option('-ec, --exclude-conversion', 'Exclude conversion clauses', false)
-    .action(async (target: string, lexer: string, parser: string, adapter: string, options: CLIGenerateArguments) => {
+    .action(async (target: string, lexer: string, parser: string, options: CLIGenerateArguments) => {
         assert(fs.existsSync(target), 'Target file does not exist');
         assert(fs.existsSync(lexer), 'Lexer file does not exist');
         assert(fs.existsSync(parser), 'Parser file does not exist');
-        assert(fs.existsSync(adapter), 'Adapter file does not exist');
-        doQuery(target, lexer, parser, adapter, options);
+        if (options.adapter) {
+            assert(fs.existsSync(options.adapter), 'Adapter file does not exist');
+        }
+        doQuery(target, lexer, parser, options);
     });
 
 cli.command('check')
