@@ -40,7 +40,7 @@ export async function doQuery(targetPath: string, lexerPath: string, parserPath:
 
     // Dynamically import parser and prolog functions
     const { createParserFromGrammar } = await import('../syntactic/context-free-parser.ts');
-    const { cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
+    const { clauseGenerator: cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
 
     // Create a parser from grammar
     const targetContent = fs.readFileSync(targetPath, 'utf8');

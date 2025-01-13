@@ -22,10 +22,10 @@ function wrapWithComment(lines: string[], comment: string): string[] {
     ];
 }
 
-export function cstToAstGeneratorClauses(cstTree: ParserRuleContext,
-                                        parser: Parser,
-                                        adapterPath: string | undefined,
-                                        ): string[] {
+export function clauseGenerator(cstTree: ParserRuleContext,
+                                parser: Parser,
+                                adapterPath: string | undefined,
+                                ): string[] {
 
     const builtinBasePath = path.join('rules', 'adapter');
     
