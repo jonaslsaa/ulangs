@@ -16,7 +16,7 @@ function fileToLines(fileRelativePath: string): string[] {
 
 function wrapWithComment(lines: string[], comment: string): string[] {
     return [
-        `% ${comment}`,
+        `% === ${comment} ===`,
         ...lines,
         ''
     ];
@@ -29,23 +29,20 @@ export function cstToAstGeneratorClauses(cstTree: ParserRuleContext,
 
     const builtinBasePath = path.join('rules', 'adapter');
     
-    const libraries = wrapWithComment(fileToLines(path.join(builtinBasePath, 'libraries.pl')), 'Libraries')
-    const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Prolog facts for CST tree');
-    const helpers = wrapWithComment(fileToLines(path.join(builtinBasePath, 'genericHelpers.pl')), 'Generic helpers');
+    const libraries = wrapWithComment(fileToLines(path.join(builtinBasePath, 'libraries.pl')), 'Libraries.pl')
+    const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Auto-generated tree clauses')
+    const helpers = wrapWithComment(fileToLines(path.join(builtinBasePath, 'genericHelpers.pl')), 'Helpers.pl')
 
     if (adapterPath) {
         const adapterClauses = fileToLines(adapterPath);
-        const adapter = wrapWithComment(adapterClauses, 'CST to AST conversion rules'); // TODO: change comment
+        const adapter = wrapWithComment(adapterClauses, 'Adapter'); // TODO: change comment
         return [...libraries, ...treeFacts, ...helpers, ...adapter];
     }
     return [
         ...libraries,
         ...treeFacts,
         ...helpers,
-        '% CST Tree to AST conversion rules go here', // TODO: change prompt
-        '% Add conversion clauses here!',
-        '% Following main query below must be callable with the conversion clauses:',
-        '',
+        ...wrapWithComment(fileToLines(path.join(builtinBasePath, 'adapter_template.pl')), 'Adapter template (replace me!)')
     ];
 }
 
