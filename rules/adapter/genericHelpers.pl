@@ -124,9 +124,3 @@ get_node_location(NodeId, File, StartLine, StartCol, Length) :-
 get_location_by_type(ParentId, Type, File, StartLine, StartCol, Length) :-
     get_child_with_type(ParentId, Type, ChildId),
     node_location(ChildId, File, StartLine, StartCol, Length).
-
-% Modified conversion predicates to include location information
-convert_with_location(Node, ast_node(AST, Location)) :-
-    node_location(Node, File, Line, Col, Len),
-    Location = location(File, Line, Col, Len),
-    convert_cst_to_ast(Node, AST).
