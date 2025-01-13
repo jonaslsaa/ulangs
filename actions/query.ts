@@ -48,6 +48,7 @@ export async function doQuery(targetPath: string, lexerPath: string, parserPath:
     const tree = parser.program();
 
     // Check for errors after parsing
+    console.log("Target:", targetPath);
     if (errorListener.hasErrors()) {
         console.error("Parsing errors detected:");
         errorListener.getErrors().forEach(error => console.error(error));
@@ -55,26 +56,22 @@ export async function doQuery(targetPath: string, lexerPath: string, parserPath:
     }
     console.log("Target parsed successfully.");
 
-    
-    // Generate prolog file name
-    const fileNoExt = targetPath.replace(/\.[^/.]+$/, '');
-    const outputFileName = `${fileNoExt}.pl`;
-    const outputPath = path.join(workingDirectory, outputFileName);
-    console.log("Generating prolog file from", targetPath, "to", outputPath);
-
     // Compose clauses for prolog file
     const clauses = [
         ...cstToAstGeneratorClauses(tree, parser, options.adapter),
         ...queryClauses(options.query)
     ];
     assert(clauses.length > 0, "No clauses generated");
+
+    // Generate prolog file
+    const outputPath = path.join(workingDirectory, 'query.pl');
     assert(outputPath.length > 0, "No output path provided");
     assert(outputPath.endsWith('.pl'), "Output path must be a .pl file");
     fs.writeFileSync(outputPath, clauses.join('\n'));
 
     // Run prolog (if adapter is included)
     if (options.adapter === undefined) {
-        console.warn("Since no adapter was provided, the query will not be run.");
+        console.warn("WARN: Since no adapter was provided, the query will not be run.");
         console.log("Generated prolog file:", outputPath);
         process.exit(1);
         return;
