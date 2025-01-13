@@ -4,34 +4,47 @@ import { callSWIProlog } from '../semantic/call';
 
 import type { CLIGenerateArguments } from '../cli';
 import { compileANTLRFiles } from '../syntactic/build';
-import { _createTemporaryDirectory, _createTemporaryFile } from './utils/io';
+import { _createWorkingDirectory, _createTemporaryFile } from './utils/io';
+import { checkGrammar } from '../syntactic/check-grammar.ts';
+import path from 'path';
 
-const createTemporaryDirectory = (name: string) => _createTemporaryDirectory(name, '.prolog-tmp');
-const createTemporaryFile = (name: string) => _createTemporaryFile(name, '.prolog-tmp', new Set());
+export async function doQuery(targetPath: string, lexerPath: string, parserPath: string, options: CLIGenerateArguments) {
 
-export async function doQuery(targetPath: string, lexerPath: string, parserPath: string, adapterPath: string, options: CLIGenerateArguments) {
-    throw new Error('Not implemented');
-    // TODO: check grammar first
-    if (options.compileAntlr) {
-        const errors = await compileANTLRFiles('grammar');
-        if (errors.length === 0) {
-            console.log('ANTLR files generated successfully');
-        } else {
-            console.error('ANTLR files generation failed:');
-            errors.forEach(error => console.error(error));
-            process.exit(1);
-        }
+    // Create temporary directory to put our generated files in
+    const workingDirectory = _createWorkingDirectory('query');
+
+    // Check grammar is actually syntactically valid for our target (using our java parser)
+    const antlrJavaErrors = await checkGrammar(lexerPath, parserPath, targetPath);
+    if (antlrJavaErrors.length > 0) {
+        console.error('Grammar is not syntactically valid:');
+        antlrJavaErrors.forEach(error => console.error(error));
+        process.exit(1);
+    }
+    
+    // Copy .g4 files to tmpANTLR
+    const grammarPaths = {
+        lexer: path.join(workingDirectory, 'MyLexer.g4'),
+        parser: path.join(workingDirectory, 'MyParser.g4'),
+    }
+    fs.copyFileSync(lexerPath, grammarPaths.lexer);
+    fs.copyFileSync(parserPath, grammarPaths.parser);
+    // Compile antlr files to typescript
+    const antlrCompilationErrors = await compileANTLRFiles(workingDirectory);
+    if (antlrCompilationErrors.length === 0) {
+        console.log('ANTLR generated successfully');
+    } else {
+        console.error('ANTLR generation failed:');
+        antlrCompilationErrors.forEach(error => console.error(error));
+        process.exit(1);
     }
 
-    // Import from parser.ts an prolog.ts
+    // Dynamically import parser and prolog functions
     const { createParserFromGrammar } = await import('../syntactic/context-free-parser.ts');
     const { cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
 
-    const fileNoExt = file.replace(/\.[^/.]+$/, '');
-    const outputPath = `${fileNoExt}.pl`;
-    console.log("Generating prolog file from", file, "to", outputPath);
-
-    const { parser, errorListener } = createParserFromGrammar(fs.readFileSync(file, 'utf8'));
+    // Create a parser from grammar
+    const targetContent = fs.readFileSync(targetPath, 'utf8');
+    const { parser, errorListener } = await createParserFromGrammar(targetContent, grammarPaths.lexer, grammarPaths.parser);
     const tree = parser.program();
 
     // Check for errors after parsing
@@ -40,11 +53,18 @@ export async function doQuery(targetPath: string, lexerPath: string, parserPath:
         errorListener.getErrors().forEach(error => console.error(error));
         process.exit(1);
     }
+    console.log("Target parsed successfully.");
 
-    const includeConversionClauses = !options.excludeConversion;
+    
+    // Generate prolog file name
+    const fileNoExt = targetPath.replace(/\.[^/.]+$/, '');
+    const outputFileName = `${fileNoExt}.pl`;
+    const outputPath = path.join(workingDirectory, outputFileName);
+    console.log("Generating prolog file from", targetPath, "to", outputPath);
 
+    // Compose clauses for prolog file
     const clauses = [
-        ...cstToAstGeneratorClauses(tree, parser, includeConversionClauses),
+        ...cstToAstGeneratorClauses(tree, parser, options.adapter),
         ...queryClauses(options.query)
     ];
     assert(clauses.length > 0, "No clauses generated");
@@ -52,23 +72,23 @@ export async function doQuery(targetPath: string, lexerPath: string, parserPath:
     assert(outputPath.endsWith('.pl'), "Output path must be a .pl file");
     fs.writeFileSync(outputPath, clauses.join('\n'));
 
-    if (options.runProlog) {
-        if (!includeConversionClauses) {
-            console.error("Cannot run prolog without conversion clauses");
-            process.exit(1);
-            return;
-        }
-        console.log("Running Prolog.");
-        const prologResult = callSWIProlog(outputPath);
-        if (prologResult.stderr) {
-            console.error("Prolog failed:");
-            console.error(prologResult.stderr);
-        }
-        const ast = prologResult.stdout.trim();
-        if (ast === '') {
-            console.error("Prolog returned empty result");
-        } else {
-            console.log(ast);
-        }
+    // Run prolog (if adapter is included)
+    if (options.adapter === undefined) {
+        console.warn("Since no adapter was provided, the query will not be run.");
+        console.log("Generated prolog file:", outputPath);
+        process.exit(1);
+        return;
+    }
+    console.log("Running Prolog.");
+    const prologResult = callSWIProlog(outputPath);
+    if (prologResult.stderr) {
+        console.error("Prolog failed:");
+        console.error(prologResult.stderr);
+    }
+    const ast = prologResult.stdout.trim();
+    if (ast === '') {
+        console.error("Prolog returned empty result");
+    } else {
+        console.log(ast);
     }
 }
