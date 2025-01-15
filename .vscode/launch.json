@@ -10,7 +10,7 @@
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}/lsp"],
 			"outFiles": [
 				"${workspaceRoot}/lsp/client/out/**/*.js",
-				"${workspaceRoot}/lsp/server/out/**/*.js"
+				"${workspaceRoot}/lsp/out/**/*.js"
 			],
 			"autoAttachChildProcesses": true,
 			"preLaunchTask": {
