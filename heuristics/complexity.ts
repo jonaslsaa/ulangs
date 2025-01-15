@@ -1,3 +1,5 @@
+import { gzipSync } from 'zlib';
+
 const uniqueTokenRegex = /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(?:\/\/.*?$|\/\*[\s\S]*?\*\/)|(?:\b0[xX][0-9a-fA-F]+\b|\b\d*\.\d+(?:[eE][+-]?\d+)?\b|\b\d+\b)|(?:[a-zA-Z_]\w*)|(?:[+\-*\/=<>!&|^~%]+|[\[\]{}(),.;:])|(?:\s+)/gm;
 
 export function calculateComplexity(input: string, method: 'characters' | 'words' | 'lines' | 'gzip' | 'unique' = 'gzip'): number {
@@ -13,7 +15,7 @@ export function calculateComplexity(input: string, method: 'characters' | 'words
     }
     if (method === 'gzip') {
         const data = Buffer.from(input, 'utf8');
-        const compressed = Bun.gzipSync(data);
+        const compressed = gzipSync(data);
         return compressed.length;
     }
     if (method === 'unique') {
