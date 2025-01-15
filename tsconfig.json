@@ -28,7 +28,7 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "include": [
-    "*.ts",
+    "**/*.ts",
   ],
   "exclude": ["node_modules", "lsp/client/**"]
 }
