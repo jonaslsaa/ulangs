@@ -17,7 +17,6 @@ import {
 	type InitializeResult,
 	DocumentDiagnosticReportKind,
 	type DocumentDiagnosticReport,
-	type Definition,
 	Location,
 } from 'vscode-languageserver/node';
 
@@ -25,6 +24,8 @@ import {
 	type Position,
 	TextDocument
 } from 'vscode-languageserver-textdocument';
+
+import { type Definition } from '../../../rules/queries/schemas/definitions';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -105,12 +106,6 @@ let globalSettings: ExampleSettings = defaultSettings;
 // Cache the settings of all open documents
 const documentSettings = new Map<string, Thenable<ExampleSettings>>();
 
-interface Declaration {
-	match: string;
-	position: Position;
-}
-const documentDefinitions = new Map<string, Declaration[]>();
-
 connection.onDidChangeConfiguration(change => {
 	if (hasConfigurationCapability) {
 		// Reset all cached document settings
@@ -164,24 +159,19 @@ connection.languages.diagnostics.on(async (params) => {
 	}
 });
 
+const documentDefinitions = new Map<string, Definition[]>();
+
+function GetNewDefinitions(document: TextDocument) {
+	
+}
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
 	console.log("Content change");
-	validateTextDocument(change.document);
+	// validateTextDocument(change.document); // example of validating the document
 
-	// Find declarations (format: def NAME:)
-	const pattern = /def\s+(\w+):/g;
-	let m: RegExpExecArray | null;
-	const declarations: Declaration[] = [];
-	while ((m = pattern.exec(change.document.getText())) !== null) {
-		declarations.push({
-			match: m[1],
-			position: change.document.positionAt(m.index)
-		});
-		console.log("Found declaration", m[1]);
-	}
-	documentDefinitions.set(change.document.uri, declarations);
+	GetNewDefinitions(change.document);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
@@ -237,20 +227,7 @@ connection.onDidChangeWatchedFiles(_change => {
 connection.onDefinition((params: TextDocumentPositionParams) => {
 	console.log("onDefinition: request", params);
 	const definition = documentDefinitions.get(params.textDocument.uri);
-	if (definition) {
-		console.log("onDefinition: Definitons", definition);
-		const declaration = definition.find(decl => decl.position.line === params.position.line);
-		if (declaration) {
-			console.log("onDefinition: Found definitions", declaration);
-			return {
-				uri: params.textDocument.uri,
-				range: {
-					start: declaration.position,
-					end: declaration.position
-				}
-			};
-		}
-	}
+	
 	return undefined;
 });
 
