@@ -26,6 +26,9 @@ import {
 } from 'vscode-languageserver-textdocument';
 
 import { type Definition } from '../../../rules/queries/schemas/definitions';
+import { executePrologQuery, generatePrologQuery } from '../../../actions/query';
+import tmp from 'tmp';
+import fs from 'fs';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -161,17 +164,32 @@ connection.languages.diagnostics.on(async (params) => {
 
 const documentDefinitions = new Map<string, Definition[]>();
 
-function GetNewDefinitions(document: TextDocument) {
-	
-}
+async function GetNewDefinitions(document: TextDocument) {
+	const tmpFile = tmp.fileSync();
+
+	fs.writeFileSync(tmpFile.name, document.getText());
+
+	console.log("File written to", tmpFile.name);
+
+	const prolog = await generatePrologQuery(
+		tmpFile.name,
+		'test-dsl/py-like/solution/MyLexer.g4',
+		'test-dsl/py-like/solution/MyParser.g4',
+		'test-dsl/py-like/solution/MyAdapter.pl',
+		'test-dsl/py-like/solution/definitions.pl',
+	);
+
+	return executePrologQuery(prolog.filePath);
+};
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
-	console.log("Content change");
+documents.onDidChangeContent(async change => {
+	console.log("Content change, querying...");
 	// validateTextDocument(change.document); // example of validating the document
 
-	GetNewDefinitions(change.document);
+	const queryResult = await GetNewDefinitions(change.document);
+	console.log("Query result", queryResult);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
