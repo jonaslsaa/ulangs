@@ -8,19 +8,21 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 	ProposedFeatures,
-	InitializeParams,
+	type InitializeParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
 	CompletionItemKind,
-	TextDocumentPositionParams,
+	type TextDocumentPositionParams,
 	TextDocumentSyncKind,
-	InitializeResult,
+	type InitializeResult,
 	DocumentDiagnosticReportKind,
 	type DocumentDiagnosticReport,
+	type Definition,
+	Location,
 } from 'vscode-languageserver/node';
 
 import {
-	Position,
+	type Position,
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
@@ -63,10 +65,11 @@ connection.onInitialize((params: InitializeParams) => {
 				resolveProvider: true
 			},
 			declarationProvider: true,
+			definitionProvider: true,
 			diagnosticProvider: {
 				interFileDependencies: false,
 				workspaceDiagnostics: false
-			}
+			},
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -179,7 +182,7 @@ documents.onDidChangeContent(change => {
 			match: m[1],
 			position: change.document.positionAt(m.index)
 		});
-		console.log("Declaration", m[1]);
+		console.log("Found declaration", m[1]);
 	}
 	documentDeclarations.set(change.document.uri, declarations);
 });
@@ -261,10 +264,25 @@ connection.onCompletion(
 );
 
 connection.onDeclaration((params) => {
-	console.log("Declaration request", params);
+	console.log("Declaration request1", params);
 	const declarations = documentDeclarations.get(params.textDocument.uri);
 	if (declarations) {
 		return declarations.map(declaration => {
+			return Location.create(params.textDocument.uri, {
+				start: declaration.position,
+				end: declaration.position
+			});
+		});
+	}
+	return [];
+});
+
+connection.onDefinition((params: TextDocumentPositionParams) => {
+	console.log("Definition request", params);
+	const declarations = documentDeclarations.get(params.textDocument.uri);
+	if (declarations) {
+		const declaration = declarations.find(decl => decl.position.line === params.position.line);
+		if (declaration) {
 			return {
 				uri: params.textDocument.uri,
 				range: {
@@ -272,9 +290,9 @@ connection.onDeclaration((params) => {
 					end: declaration.position
 				}
 			};
-		});
+		}
 	}
-	return [];
+	return undefined;
 });
 
 

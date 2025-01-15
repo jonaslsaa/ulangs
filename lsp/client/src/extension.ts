@@ -4,12 +4,12 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext, commands, window, StatusBarAlignment } from 'vscode';
+import { workspace, type ExtensionContext, commands, window, StatusBarAlignment } from 'vscode';
 
 import {
 	LanguageClient,
-	LanguageClientOptions,
-	ServerOptions,
+	type LanguageClientOptions,
+	type ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
 
