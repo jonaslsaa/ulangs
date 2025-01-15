@@ -25,8 +25,8 @@ import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import { type Definition } from '../../../rules/queries/schemas/definitions';
-import { executePrologQuery, generatePrologQuery } from '../../../actions/query';
+import { type Definition } from '../rules/queries/schemas/definitions';
+import { executePrologQuery, generatePrologQuery } from '../actions/query';
 import tmp from 'tmp';
 import fs from 'fs';
 

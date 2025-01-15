@@ -16,7 +16,6 @@
 	],
 	"references": [
 		{ "path": "./client" },
-		{ "path": "./server" }
 	],
 	// Bundler mode
 	"moduleResolution": "bundler",
