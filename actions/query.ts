@@ -3,7 +3,7 @@ import { callSWIProlog } from '../semantic/call';
 import type { CLIGenerateArguments } from '../cli';
 import { compileANTLRFiles } from '../syntactic/build';
 import { _createWorkingDirectory, _createTemporaryFile } from './utils/io';
-import { checkGrammar } from '../syntactic/check-grammar.ts';
+import { checkGrammar } from '../syntactic/check-grammar';
 import path from 'path';
 
 interface PrologQueryData {
@@ -17,12 +17,12 @@ interface QueryResult {
 }
 
 // Core function to generate Prolog query
-async function generatePrologQuery(
+export async function generatePrologQuery(
     targetPath: string,
     lexerPath: string,
     parserPath: string,
-    queryPath: string,
     adapterPath: string | undefined,
+    queryPath: string,
 ): Promise<PrologQueryData> {
     const workingDirectory = _createWorkingDirectory('query');
 
@@ -48,7 +48,7 @@ async function generatePrologQuery(
     }
 
     // Parse target
-    const { createParserFromGrammar } = await import('../syntactic/context-free-parser.ts');
+    const { createParserFromGrammar } = await import('../syntactic/context-free-parser');
     const { clauseGenerator: cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
 
     const targetContent = fs.readFileSync(targetPath, 'utf8');
@@ -83,7 +83,7 @@ async function generatePrologQuery(
 }
 
 // Execute Prolog query
-function executePrologQuery(prologFile: string): QueryResult {
+export function executePrologQuery(prologFile: string): QueryResult {
     const result = callSWIProlog(prologFile);
     return {
         ast: result.stdout.trim() || null,
@@ -100,7 +100,7 @@ export async function doQuery(
 ): Promise<void> {
     try {
         // Generate Prolog query
-        const prologData = await generatePrologQuery(targetPath, lexerPath, parserPath, options.query, options.adapter);
+        const prologData = await generatePrologQuery(targetPath, lexerPath, parserPath, options.adapter, options.query);
 
         console.log("Target:", targetPath);
         console.log("Target parsed successfully.");
@@ -138,9 +138,3 @@ export async function doQuery(
         process.exit(1);
     }
 }
-
-// Export internal functions for programmatic use
-export const internal = {
-    generatePrologQuery,
-    executePrologQuery
-};
