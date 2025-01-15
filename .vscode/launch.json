@@ -13,10 +13,10 @@
 				"${workspaceRoot}/lsp/server/out/**/*.js"
 			],
 			"autoAttachChildProcesses": true,
-			/*"preLaunchTask": {
+			"preLaunchTask": {
 				"type": "npm",
 				"script": "watch"
-			}*/
+			}
 		},
 		{
 			"name": "Language Server E2E Test",

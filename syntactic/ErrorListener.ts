@@ -1,5 +1,6 @@
+import { ErrorListener, Lexer, Parser, RecognitionException, Token } from 'antlr4';
+import antlr4 from 'antlr4';
 
-import { ErrorListener, Lexer, Parser, RecognitionException, Recognizer, Token } from 'antlr4';
 
 export type ANTLRError = {
     grammarType: 'LEXER' | 'PARSER' | 'UNKNOWN';
@@ -14,7 +15,7 @@ export class CustomErrorListener extends ErrorListener<Token> {
     private errors: ANTLRError[] = [];
 
     syntaxError(
-        recognizer: Recognizer<Token | number>,
+        recognizer: antlr4.Recognizer<Token | number>,
         offendingSymbol: Token | number,
         line: number,
         column: number,
