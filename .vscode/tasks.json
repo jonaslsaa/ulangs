@@ -9,6 +9,9 @@
 				"panel": "dedicated",
 				"reveal": "never"
 			},
+			"options": {
+				"cwd": "${workspaceFolder}/lsp"
+			},
 			"problemMatcher": [
 				"$tsc"
 			]

@@ -14,8 +14,9 @@
 			],
 			"autoAttachChildProcesses": true,
 			"preLaunchTask": {
+				"path": "lsp",
 				"type": "npm",
-				"script": "watch"
+				"script": "compile"
 			}
 		},
 		{
