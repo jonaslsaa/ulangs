@@ -20,4 +20,5 @@ export const DefinitionQueryResultSchema = z.object({
   symbols: z.array(SymbolSchema),
 });
 
+export type Definition = z.infer<typeof SymbolSchema>;
 export type DefinitionQueryResult = z.infer<typeof DefinitionQueryResultSchema>;
