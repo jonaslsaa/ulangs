@@ -61,15 +61,12 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			// Tell the client that this server supports code completion.
-			completionProvider: {
-				resolveProvider: true
-			},
-			declarationProvider: true,
+			// completionProvider: { resolveProvider: true },
 			definitionProvider: true,
-			diagnosticProvider: {
+			/*diagnosticProvider: {
 				interFileDependencies: false,
 				workspaceDiagnostics: false
-			},
+			},*/
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -112,7 +109,7 @@ interface Declaration {
 	match: string;
 	position: Position;
 }
-const documentDeclarations = new Map<string, Declaration[]>();
+const documentDefinitions = new Map<string, Declaration[]>();
 
 connection.onDidChangeConfiguration(change => {
 	if (hasConfigurationCapability) {
@@ -184,7 +181,7 @@ documents.onDidChangeContent(change => {
 		});
 		console.log("Found declaration", m[1]);
 	}
-	documentDeclarations.set(change.document.uri, declarations);
+	documentDefinitions.set(change.document.uri, declarations);
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
@@ -237,52 +234,14 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received a file change event');
 });
 
-// This handler provides the initial list of the completion items.
-connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			},
-			{
-				label: 'JavaScript',
-				kind: CompletionItemKind.Text,
-				data: 2
-			},
-			{
-				label: 'Plaintext',
-				kind: CompletionItemKind.Text,
-				data: 3
-			}
-		];
-	}
-);
-
-connection.onDeclaration((params) => {
-	console.log("Declaration request1", params);
-	const declarations = documentDeclarations.get(params.textDocument.uri);
-	if (declarations) {
-		return declarations.map(declaration => {
-			return Location.create(params.textDocument.uri, {
-				start: declaration.position,
-				end: declaration.position
-			});
-		});
-	}
-	return [];
-});
-
 connection.onDefinition((params: TextDocumentPositionParams) => {
-	console.log("Definition request", params);
-	const declarations = documentDeclarations.get(params.textDocument.uri);
-	if (declarations) {
-		const declaration = declarations.find(decl => decl.position.line === params.position.line);
+	console.log("onDefinition: request", params);
+	const definition = documentDefinitions.get(params.textDocument.uri);
+	if (definition) {
+		console.log("onDefinition: Definitons", definition);
+		const declaration = definition.find(decl => decl.position.line === params.position.line);
 		if (declaration) {
+			console.log("onDefinition: Found definitions", declaration);
 			return {
 				uri: params.textDocument.uri,
 				range: {
