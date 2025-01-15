@@ -20,7 +20,7 @@ export function activate(context: ExtensionContext) {
 	// Log as client that we are starting
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
-		path.join('server', 'out', 'lsp', 'server', 'src', 'server.js')
+		path.join('out', 'lsp-server', 'server.js')
 	);
 
 	// If the extension is launched in debug mode then the debug server options are used
