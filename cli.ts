@@ -3,6 +3,7 @@ import { doQuery } from './actions/query';
 import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
 import assert from 'assert';
+import { doRPC } from './actions/rpc';
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -90,4 +91,11 @@ cli.command('infer-grammar')
     });
 
 
+cli.command('rpc')
+    .description('Remote procedure call')
+    .argument('<function>', 'Function to call')
+    .argument('<payload>', 'Payload to send')
+    .action(async (functionName: string, payload: string) => {
+        doRPC(functionName, payload);
+    });
 cli.parse();
