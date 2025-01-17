@@ -6,7 +6,7 @@
 			"script": "compile",
 			"group": "build",
 			"presentation": {
-				"panel": "dedicated",
+				"panel": "shared",
 				"reveal": "never"
 			},
 			"options": {
@@ -14,7 +14,21 @@
 			},
 			"problemMatcher": [
 				"$tsc"
-			]
+			],
+			"dependsOn": "buildLSP"
+		},
+		{
+			"label": "buildLSP",
+			"type": "npm",
+			"script": "build:lsp",
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"panel": "shared",
+				"reveal": "never"
+			}
 		},
 		{
 			"type": "npm",

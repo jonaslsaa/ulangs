@@ -1,0 +1,34 @@
+{
+
+  "compilerOptions": {
+    // Force CommonJS output
+    "module": "CommonJS",
+    // You can still target modern JS so that newer features (replaceAll, private fields) work
+    "target": "ES2021",
+
+    // Greatly helps with default-import from 'fs', 'path', 'assert', etc.
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    // Let TS understand advanced iteration on Maps/Sets if we downlevel
+    "downlevelIteration": true,
+
+    // Provide modern APIs (replaceAll, private fields) in the types
+    "lib": ["ES2021", "DOM"],
+
+    // Where to put the compiled .js
+    "outDir": "lsp/out",
+
+    // Make sure TS can figure out where .ts files start
+    "rootDir": ".",
+
+    // Optionally skip .d.ts checking for node_modules
+    "skipLibCheck": true
+  },
+
+  "include": [
+    // All the server-related or shared code that the server will import
+    "**/*.ts",
+  ],
+  "exclude": ["node_modules", "lsp/client/**"]
+}

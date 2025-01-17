@@ -24,6 +24,7 @@
     "@types/tmp": "^0.2.6"
   },
   "scripts": {
-    "cli": "pnpm dlx tsx cli.ts"
+    "cli": "pnpm dlx tsx cli.ts",
+    "build:lsp": "npx tsc -p tsconfig.lsp.json"
   }
 }
