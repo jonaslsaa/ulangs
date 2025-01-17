@@ -11,7 +11,7 @@ const registeredFunctions: RPCFunction[] = [
     health,
 ];
 
-export function doRPC(functionName: string, payload: string) {
+export function resolveRPC(functionName: string, payload: string) {
 	const registeredFunction = registeredFunctions.find(func => func.name === functionName);
 	if (!registeredFunction) {
 		console.error(`Function ${functionName} not found`);

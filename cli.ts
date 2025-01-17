@@ -3,7 +3,7 @@ import { doQuery } from './actions/query';
 import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
 import assert from 'assert';
-import { doRPC } from './actions/rpc';
+import { resolveRPC } from './actions/rpc';
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -96,6 +96,6 @@ cli.command('rpc')
     .argument('<function>', 'Function to call')
     .argument('<payload>', 'Payload to send')
     .action(async (functionName: string, payload: string) => {
-        doRPC(functionName, payload);
+        resolveRPC(functionName, payload);
     });
 cli.parse();
