@@ -1,10 +1,10 @@
 import z from 'zod'
 import health from './rpc/health';
 
-export type RPCFunction<A extends z.ZodObject<any, any, any> = z.ZodObject<any, any, any>> = {
+export type RPCFunction = {
     name: string;
-		argumentSchema: A;
-		method: (payload: z.infer<A>) => any;
+		argumentSchema: z.ZodObject<any>;
+		method: (payload: any) => any;
 };
 
 const registeredFunctions: RPCFunction[] = [
