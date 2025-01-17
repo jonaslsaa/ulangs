@@ -1,8 +1,6 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
-import path from 'path';
 import { type ANTLRError } from '../syntactic/ErrorListener';
-import esbuild from 'esbuild';
 
 function toANTLRError(_error: string): ANTLRError {
     const error = _error.trim();
@@ -65,17 +63,26 @@ async function spawnANTLR(grammarDirectoryPath: string, grammarFilesWithExtensio
             ['-Dlanguage=JavaScript', ...grammarFilesWithExtension],
             {
                 cwd: grammarDirectoryPath,
-                stdio: ['inherit', 'pipe', 'pipe']
+                stdio: ['inherit', 'pipe', 'pipe'] // stdin inherit, stdout and stderr as pipes
             }
         );
 
         let stdout = '';
         let stderr = '';
 
-        process.stdout.on('data', (data) => { stdout += data.toString(); });
-        process.stderr.on('data', (data) => { stderr += data.toString(); });
+        process.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
 
-        process.on('close', () => { resolve({ stdout, stderr }); });
+        process.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        // Always resolve with the output, regardless of exit code
+        process.on('close', () => {
+            resolve({ stdout, stderr });
+        });
+
         process.on('error', (err) => {
             stderr = err.message;
             resolve({ stdout, stderr });
@@ -87,12 +94,13 @@ export async function compileANTLRFiles(grammarDirectoryPath: string): Promise<A
     const grammarFiles = fs.readdirSync(grammarDirectoryPath);
     const grammarFilesWithExtension = grammarFiles.filter(file => file.endsWith('.g4'));
 
-    // 1) Run ANTLR to produce .js files (ESM)
+    // First attempt
     let result = await spawnANTLR(grammarDirectoryPath, grammarFilesWithExtension);
-
-    // 2) Check if there's a Python error, etc. (same as your code)
+    
+    // Check if it's a Python error and try recovery
     if (result.stderr.includes('Traceback (most recent call last):')) {
         console.error('Got python error! Let\'s try recover...');
+        // Recovery attempt
         result = await spawnANTLR(grammarDirectoryPath, grammarFilesWithExtension);
         if (result.stderr.includes('Traceback (most recent call last):')) {
             console.error('Recovery failed! Giving up...');
@@ -101,10 +109,6 @@ export async function compileANTLRFiles(grammarDirectoryPath: string): Promise<A
         console.log('Recovery succeeded!');
     }
 
-    // 3) Now that .js (ESM) files exist, convert them to CJS
-    await transpileESMtoCJS(grammarDirectoryPath);
-
-    // 4) Parse any ANTLR errors
     return parseErrors(result.stderr, grammarDirectoryPath);
 }
 
@@ -112,7 +116,7 @@ function parseErrors(stderr: string, grammarDirectoryPath: string): ANTLRError[]
     if (stderr) {
         console.log("ANTLR4 stderr in directory", grammarDirectoryPath, ":");
         console.log(stderr);
-
+        
         return stderr
             .split('\n')
             .map(line => line.trim())
@@ -120,68 +124,4 @@ function parseErrors(stderr: string, grammarDirectoryPath: string): ANTLRError[]
             .map(toANTLRError);
     }
     return [];
-}
-
-/**
- * Convert ANTLR-generated .js (ESM) into CommonJS via esbuild.
- */
-async function transpileESMtoCJS(grammarDir: string) {
-    // Find all .js files that ANTLR produced in grammarDir (MyParser.js, MyParserListener.js, etc.)
-    const allFiles = fs.readdirSync(grammarDir);
-    const jsFiles = allFiles.filter(f => f.endsWith('.js'));
-
-    // Build absolute entryPoints array
-    const entryPoints = jsFiles.map(f => path.join(grammarDir, f));
-
-    // Use a single esbuild call for *all* files:
-    try {
-        await esbuild.build({
-            entryPoints: [ path.join(grammarDir, "MyParser.js") ],
-            outfile: path.join(grammarDir, "MyParser.cjs"),
-            format: "cjs",
-            bundle: true,           // Key: fully bundle references (including antlr4)
-            platform: "node",
-            target: "node16",
-            sourcemap: false,
-            minify: false,
-            allowOverwrite: true,
-            banner: {
-                js: 'const import_meta_url = __filename;',
-            },
-            define: {
-                'import.meta.url': 'import_meta_url'
-            }
-        });
-        await esbuild.build({
-            entryPoints: [ path.join(grammarDir, "MyLexer.js") ],
-            outfile: path.join(grammarDir, "MyLexer.cjs"),
-            format: "cjs",
-            bundle: true,           // Key: fully bundle references (including antlr4)
-            platform: "node",
-            target: "node16",
-            sourcemap: false,
-            minify: false,
-            allowOverwrite: true,
-            banner: {
-                js: 'const import_meta_url = __filename;',
-            },
-            define: {
-                'import.meta.url': 'import_meta_url'
-            }
-        });
-
-        /*const newCjsFiles = entryPoints.map(f => f.replace('.js', '.cjs'));
-        newCjsFiles.forEach(file => {
-            const fileContent = fs.readFileSync(file, 'utf8');
-            const loadFix = fileContent.replace(/Listener.js/g, 'Listener.cjs');
-            const extendFix = loadFix.replace(
-                /import_antlr4\.default\.tree\.ParseTreeListener/g,
-                'import_antlr4.default.ParseTreeListener'
-            );
-            fs.writeFileSync(file, extendFix);
-        });*/
-        console.log(`Converted ESM -> CJS for these ANTLR files:`, jsFiles);
-    } catch (err) {
-        console.error(`Failed to convert ESM -> CJS for grammar files in ${grammarDir}`, err);
-    }
 }
