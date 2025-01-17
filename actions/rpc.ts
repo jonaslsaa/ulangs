@@ -3,9 +3,8 @@ import health from './rpc/health';
 import query from './rpc/query';
 
 export type RPCFunction = {
-	name: string;
 	argumentSchema: z.ZodObject<any> | undefined;
-	method: (payload?: any) => any;
+	method: (payload?: any) => Record<string, any>;
 };
 
 export const registeredFunctions = {
