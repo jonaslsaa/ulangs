@@ -3,8 +3,8 @@ import { CustomErrorListener } from './ErrorListener';
 import fs from 'fs';
 
 export async function createParserFromGrammar(codeInput: string, generatedLexerG4Path: string, generatedParserG4Path: string) {
-    const parserModulePath = generatedParserG4Path.replace(/\.g4$/, '.ts');
-    const lexerModulePath = generatedLexerG4Path.replace(/\.g4$/, '.ts');
+    const parserModulePath = generatedParserG4Path.replace(/\.g4$/, '.js');
+    const lexerModulePath = generatedLexerG4Path.replace(/\.g4$/, '.js');
     // wait 0.5 seconds before importing the modules, as the files may not be ready yet
     await new Promise(resolve => setTimeout(resolve, 500));
 
