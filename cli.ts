@@ -94,8 +94,29 @@ cli.command('infer-grammar')
 cli.command('rpc')
     .description('Remote procedure call')
     .argument('<function>', 'Function to call')
-    .argument('<payload>', 'Payload to send')
-    .action(async (functionName: string, payload: string) => {
-        resolveRPC(functionName, payload);
+    .argument('[payload]', 'Payload to send (can be piped)')
+    .action(async (functionName: string, payload?: string) => {
+        // Check if we're receiving input from a pipe
+        if (process.stdin.isTTY === undefined) {
+            // Reading from pipe
+            let data = '';
+            process.stdin.setEncoding('utf8');
+            
+            process.stdin.on('data', chunk => {
+                data += chunk;
+            });
+            
+            process.stdin.on('end', () => {
+                resolveRPC(functionName, data.trim());
+            });
+        } else {
+            // Using command line argument
+            if (!payload) {
+                console.error('Error: Payload is required (when not piping input)');
+                process.exit(1);
+            }
+            resolveRPC(functionName, payload);
+        }
     });
+
 cli.parse();
