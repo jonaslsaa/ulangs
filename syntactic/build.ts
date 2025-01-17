@@ -60,7 +60,7 @@ function toANTLRError(_error: string): ANTLRError {
 async function spawnANTLR(grammarDirectoryPath: string, grammarFilesWithExtension: string[]): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve) => {
         const process = spawn('antlr4',
-            ['-Dlanguage=JavaScript', ...grammarFilesWithExtension],
+            ['-Dlanguage=TypeScript', ...grammarFilesWithExtension],
             {
                 cwd: grammarDirectoryPath,
                 stdio: ['inherit', 'pipe', 'pipe'] // stdin inherit, stdout and stderr as pipes
