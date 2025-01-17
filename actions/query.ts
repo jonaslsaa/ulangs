@@ -29,7 +29,7 @@ export async function generatePrologQuery(
     // Check grammar validity
     const antlrJavaErrors = await checkGrammar(lexerPath, parserPath, targetPath);
     if (antlrJavaErrors.length > 0) {
-        throw new Error('Grammar validation failed: ' + antlrJavaErrors.join('\n'));
+        throw new Error('Grammar validation failed: ' + antlrJavaErrors.map(error => error.message).join('\n'));
     }
 
     // Setup grammar files
