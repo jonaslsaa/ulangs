@@ -13,7 +13,7 @@ export const registeredFunctions = {
 	query
 } as const;
 
-export type NamesOfRegisteredFunctions = keyof typeof registeredFunctions;
+type NamesOfRegisteredFunctions = keyof typeof registeredFunctions;
 
 export function resolveRPC(functionName: string, payload: string) {
 	const registeredFunction = registeredFunctions[functionName as NamesOfRegisteredFunctions] as RPCFunction;

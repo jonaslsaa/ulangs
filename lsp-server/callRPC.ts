@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { registeredFunctions, type RPCFunction } from '../actions/rpc';
+import { type RPCFunction } from '../actions/rpc';
 
 /**
  * If an RPCFunction has an argumentSchema, we want to accept typed arguments.
