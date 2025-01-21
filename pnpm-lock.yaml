@@ -23,6 +23,9 @@ importers:
       diff:
         specifier: ^7.0.0
         version: 7.0.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
       openai:
         specifier: ^4.77.4
         version: 4.78.1(zod@3.24.1)
@@ -105,6 +108,10 @@ packages:
   diff@7.0.0:
     resolution: {integrity: sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==}
     engines: {node: '>=0.3.1'}
+
+  dotenv@16.4.7:
+    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
 
   event-target-shim@5.0.1:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
@@ -254,6 +261,8 @@ snapshots:
   delayed-stream@1.0.0: {}
 
   diff@7.0.0: {}
+
+  dotenv@16.4.7: {}
 
   event-target-shim@5.0.1: {}
 

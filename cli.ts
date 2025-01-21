@@ -4,6 +4,7 @@ import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
 import assert from 'assert';
 import { resolveRPC } from './actions/rpc';
+import { configure } from './env';
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -119,4 +120,5 @@ cli.command('rpc')
         }
     });
 
+configure();
 cli.parse();
