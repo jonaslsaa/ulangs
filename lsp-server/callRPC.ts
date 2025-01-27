@@ -14,7 +14,7 @@ type PrepareRPC<T extends RPCFunction> =
 
 function _callViaCLI(methodName: string, payload: string): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const childProcess = spawn('pnpm', ['dlx', 'tsx', 'cli.ts', methodName, payload]);
+		const childProcess = spawn('pnpm', ['dlx', 'tsx', 'cli.ts', 'rpc', methodName, payload]);
 
 		let stdout = '';
 		let stderr = '';
