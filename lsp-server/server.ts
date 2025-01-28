@@ -168,10 +168,9 @@ const documentDefinitions = new Map<string, Definition[]>();
 const rpcRunQuery = prepareRPC('query');
 
 async function GetNewDefinitions(document: TextDocument) {
+	// Create a temporary file to write the document's text to and pass to the RPC
 	const tmpFile = tmp.fileSync();
-
 	fs.writeFileSync(tmpFile.name, document.getText());
-
 	console.log("File written to", tmpFile.name);
 
 	return await rpcRunQuery({
