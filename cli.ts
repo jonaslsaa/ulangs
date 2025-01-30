@@ -3,6 +3,8 @@ import { doQuery } from './actions/query';
 import { doInferGrammar, doVerboseCheck } from './actions/inferGrammar';
 import fs from 'fs';
 import assert from 'assert';
+import { resolveRPC } from './actions/rpc';
+import { configure } from './env';
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -90,4 +92,33 @@ cli.command('infer-grammar')
     });
 
 
+cli.command('rpc')
+    .description('Remote procedure call')
+    .argument('<function>', 'Function to call')
+    .argument('[payload]', 'Payload to send (can be piped)')
+    .action(async (functionName: string, payload?: string) => {
+        // Check if we're receiving input from a pipe
+        if (process.stdin.isTTY === undefined) {
+            // Reading from pipe
+            let data = '';
+            process.stdin.setEncoding('utf8');
+            
+            process.stdin.on('data', chunk => {
+                data += chunk;
+            });
+            
+            process.stdin.on('end', () => {
+                resolveRPC(functionName, data.trim());
+            });
+        } else {
+            // Using command line argument
+            if (!payload) {
+                console.error('Error: Payload is required (when not piping input)');
+                process.exit(1);
+            }
+            resolveRPC(functionName, payload);
+        }
+    });
+
+configure();
 cli.parse();

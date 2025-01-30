@@ -26,9 +26,10 @@ import {
 } from 'vscode-languageserver-textdocument';
 
 import { type Definition } from '../rules/queries/schemas/definitions';
-import { executePrologQuery, generatePrologQuery } from '../actions/query';
 import tmp from 'tmp';
 import fs from 'fs';
+import { prepareRPC } from './callRPC';
+import { registeredFunctions } from '../actions/rpc';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -164,22 +165,21 @@ connection.languages.diagnostics.on(async (params) => {
 
 const documentDefinitions = new Map<string, Definition[]>();
 
+const rpcRunQuery = prepareRPC('query');
+
 async function GetNewDefinitions(document: TextDocument) {
+	// Create a temporary file to write the document's text to and pass to the RPC
 	const tmpFile = tmp.fileSync();
-
 	fs.writeFileSync(tmpFile.name, document.getText());
-
 	console.log("File written to", tmpFile.name);
 
-	const prolog = await generatePrologQuery(
-		tmpFile.name,
-		'test-dsl/py-like/solution/MyLexer.g4',
-		'test-dsl/py-like/solution/MyParser.g4',
-		'test-dsl/py-like/solution/MyAdapter.pl',
-		'test-dsl/py-like/solution/definitions.pl',
-	);
-
-	return executePrologQuery(prolog.filePath);
+	return await rpcRunQuery({
+		targetPath: tmpFile.name,
+		lexerPath: 'test-dsl/py-like/solution/MyLexer.g4',
+		parserPath: 'test-dsl/py-like/solution/MyParser.g4',
+		adapterPath: 'test-dsl/py-like/solution/MyAdapter.pl',
+		queryPath: 'test-dsl/py-like/solution/definitions.pl',
+	});
 };
 
 // The content of a text document has changed. This event is emitted
