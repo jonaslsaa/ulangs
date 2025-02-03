@@ -20,20 +20,22 @@ export function _createWorkingDirectory(baseDirectory: string) {
 }
 
 export function findAllCodeFiles(directory: string, extension: string, recursive: boolean): string[] {
-		if (extension.startsWith('.')) {
-				extension = extension.substring(1);
-		}
+  if (extension.startsWith('.')) {
+    extension = extension.substring(1);
+  }
 
-		const files = fs.readdirSync(directory); // Get all files in the directory
-		const codeFiles = files.filter(file => file.endsWith(`.${extension}`)); // Filter for code files
+  let codeFiles: string[] = [];
 
-		if (recursive) { // If recursive, search subdirectories
-				const subdirectories = files.filter(file => fs.statSync(path.join(directory, file)).isDirectory()); // Get subdirectories
-				subdirectories.forEach(subdir => { // Iterate over subdirectories and search for code files
-						codeFiles.push(...findAllCodeFiles(path.join(directory, subdir), extension, recursive));
-				});
-		}
-		return codeFiles;
+  const entries = fs.readdirSync(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isFile() && entry.name.endsWith(`.${extension}`)) {
+      codeFiles.push(fullPath);
+    } else if (recursive && entry.isDirectory()) {
+      codeFiles.push(...findAllCodeFiles(fullPath, extension, recursive));
+    }
+  }
+  return codeFiles;
 }
 
 export function _createTemporaryFile(dir: string, fileName: string, temporaryFileDirectoryRecords: Set<string>) {

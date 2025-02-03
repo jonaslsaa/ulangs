@@ -5,15 +5,21 @@ import type { Snippet } from '../../llm/grammar';
 import { findAllCodeFiles } from './io';
 
 function loadFilesToSnippets(files: string[]): Snippet[] {
-		return files.map(file => {
-				const fileContent = fs.readFileSync(file, 'utf8');
-				return {
-						snippet: fileContent,
-						fileName: path.basename(file),
-						filePath: file
-				};
-		});
+  return files.map(file => {
+    try {
+      const fileContent = fs.readFileSync(file, 'utf8');
+      return {
+        snippet: fileContent,
+        fileName: path.basename(file),
+        filePath: file
+      };
+    } catch (error) {
+      console.error(`Error loading file: ${file}`, error);
+      throw error; // or handle it appropriately
+    }
+  });
 }
+
 function sortByComplexity(snippets: Snippet[]): Snippet[] {
 		// Sort snippets by complexity (ascending)
 		return snippets.sort((a, b) => calculateComplexity(b.snippet) - calculateComplexity(a.snippet)).reverse();
@@ -21,7 +27,8 @@ function sortByComplexity(snippets: Snippet[]): Snippet[] {
 
 export async function loadSnippetsByComplexity(directory: string, extension: string, recursive: boolean) {
 		const files = findAllCodeFiles(directory, extension, recursive);
-		const snippets = loadFilesToSnippets(files.map(file => path.join(directory, file)));
+		const snippets = loadFilesToSnippets(files);
+
 		if (snippets.length === 0) {
 				console.error('No files found with the specified extension!');
 				return;
