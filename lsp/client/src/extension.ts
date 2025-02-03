@@ -34,9 +34,13 @@ export function activate(context: ExtensionContext) {
 	};
 
 	// Options to control the language client
+	const allowedExtensions = ['.pyl']; // TODO: Add support for user-defined file extensions
+	const pattern = '**/*.pyl';
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
-		documentSelector: [{ pattern: "**" }], // TODO: Add support for user-defined file extensions
+		documentSelector: [{
+			pattern: pattern
+		}], 
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
