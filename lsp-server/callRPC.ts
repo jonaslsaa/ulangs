@@ -14,20 +14,30 @@ type PrepareRPC<T extends RPCFunction> =
 
 function _callViaCLI(methodName: string, payload: string): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const childProcess = spawn('pnpm', ['dlx', 'tsx', 'cli.ts', 'rpc', methodName, payload]);
+		const childProcess = spawn('pnpm', ['dlx', 'tsx', 'cli.ts', 'rpc', methodName, payload], {
+			cwd: process.cwd(),
+		});
 
 		let stdout = '';
 		let stderr = '';
 
 		childProcess.stdout.on('data', (data) => {
+			console.log("stdout", data.toString());
 			stdout += data.toString();
 		});
 
 		childProcess.stderr.on('data', (data) => {
+			console.log("stderr", data.toString());
 			stderr += data.toString();
 		});
 
+		const timer = setTimeout(() => {
+			childProcess.kill();
+			reject(new Error('Timeout: child process took too long'));
+		}, 8000); // 5 seconds
+
 		childProcess.on('close', (code) => {
+			clearTimeout(timer);
 			if (code === 0) {
 				// Process completed successfully
 				resolve(stdout);

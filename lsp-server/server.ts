@@ -199,8 +199,13 @@ documents.onDidChangeContent(async change => {
 	console.log("Content change, querying on:", path);
 	// validateTextDocument(change.document); // example of validating the document
 
+	try {
 	const queryResult = await GetNewDefinitions(change.document);
 	console.log("Query result", queryResult);
+	} catch (e) {
+		console.log("Error in GetNewDefinitions:", e);
+		return;
+	}
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
