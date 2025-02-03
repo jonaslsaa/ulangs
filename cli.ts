@@ -18,7 +18,7 @@ export type CLIGenerateArguments = {
 
 cli.command('query')
     .description('Generates Prolog from file with a given query')
-    .argument('<target>', 'File to generate facts from')
+    .argument('<target>', 'File to generate to parse and analyze')
     .argument('<lexer>', 'Lexer (path) file to use')
     .argument('<parser>', 'Parser (path) file to use')
     .option('-a, --adapter <adapter>', 'Adapter (path) file to use')
