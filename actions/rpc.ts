@@ -1,20 +1,22 @@
 import z from 'zod'
 import health from './rpc/health';
 import query from './rpc/query';
+import check from './rpc/check-file';
 
 export type RPCFunction = {
 	argumentSchema: z.ZodObject<any> | undefined;
-	method: (payload?: any) => Record<string, any>;
+	method: (payload?: any) => Promise<Record<string, any>>;
 };
 
 export const registeredFunctions = {
 	health,
-	query
+	query,
+	check
 } as const;
 
 type NamesOfRegisteredFunctions = keyof typeof registeredFunctions;
 
-export function resolveRPC(functionName: string, payload: string) {
+export async function resolveRPC(functionName: string, payload: string) {
 	const registeredFunction = registeredFunctions[functionName as NamesOfRegisteredFunctions] as RPCFunction;
 	if (!registeredFunction) {
 		console.error(`Function ${functionName} not found`);
@@ -22,9 +24,9 @@ export function resolveRPC(functionName: string, payload: string) {
 	}
 
 	if (!registeredFunction.argumentSchema) {
-		console.log(registeredFunction.method());
+		console.log(await registeredFunction.method());
 	} else {
 		const parsedPayload = registeredFunction.argumentSchema.parse(JSON.parse(payload));
-		console.log(registeredFunction.method(parsedPayload));
+		console.log(await registeredFunction.method(parsedPayload));
 	}
 }
