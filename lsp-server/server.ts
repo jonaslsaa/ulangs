@@ -29,7 +29,6 @@ import { type Definition } from '../rules/queries/schemas/definitions';
 import tmp from 'tmp';
 import fs from 'fs';
 import { prepareRPC } from './callRPC';
-import { registeredFunctions } from '../actions/rpc';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -182,10 +181,22 @@ async function GetNewDefinitions(document: TextDocument) {
 	});
 };
 
+const documentCache = new Map<string, string>();
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async change => {
-	console.log("Content change, querying...");
+	// Check if this file really has changed
+	const path = change.document.uri;
+	const oldText = documentCache.get(path);
+	const newText = change.document.getText();
+	if (oldText !== undefined && oldText === newText) {
+		console.log("Content change, no change on:", path);
+		return;
+	}
+	documentCache.set(path, newText);
+
+	console.log("Content change, querying on:", path);
 	// validateTextDocument(change.document); // example of validating the document
 
 	const queryResult = await GetNewDefinitions(change.document);
