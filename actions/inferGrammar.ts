@@ -9,6 +9,7 @@ import { checkGrammar } from "../syntactic/check-grammar";
 import { _createWorkingDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
 import { compressMessages } from '../llm/compress-messages';
 import { loadSnippetsByComplexity } from './utils/snippets';
+import type { Result } from '../result';
 
 const temporaryFileDirectoryRecords = new Set<string>();
 
@@ -175,20 +176,25 @@ export async function repairGrammar(
 
         // Now we ask the LLM for a repaired grammar
         // console.log(messages);
-        const completionResult = await makeCompletionRequest(
-            openaiEnv,
-            messages,
-            openaiEnv.model,
-        /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
-        /* timeoutSeconds */ 60 * 5
-        );
+        let retryCompletion = true;
+        let completionResult: Result<Grammar>;
+        do {
+            completionResult = await makeCompletionRequest(
+                openaiEnv,
+                messages,
+                openaiEnv.model,
+            /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
+            /* timeoutSeconds */ 60 * 5
+            );
 
-        if (completionResult.isErr()) {
-            // Something went wrong with the LLM request (e.g., API error or timeout)
-            console.error(`[Repair Attempt ${attempt}] LLM request failed: ${completionResult.error}`);
-            // Decide if you want to continue or break. Here we just break:
-            break;
-        }
+            retryCompletion = false; // Let's start by assuming we won't need to retry
+
+            if (completionResult.isErr()) {
+                // Something went wrong with the LLM request (e.g., API error or timeout)
+                console.error(`LLM request failed: ${completionResult.error}, retrying...`);
+                retryCompletion = true; // we need to retry
+            }
+        } while (retryCompletion);
 
         // If we got a successful completion, parse the returned grammar
         const newGrammar = completionResult.unwrap();
