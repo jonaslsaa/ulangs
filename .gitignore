@@ -178,6 +178,6 @@ dist
 
 test.pl
 
-.tmp
+.tmp/*/*
 .aider*
 *.tmp.g4
