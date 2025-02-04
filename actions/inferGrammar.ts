@@ -174,7 +174,7 @@ export async function repairGrammar(
         );
 
         // Now we ask the LLM for a repaired grammar
-        console.log(messages);
+        // console.log(messages);
         const completionResult = await makeCompletionRequest(
             openaiEnv,
             messages,
@@ -283,13 +283,13 @@ async function createQualifiedCandiate(grammar: Grammar, allSnippets: Snippet[])
     if (allSnippets.length === 0) {
         throw new Error('No tested snippets given.');
     }
-    console.log(`Saving a candidate, with following score:`);
     const testedSnippets = await testGrammarOnMany(grammar, undefined, allSnippets);
     const candidate: Candidate = {
         grammar: grammar,
         snippets: testedSnippets,
         score: testedSnippets.filter(testedSnippet => testedSnippet.success).length,
     };
+    console.log(`Checkpointing candidate with ${candidate.score} snippets passing`);
     return candidate;
 }
 
