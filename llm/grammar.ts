@@ -28,6 +28,7 @@ export const Stats = {
     totalRequests: 0,
     totalCompletedRequests: 0,
     inputTokens: 0,
+    cachedInputTokens: 0,
     outputTokens: 0,
     score: new Map<string, number>(), // Map from model name to score
     get totalTokens () {
@@ -42,9 +43,10 @@ export const Stats = {
     addRequest() {
         this.totalRequests++;
     },
-    addCompletedRequest(inputTokens: number, outputTokens: number) {
+    addCompletedRequest(inputTokens: number, outputTokens: number, cachedInputTokens: number = 0) {
         this.totalCompletedRequests++;
         this.inputTokens += inputTokens;
+        this.cachedInputTokens += cachedInputTokens;
         this.outputTokens += outputTokens;
     }
 }
@@ -250,7 +252,7 @@ export async function makeCompletionRequest(
         
         const result = parseCompletionToGrammar(content);
 
-        if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens);
+        if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens, completion.usage?.prompt_tokens_details?.cached_tokens ?? 0);
 
         // Add the assistant completion to the messages
         messages.push({
