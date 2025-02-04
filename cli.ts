@@ -48,6 +48,7 @@ export type CLIInferGrammarArguments = {
     recursive: boolean;
     initialLexer: string | undefined;
     initialParser: string | undefined;
+    skipFirstGuess: boolean;
 };
 
 cli.command('infer-grammar')
@@ -58,6 +59,7 @@ cli.command('infer-grammar')
     .option('-iL, --initial-lexer <path>', 'Use a file as a starting point for the lexer', undefined)
     .option('-iP, --initial-parser <path>', 'Use a file as a starting point for the parser', undefined)
     .option('-R, --recursive', 'Detect grammar from subdirectories', false)
+    .option('-S, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
     // .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
     .action(async (directory: string, extension: string, outputDir: string, options: CLIInferGrammarArguments) => {
         // Check if the directory exists

@@ -338,21 +338,34 @@ export async function doInferGrammar(directory: string, extension: string, outpu
 
     let messages: OpenAIMessage[] = [];
 
-    // Build our first intermediate solution.
-    // Static initialization (controlled by `options.skipFirstGuess`):
-    //      1. Empty grammar (just a template)
-    //      2. The initial lexer and parser
-    // Dynamic initialization:
-    //      1. Guess based on all the snippets
-    //      2. Guess based on the snippets and the initial lexer and parser
-    const snippetsUsedInGuess = sortedSnippets; // TODO:   shouldn't be all the files when building first candidate
-    // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
-    let currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
-        initialLexer,
-        initialParser,
-        messages,
-        snippetsUsedInGuess
-    );
+    let currentIntermediateSolution: Grammar | undefined = undefined;
+    if (!options.skipFirstGuess) {
+        // Build our first intermediate solution.
+        // Static initialization (controlled by `options.skipFirstGuess`):
+        //      1. Empty grammar (just a template)
+        //      2. The initial lexer and parser
+        // Dynamic initialization:
+        //      1. Guess based on all the snippets
+        //      2. Guess based on the snippets and the initial lexer and parser
+        const snippetsUsedInGuess = sortedSnippets; // TODO:   shouldn't be all the files when building first candidate
+        // TODO... maybe we can do tokens similarity matching to find differing samples. Although we should test on all later.
+        currentIntermediateSolution = await buildFirstIntermediateSolution(openaiEnv,
+            initialLexer,
+            initialParser,
+            messages,
+            snippetsUsedInGuess
+        );
+    } else {
+        if (initialLexer && initialParser) {
+        currentIntermediateSolution = {
+            lexerSource: initialLexer,
+            parserSource: initialParser,
+            generatedWithModel: openaiEnv.model,
+        };
+        } else {
+            throw new Error("Initial lexer and parser are required when skipping first guess");
+        }
+    }
 
     const snippetHistory: Snippet[] = [];
     const candiateHistory: Candidate[] = [];
