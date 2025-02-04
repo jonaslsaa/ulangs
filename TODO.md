@@ -13,4 +13,6 @@
 * Investigate what happens to "Invalid line number" type errors (should be added to the 'Others' list of errors)
 * Dynamically increase reasoning_effort from the second repair attempt and onwards.
 * Find a good way to handle increasingly large contexts
+  * Restart context sometimes?
 * Way to strip out comments from code
+* Restore to a previous checkpoint candidate if we have messed up badly
