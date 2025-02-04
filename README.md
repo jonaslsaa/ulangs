@@ -6,6 +6,8 @@ A toolkit that simplifies language server development by automating grammar and 
 
 This project represents ongoing Master's thesis research in automated language server development. Many features are still missing, and the codebase is not yet stable.
 
+See the [TODO](TODO.md) file for a list of planned features and improvements.
+
 ## Features
 
 - **Automated LSP Generation**: Creates complete language servers from code samples without manual grammar writing
