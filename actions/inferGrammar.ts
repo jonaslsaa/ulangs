@@ -175,8 +175,8 @@ export async function repairGrammar(
         );
 
         // Now we ask the LLM for a repaired grammar
-        console.log(messages);
-        console.log("Tokens:", countTokens(messages));
+        console.log(JSON.stringify(messages, null, 2));
+        console.log("Sent tokens:", countTokens(messages));
         let retryCompletion = true;
         let completionResult: Result<Grammar>;
         do {
