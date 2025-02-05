@@ -88,7 +88,7 @@ function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
         if (allErrors.length >= trimLength) {
             allErrors = allErrors.substring(0, trimLength-1) + '...';
         }
-        const comment = `// Error: ${allErrors}`;
+        const comment = `// ANTLR Error: ${allErrors}`;
         newCodeLines[lineNumber] = `${line} ${comment}`;
     }
     return newCodeLines.join('\n');   
