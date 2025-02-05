@@ -181,3 +181,4 @@ test.pl
 .tmp/*/*
 .aider*
 *.tmp.g4
+*.partial.g4
