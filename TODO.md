@@ -14,5 +14,6 @@
 * Dynamically increase reasoning_effort from the second repair attempt and onwards.
 * Find a good way to handle increasingly large contexts
   * Restart context sometimes?
+  * Also compress assistant code blocks (only diffs? llm compression?)
 * Way to strip out comments from code
 * Restore to a previous checkpoint candidate if we have messed up badly
