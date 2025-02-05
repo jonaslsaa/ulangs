@@ -1,3 +1,4 @@
+import { get_encoding } from 'tiktoken';
 import type { OpenAIMessage } from './utils';
 
 export function compressCodeBlock(message: string): string {
@@ -38,4 +39,15 @@ export function compressMessages(messages: OpenAIMessage[]): OpenAIMessage[] {
 				if (message.content) message.content = compressCodeBlock(message.content.toString());
 				return message;
 		});
+}
+
+const encoding = get_encoding("o200k_base") // We just always use the gpt-4o encoding scheme
+export function countTokens(messages: OpenAIMessage[]) {
+	const TOKEN_CONSTANT_PER_MESSAGE = 2;
+	const tokensCount = messages.reduce((acc, message) => {
+			const c = message.content?.toString() ?? '';	
+			const tokens = encoding.encode(c).length;
+			return acc + tokens + TOKEN_CONSTANT_PER_MESSAGE;
+	}, 0);
+	return tokensCount;
 }

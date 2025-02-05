@@ -7,7 +7,7 @@ import type { ANTLRError } from "../syntactic/ErrorListener";
 import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 import { _createWorkingDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
-import { compressMessages } from '../llm/compress-messages';
+import { compressMessages, countTokens } from '../llm/compress-messages';
 import { loadSnippetsByComplexity } from './utils/snippets';
 import type { Result } from '../result';
 
@@ -175,7 +175,8 @@ export async function repairGrammar(
         );
 
         // Now we ask the LLM for a repaired grammar
-        // console.log(messages);
+        console.log(messages);
+        console.log("Tokens:", countTokens(messages));
         let retryCompletion = true;
         let completionResult: Result<Grammar>;
         do {
