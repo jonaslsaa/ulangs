@@ -7,6 +7,7 @@ export type Result<T> = {
   isOk: () => boolean;
   isErr: () => boolean;
   map: <U>(fn: (value: T) => U) => Result<U>;
+  flatMap: <U>(fn: (value: T) => Result<U>) => Result<U>;
 };
 
 export function Ok<T>(value: T): Result<T> {
@@ -18,7 +19,8 @@ export function Ok<T>(value: T): Result<T> {
     unwrapOrElse: () => value,
     isOk: () => true,
     isErr: () => false,
-    map: (fn) => Ok(fn(value))
+    map: (fn) => Ok(fn(value)),
+    flatMap: (fn) => fn(value)
   };
 }
 
@@ -38,6 +40,7 @@ export function Err<T>(error: string): Result<T> {
     unwrapOrElse: (defaultValueFn) => defaultValueFn(),
     isOk: () => false,
     isErr: () => true,
-    map: () => Err(error)
+    map: () => Err(error),
+    flatMap: () => Err(error)
   };
 }
