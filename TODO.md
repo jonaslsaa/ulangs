@@ -3,7 +3,7 @@
 ## Major
 
 * Implement automatic semantic adapter prolog synthesis
-  * Find a good verifier method (Prolog errors + LLM as a verifier on output?)
+  * Find a good verifier method (Prolog errors + Zod errors + LLM as a verifier on output?)
 * Automatic code splitting (can be done in its own step)
 * Finish proof-of-concept VSCode extension
 * Investigate agentic behaviour using *tool-use*.
