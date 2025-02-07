@@ -307,6 +307,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
         stopOnFirstFailure: true,
         incremental: true, // Use incremental (per-snippet) mode.
         repairAllFailingExamples: false,
+        messageCompressor: compressMessages,
         checkpointHook: (candidate) => {
             console.log(`Checkpoint: ${candidate.score}/${sortedSnippets.length} snippets passing.`);
         }

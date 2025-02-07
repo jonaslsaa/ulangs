@@ -11,6 +11,8 @@
  * repair using multiple failing examples.
  */
 
+import type { OpenAIMessage } from './utils';
+
 /** Generator interface: implement to generate or repair a solution. */
 export interface Generator<Solution, Example, Result> {
 	generateInitialSolution(examples: Example[]): Promise<Solution>;
@@ -39,7 +41,7 @@ export interface InferenceOptions {
 	stopOnFirstFailure?: boolean;
 	incremental?: boolean; // Process examples one-by-one.
 	repairAllFailingExamples?: boolean; // Pass all failing examples to repairSolution.
-	messageCompressor?: (messages: any[]) => any[]; // (Optional) for LLM context management.
+	messageCompressor?: (messages: OpenAIMessage[]) => any[]; // (Optional) for LLM context management.
 	checkpointHook?: (candidate: Candidate<any, any, any>) => void;
 }
 
