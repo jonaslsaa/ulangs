@@ -7,6 +7,7 @@
 * Automatic code splitting (can be done in its own step)
 * Finish proof-of-concept VSCode extension
 * Investigate agentic behaviour using *tool-use*.
+* Inter-file tree merging adapter synthesis
 
 ## Minor
 
