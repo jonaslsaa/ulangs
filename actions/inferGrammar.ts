@@ -101,7 +101,7 @@ export async function testGrammarOnMany(grammar: Grammar,
         }
     }
     const failOrPass = numberOfTestsPassed === numberOfTestsTotal ? 'PASS' : 'FAIL';
-    if (numberOfTestsPassed === 1 && numberOfTestsTotal === 1) console.log(`[${failOrPass}] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests.`); // HACKY way to avoid printing "1/1 test" when there's only one test
+    if (numberOfTestsPassed !== 1 && numberOfTestsTotal !== 1) console.log(`[${failOrPass}] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests.`); // HACKY way to avoid printing "1/1 test" when there's only one test
 
     // Return all grammars
     if (newTested) {
