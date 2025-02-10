@@ -15,6 +15,7 @@ import type { Generator, Verifier } from "./autoCreationLoop";
 import type { Grammar, Snippet, TestedSnippet } from "./grammar"; // Adjust path as needed.
 import { buildFirstIntermediateSolution, repairGrammar, testGrammarOnMany } from "../actions/inferGrammar"; // Adjust path as needed.
 import type { OpenAIEnv, OpenAIMessage } from "../llm/utils";
+import fs from 'fs';
 
 /**
  * GrammarGenerator
@@ -26,18 +27,35 @@ export class GrammarGenerator implements Generator<Grammar, Snippet, TestedSnipp
   messages: OpenAIMessage[];
   snippets: Snippet[];
 
-  constructor(openaiEnv: OpenAIEnv, messages: OpenAIMessage[]) {
+  initialLexerPath?: string;
+  initialParserPath?: string;
+
+  constructor(openaiEnv: OpenAIEnv, messages: OpenAIMessage[], initialLexerPath?: string, initialParserPath?: string) {
     this.openaiEnv = openaiEnv;
     this.messages = messages;
     this.snippets = [];
+    this.initialLexerPath = initialLexerPath;
+    this.initialParserPath = initialParserPath;
   }
 
   async generateInitialSolution(examples: Snippet[]): Promise<Grammar> {
     this.snippets = examples;
+    
+    // Load initial grammar files if specified
+    let initialLexer: string | undefined;
+    let initialParser: string | undefined;
+    
+    if (this.initialLexerPath) {
+      initialLexer = fs.readFileSync(this.initialLexerPath, 'utf8');
+    }
+    if (this.initialParserPath) {
+      initialParser = fs.readFileSync(this.initialParserPath, 'utf8');
+    }
+
     return await buildFirstIntermediateSolution(
       this.openaiEnv,
-      undefined,
-      undefined,
+      initialLexer,
+      initialParser,
       this.messages,
       examples
     );

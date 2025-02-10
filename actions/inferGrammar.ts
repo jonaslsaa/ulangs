@@ -298,7 +298,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const messages: OpenAIMessage[] = [];
 
     // Instantiate the domain-specific components.
-    const generator = new GrammarGenerator(openaiEnv, messages);
+    const generator = new GrammarGenerator(openaiEnv, messages, options.initialLexer, options.initialParser);
     const verifier = new GrammarVerifier();
 
     // Configure inference options.
