@@ -304,8 +304,8 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     // Configure inference options.
     const inferenceOptions: InferenceOptions = {
         maxRetries: 5,
-        stopOnFirstFailure: true,
-        incremental: true, // Use incremental (per-snippet) mode.
+        stopOnFirstFailure: false,
+        incrementalForInitial: false, // Use incremental (per-snippet) mode.
         repairAllFailingExamples: false,
         messageCompressor: compressMessages,
         checkpointHook: (candidate) => {

@@ -54,7 +54,7 @@ export interface Candidate<Solution, Example, Result> {
 export interface InferenceOptions {
   maxRetries?: number;
   stopOnFirstFailure?: boolean;
-  incremental?: boolean; // Process examples one-by-one
+  incrementalForInitial?: boolean; // Process examples one-by-one
   repairAllFailingExamples?: boolean; // Pass all failing examples to repairSolution
 
   /**
@@ -175,7 +175,7 @@ function maybeCompressMessages<Solution, Example, Result extends { success: bool
  * it performs a cumulative evaluation and logs a single consolidated
  * status message. Also stores internal checkpoints of best solutions.
  */
-async function runIncrementalLoop<Solution, Example, Result extends { success: boolean }>(
+async function runLoop<Solution, Example, Result extends { success: boolean }>(
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
   examples: Example[],
@@ -189,7 +189,9 @@ async function runIncrementalLoop<Solution, Example, Result extends { success: b
   const checkpoints: Candidate<Solution, Example, Result>[] = [];
 
   // 1) Initialize with the first example
-  let currentSolution: Solution = await generator.generateInitialSolution([examples[0]]);
+  let examplesForInitialGuess = examples;
+  if (options.incrementalForInitial) examplesForInitialGuess = [examples[0]]
+  let currentSolution: Solution = await generator.generateInitialSolution(examplesForInitialGuess);
 
   // 2) Evaluate on just that first example
   let candidate = await evaluateSolution(currentSolution, [examples[0]], verifier, stopOnFirstFailure);
@@ -352,9 +354,5 @@ export async function runInferenceLoop<Solution, Example, Result extends { succe
   options?: InferenceOptions
 ): Promise<Candidate<Solution, Example, Result>> {
   const opts = options ?? {};
-  if (opts.incremental) {
-    return await runIncrementalLoop(generator, verifier, examples, opts);
-  } else {
-    return await runBatchLoop(generator, verifier, examples, opts);
-  }
+  return await runLoop(generator, verifier, examples, opts);
 }
