@@ -1,5 +1,5 @@
 import type { Generator, Verifier } from "./autoCreationLoop";
-import type { OpenAIEnv, OpenAIMessage } from "../llm/utils";
+import { midpoint, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { Snippet } from './grammar';
 import fs from 'fs';
 import assert from 'assert';
@@ -326,13 +326,6 @@ class AdapterContext {
 		}
 		return {adapter, messages};
 	}
-}
-
-function midpoint<T>(arr: T[]): T | undefined {
-	if (arr.length === 0) return undefined;
-	if (arr.length === 1) return arr[0];
-	if (arr.length === 2) return arr[0];
-	return arr[Math.floor(arr.length / 2)];
 }
 
 export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter> {
