@@ -1,12 +1,13 @@
 import type { ZodSchema } from 'zod';
 import { DefinitionQueryResultSchema } from './schemas/definitions';
 import fs from 'fs';
+import path from 'path';
 
 type AnyString = string & {};
 
 // The minimal schema type for our base queries
 type _Query = {
-  path: string;
+  path: string; // This path is relative to the rules/queries directory
   schema: ZodSchema;
 };
 
@@ -18,7 +19,7 @@ export type Query = _Query & {
 // The definition of the known queries (without file content, for now).
 const queries = {
   definitions: {
-    path: 'rules/queries/definitions.pl',
+    path: 'definitions.pl',
     schema: DefinitionQueryResultSchema,
   },
 } as const;
@@ -26,12 +27,16 @@ const queries = {
 // This gives you the literal type of all query names
 type QueryNames = keyof typeof queries
 
+function relativePathToLessRelativePath(relPath: string): string {
+  return path.join('rules', 'queries', relPath);
+}
+
 // Preload all queries at module load time, so fs reads happen only once.
 const preloadedQueries: { [K in QueryNames]: Query } = Object.entries(queries).reduce(
   (acc, [name, queryObj]) => {
     acc[name as QueryNames] = {
       ...queryObj,
-      content: fs.readFileSync(queryObj.path, 'utf8'),
+      content: fs.readFileSync(relativePathToLessRelativePath(queryObj.path), 'utf8'),
     };
     return acc;
   },
