@@ -19,7 +19,8 @@
     "tmp": "^0.2.3",
     "vscode-languageserver": "9.0.1",
     "vscode-languageserver-textdocument": "1.0.11",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.6",
