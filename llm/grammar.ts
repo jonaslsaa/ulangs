@@ -226,7 +226,7 @@ export async function makeCompletionRequest(
         
         const result = parseCompletionToGrammar(content);
 
-        if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens, completion.usage?.prompt_tokens_details?.cached_tokens ?? 0);
+        if (completion.usage) Stats.addCompletedRequest(completion);
 
         // Add the assistant completion to the messages
         messages.push({
