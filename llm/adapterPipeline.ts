@@ -19,6 +19,9 @@ import { adapterGenerationMessage, adapterScoringMessage } from './prompts';
 import type { Query } from '../rules/queries/mapping';
 import zodToJsonSchema from 'zod-to-json-schema';
 import { Stats } from '../actions/utils';
+import { compileANTLRFiles } from '../syntactic/build';
+import path from 'path';
+import { _createWorkingDirectory } from '../actions/utils/io';
 
 type Adapter = {
 	source: string;
@@ -66,35 +69,56 @@ export class AdapterContext {
 		this._snippetToTreeCache = new Map<string, ParseableTree>();
 	}
 
-	async snippetToTree(lexerPath: string, parserPath: string, snippet: Snippet): Promise<Result<ParseableTree>> {
+	async snippetToTree(
+		lexerPath: string,
+		parserPath: string,
+		snippet: Snippet
+	): Promise<Result<ParseableTree>> {
 		if (this._snippetToTreeCache.has(snippet.filePath)) {
 			return Ok(this._snippetToTreeCache.get(snippet.filePath)!);
 		}
 
-		// Check grammar with java
+		// First, check grammar validity as before.
 		const errors = await checkGrammar(lexerPath, parserPath, snippet.filePath);
 		if (errors.length > 0) {
-			return Err("Grammar validation failed: " + errors.map(error => error.message).join('\n'));
+			return Err(
+				"Grammar validation failed: " +
+				errors.map(error => error.message).join("\n")
+			);
 		}
 
+		// Create a temporary working directory for adapter compilation.
+		const tempDir = _createWorkingDirectory("adapter");
+		const tempLexerPath = path.join(tempDir, "MyLexer.g4");
+		const tempParserPath = path.join(tempDir, "MyParser.g4");
+
+		// Copy the original .g4 files to the temporary directory.
+		fs.copyFileSync(lexerPath, tempLexerPath);
+		fs.copyFileSync(parserPath, tempParserPath);
+
+		// Compile the copied .g4 files; this should generate MyLexer.ts and MyParser.ts.
+		const compilationErrors = await compileANTLRFiles(tempDir);
+		if (compilationErrors.length > 0) {
+			return Err(
+				"Compilation failed: " +
+				compilationErrors.map(e => e.message).join("\n")
+			);
+		}
+
+		// Use the compiled files to create the parser.
 		const { parser, errorListener } = await createParserFromGrammar(
 			snippet.snippet,
-			lexerPath,
-			parserPath
+			tempLexerPath,
+			tempParserPath
 		);
-
 		const tree = parser.program();
 
+		// Cache and return the result.
+		this._snippetToTreeCache.set(snippet.filePath, { tree, parser });
 		const parseableTree: ParseableTree = {
 			tree,
 			parser,
 		};
-
-		if (errorListener.hasErrors()) {
-			return Err("Failed to parse snippet: " + errorListener.getErrors().join('\n'));
-		}
-
-		this._snippetToTreeCache.set(snippet.filePath, parseableTree);
 		return Ok(parseableTree);
 	}
 
@@ -332,53 +356,53 @@ export class AdapterContext {
 	}
 
 	async repairAdapter(
-    oldAdapter: Adapter,
-    failingExamples: Query[],
-    failingResults: TestedAdapter[]
-  ): Promise<Adapter> {
-    // Build a user prompt that includes the old adapter, failing snippet(s), and errors.
-    let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+		oldAdapter: Adapter,
+		failingExamples: Query[],
+		failingResults: TestedAdapter[]
+	): Promise<Adapter> {
+		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
+		let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
-    for (const tested of failingResults) {
-      if (!tested.success) {
-        prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
-        if (tested.errors && tested.errors.length > 0) {
-          prompt += this.AdapterErrorsToString(tested.errors);
-        }
-      }
-    }
+		for (const tested of failingResults) {
+			if (!tested.success) {
+				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				if (tested.errors && tested.errors.length > 0) {
+					prompt += this.AdapterErrorsToString(tested.errors);
+				}
+			}
+		}
 
-    prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
+		prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
 Output exactly one <Adapter> block.`;
 
-    // Make a single LLM call.
-    let newAdapterSource: string | undefined;
-    try {
+		// Make a single LLM call.
+		let newAdapterSource: string | undefined;
+		try {
 			Stats.addRequest();
-      const completion = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [
-          { role: 'user', content: prompt },
-        ],
-      });
-      const content = completion.choices[0].message.content;
+			const completion = await this.openai.chat.completions.create({
+				model: this.modelName,
+				messages: [
+					{ role: 'user', content: prompt },
+				],
+			});
+			const content = completion.choices[0].message.content;
 			if (content === null) throw new Error('No completion provided');
-			
-			Stats.addCompletedRequest(completion);
-      const adapterParse = this.parseStringToAdapterSource(content);
-      if (adapterParse.isErr()) {
-        console.warn("Failed to parse new adapter from LLM output. Returning old adapter.");
-        return oldAdapter; // Let autoCreationLoop decide next steps
-      }
-      newAdapterSource = adapterParse.unwrap();
-    } catch (err) {
-      console.error("LLM request failed:", err);
-      return oldAdapter; // fallback
-    }
 
-    // If all went well, return the newly generated adapter.
-    return { source: newAdapterSource };
-  }
+			Stats.addCompletedRequest(completion);
+			const adapterParse = this.parseStringToAdapterSource(content);
+			if (adapterParse.isErr()) {
+				console.warn("Failed to parse new adapter from LLM output. Returning old adapter.");
+				return oldAdapter; // Let autoCreationLoop decide next steps
+			}
+			newAdapterSource = adapterParse.unwrap();
+		} catch (err) {
+			console.error("LLM request failed:", err);
+			return oldAdapter; // fallback
+		}
+
+		// If all went well, return the newly generated adapter.
+		return { source: newAdapterSource };
+	}
 }
 
 export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter> {
@@ -422,12 +446,12 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 	 * to AdapterContext#repairAdapter, which does the multi-step LLM repair loop.
 	 */
 	async repairSolution(
-    oldSolution: Adapter,
-    failingExamples: Query[],
-    failingResults: TestedAdapter[]
-  ): Promise<Adapter> {
-    return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults);
-  }
+		oldSolution: Adapter,
+		failingExamples: Query[],
+		failingResults: TestedAdapter[]
+	): Promise<Adapter> {
+		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults);
+	}
 }
 
 export class AdapterVerifier implements Verifier<Adapter, Query, TestedAdapter> {
