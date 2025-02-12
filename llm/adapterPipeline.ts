@@ -131,7 +131,7 @@ export class AdapterContext {
 	): Promise<string> {
 		const { tree, parser } = await (await this.snippetToTree(lexerPath, parserPath, snippet)).unwrap();
 
-		const treeClauses = getApplicableTreeClauses(tree, parser, adapterSource);
+		const treeClauses = getApplicableTreeClauses(tree, parser, adapterSource, true);
 		const queryClauses = getQueryClauses(mainQueryPath);
 		const clauses = [...treeClauses, ...queryClauses];
 

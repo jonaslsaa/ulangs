@@ -24,7 +24,8 @@ function wrapWithComment(lines: string[], comment: string): string[] {
 
 export function getApplicableTreeClauses(cstTree: ParserRuleContext,
                                 parser: Parser,
-                                adapterPath: string | undefined,
+                                adapterPathOrContent: string | undefined,
+                                isAdapterContent: boolean = false,
                                 ): string[] {
 
     const builtinBasePath = path.join('rules', 'adapter');
@@ -33,8 +34,13 @@ export function getApplicableTreeClauses(cstTree: ParserRuleContext,
     const treeFacts = wrapWithComment(generatePrologFacts(cstTree, parser), 'Auto-generated tree clauses')
     const helpers = wrapWithComment(fileToLines(path.join(builtinBasePath, 'genericHelpers.pl')), 'Helpers.pl')
 
-    if (adapterPath) {
-        const adapterClauses = fileToLines(adapterPath);
+    if (adapterPathOrContent) {
+        let adapterClauses: string[] = [];
+        if (isAdapterContent) {
+            adapterClauses = adapterPathOrContent.split('\n');
+        } else {
+            const adapterClauses = fileToLines(adapterPathOrContent);
+        }
         const adapter = wrapWithComment(adapterClauses, 'Adapter'); // TODO: change comment
         return [...libraries, ...treeFacts, ...helpers, ...adapter];
     }
@@ -47,7 +53,6 @@ export function getApplicableTreeClauses(cstTree: ParserRuleContext,
 }
 
 export function getQueryClauses(queryFile: string): string[] {
-    console.log("Query file:", queryFile);
     const basePathQueries = path.join('rules', 'queries');
     if (!fs.existsSync(basePathQueries)) {
         console.error(`Query file ${queryFile} not found`);
