@@ -376,3 +376,20 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 		throw new Error("Not implemented");
 	}
 }
+
+export class AdapterVerifier implements Verifier<Adapter, Query, TestedAdapter> {
+	snippets: Snippet[];
+	adapterContext: AdapterContext;
+
+	constructor(adapterContext: AdapterContext, snippets: Snippet[]) {
+		this.adapterContext = adapterContext;
+		this.snippets = snippets;
+	}
+
+	async verify(solution: Adapter, example: Query): Promise<TestedAdapter> {
+		// Use stop-on-first-failure style for verifying a single example.
+		const representativeSnippet = midpoint(this.snippets);
+		assert(representativeSnippet);
+		return await this.adapterContext.testAdapterOnSnippet(solution, representativeSnippet, example);
+	}
+}
