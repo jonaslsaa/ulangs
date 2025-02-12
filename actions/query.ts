@@ -12,7 +12,7 @@ interface PrologQueryData {
 }
 
 interface QueryResult {
-    ast: string | null;
+    output: string | null;
     errors: string[];
 }
 
@@ -49,7 +49,7 @@ export async function generatePrologQuery(
 
     // Parse target
     const { createParserFromGrammar } = await import('../syntactic/context-free-parser');
-    const { clauseGenerator: cstToAstGeneratorClauses, queryClauses } = await import('../semantic/prolog');
+    const { getApplicableTreeClauses, getQueryClauses } = await import('../semantic/prolog');
 
     const targetContent = fs.readFileSync(targetPath, 'utf8');
     const { parser, errorListener } = await createParserFromGrammar(
@@ -65,8 +65,8 @@ export async function generatePrologQuery(
 
     // Generate clauses
     const clauses = [
-        ...cstToAstGeneratorClauses(tree, parser, adapterPath),
-        ...queryClauses(queryPath)
+        ...getApplicableTreeClauses(tree, parser, adapterPath),
+        ...getQueryClauses(queryPath)
     ];
 
     if (clauses.length === 0) {
@@ -86,7 +86,7 @@ export async function generatePrologQuery(
 export function executePrologQuery(prologFile: string): QueryResult {
     const result = callSWIProlog(prologFile);
     return {
-        ast: result.stdout.trim() || null,
+        output: result.stdout.trim() || null,
         errors: result.stderr ? [result.stderr] : []
     };
 }
@@ -123,10 +123,10 @@ export async function doQuery(
             queryResult.errors.forEach(error => console.error(error));
         }
 
-        if (!queryResult.ast) {
+        if (!queryResult.output) {
             console.error("Prolog returned empty result");
         } else {
-            console.log(queryResult.ast);
+            console.log(queryResult.output);
         }
 
     } catch (error) {

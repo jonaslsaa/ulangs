@@ -22,7 +22,7 @@ function wrapWithComment(lines: string[], comment: string): string[] {
     ];
 }
 
-export function clauseGenerator(cstTree: ParserRuleContext,
+export function getApplicableTreeClauses(cstTree: ParserRuleContext,
                                 parser: Parser,
                                 adapterPath: string | undefined,
                                 ): string[] {
@@ -46,7 +46,7 @@ export function clauseGenerator(cstTree: ParserRuleContext,
     ];
 }
 
-export function queryClauses(queryFile: string): string[] {
+export function getQueryClauses(queryFile: string): string[] {
     console.log("Query file:", queryFile);
     const basePathQueries = path.join('rules', 'queries');
     if (!fs.existsSync(basePathQueries)) {
