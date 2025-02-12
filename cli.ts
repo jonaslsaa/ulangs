@@ -5,6 +5,7 @@ import fs from 'fs';
 import assert from 'assert';
 import { resolveRPC } from './actions/rpc';
 import { configure } from './env';
+import { doInferAdapter } from './actions/inferAdapter';
 
 function checkFileExists(filePath: string | undefined) {
     if (filePath === undefined) return; // We don't care if it's undefined
@@ -94,7 +95,7 @@ cli.command('infer-grammar')
         doInferGrammar(directory, extension, outputDir, options);
     });
 
-type CLIInferAdapterArguments = {
+export type CLIInferAdapterArguments = {
     recursive: boolean;
     skipFirstGuess: boolean;
     lexer: string;

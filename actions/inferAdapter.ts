@@ -1,0 +1,90 @@
+import path from "path";
+import fs from "fs";
+import { loadSnippetsByComplexity } from "./utils/snippets";
+import { loadOpenAIEnvVars, type OpenAIMessage } from "../llm/utils";
+import { compressMessages } from "../llm/compress-messages";
+import { runInferenceLoop, type InferenceOptions } from "../llm/autoCreationLoop";
+import { AdapterGenerator, AdapterVerifier, AdapterContext } from "../llm/adapterPipeline";
+import { GetQuery } from "../rules/queries/mapping";
+import type { CLIInferAdapterArguments } from "../cli";
+import { ExitAndLogStats } from './utils';
+
+/**
+ * doInferAdapter
+ * 
+ * Infers (or repairs) a Prolog adapter file that maps CST -> AST / symbol definitions,
+ * ensuring we can run the "definitions" query on the given code snippets successfully.
+ */
+export async function doInferAdapter(
+  directory: string,
+  extension: string,
+  outputDir: string,
+  options: CLIInferAdapterArguments
+): Promise<void> {
+  // 1. Load code snippets from the specified directory.
+  const snippets = await loadSnippetsByComplexity(directory, extension, options.recursive);
+  if (!snippets || snippets.length === 0) {
+    console.error("No files found with the given extension.");
+    process.exit(1);
+    return;
+  }
+  console.log(`Loaded ${snippets.length} snippet(s) from: ${directory}`);
+
+  // 2. Load the OpenAI environment (API key, model, etc.).
+  const openaiEnv = loadOpenAIEnvVars();
+  // We'll store conversation history in messages, if needed.
+  const messages: OpenAIMessage[] = [];
+
+  // 3. Construct the adapter context.
+  //    (Contains references to the parser/lexer and LLM client.)
+  const adapterContext = new AdapterContext(options.lexer, options.parser, openaiEnv);
+
+  // 4. Create the AdapterGenerator and AdapterVerifier.
+  const generator = new AdapterGenerator(
+    openaiEnv,
+    messages,
+    options.lexer,
+    options.parser,
+    options.initialAdapter,
+    snippets
+  );
+  const verifier = new AdapterVerifier(adapterContext, snippets);
+
+  // 5. For demonstration, we use a single “definitions” query as the example.
+  //    If you have more queries, you can add them here in an array.
+  const definitionsQuery = GetQuery("definitions");
+  const allQueries = [definitionsQuery];
+
+  // 6. Configure inference options to either test each snippet in turn
+  //    or do single-pass; here we just do standard incremental usage with
+  //    “stopOnFirstFailure: false,” etc.
+  const inferenceOptions: InferenceOptions = {
+    maxRetries: 5,
+    stopOnFirstFailure: false,
+    incrementalForInitial: false,
+    repairAllFailingExamples: false,
+    messageCompressor: compressMessages,
+    checkpointHook: (candidate) => {
+      // Whenever we get a new best candidate, log the updated score:
+      console.log(`Checkpoint: ${candidate.score}/${allQueries.length} queries passing so far.`);
+    },
+  };
+
+  // 7. Run the inference loop, producing an “Adapter” solution that
+  //    passes all queries (or as many as possible).
+  const candidate = await runInferenceLoop(generator, verifier, allQueries, inferenceOptions);
+
+  if (candidate.score < allQueries.length) {
+    console.warn(`Final solution passes ${candidate.score} out of ${allQueries.length} queries (some issues remain).`);
+  } else {
+    console.log("Final solution passed all queries!");
+  }
+
+  // 8. Write the final adapter to the output directory as `MyAdapter.pl`.
+  const adapterPath = path.join(outputDir, "MyAdapter.pl");
+  fs.writeFileSync(adapterPath, candidate.solution.source, "utf8");
+  console.log(`Wrote final adapter to: ${adapterPath}`);
+
+  ExitAndLogStats();
+}
+

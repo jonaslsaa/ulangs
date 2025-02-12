@@ -18,6 +18,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { adapterGenerationMessage, adapterScoringMessage } from './prompts';
 import type { Query } from '../rules/queries/mapping';
 import zodToJsonSchema from 'zod-to-json-schema';
+import { Stats } from '../actions/utils';
 
 type Adapter = {
 	source: string;
@@ -44,7 +45,7 @@ type ParseableTree = {
 	parser: Parser;
 }
 
-class AdapterContext {
+export class AdapterContext {
 	openai: OpenAI;
 	modelName: string;
 	lexerPath: string;
@@ -273,7 +274,7 @@ class AdapterContext {
 		queries: Query[],
 		lexerPath: string,
 		parserPath: string,
-	): Promise<{adapter: Adapter, messages: OpenAIMessage[]}> {
+	): Promise<{ adapter: Adapter, messages: OpenAIMessage[] }> {
 		const messages: OpenAIMessage[] = [];
 
 		const query = queries[0]; // TODO: buildFirstIntermediateSolution should create a generic adapter/solution that solves all queries
@@ -298,7 +299,7 @@ class AdapterContext {
 				source: initialAdapter,
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, query);
-			if (testedInitialAdapter.success) return {adapter, messages}; // Return early if the initial adapter is valid
+			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
 
 			// Add errors to the prompt
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
@@ -311,6 +312,7 @@ class AdapterContext {
 			content: prompt,
 		});
 
+		Stats.addRequest();
 		const completion = await this.openai.chat.completions.create({
 			model: this.modelName,
 			messages,
@@ -319,13 +321,64 @@ class AdapterContext {
 		const content = completion.choices[0].message.content;
 		if (content === null) throw new Error('No completion provided');
 
+		Stats.addCompletedRequest(completion);
+
 		// Extract the adapter from the completion
 		const adapterSource = await this.parseStringToAdapterSource(content);
 		const adapter = {
 			source: adapterSource.unwrap(),
 		}
-		return {adapter, messages};
+		return { adapter, messages };
 	}
+
+	async repairAdapter(
+    oldAdapter: Adapter,
+    failingExamples: Query[],
+    failingResults: TestedAdapter[]
+  ): Promise<Adapter> {
+    // Build a user prompt that includes the old adapter, failing snippet(s), and errors.
+    let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+
+    for (const tested of failingResults) {
+      if (!tested.success) {
+        prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+        if (tested.errors && tested.errors.length > 0) {
+          prompt += this.AdapterErrorsToString(tested.errors);
+        }
+      }
+    }
+
+    prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
+Output exactly one <Adapter> block.`;
+
+    // Make a single LLM call.
+    let newAdapterSource: string | undefined;
+    try {
+			Stats.addRequest();
+      const completion = await this.openai.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          { role: 'user', content: prompt },
+        ],
+      });
+      const content = completion.choices[0].message.content;
+			if (content === null) throw new Error('No completion provided');
+			
+			Stats.addCompletedRequest(completion);
+      const adapterParse = this.parseStringToAdapterSource(content);
+      if (adapterParse.isErr()) {
+        console.warn("Failed to parse new adapter from LLM output. Returning old adapter.");
+        return oldAdapter; // Let autoCreationLoop decide next steps
+      }
+      newAdapterSource = adapterParse.unwrap();
+    } catch (err) {
+      console.error("LLM request failed:", err);
+      return oldAdapter; // fallback
+    }
+
+    // If all went well, return the newly generated adapter.
+    return { source: newAdapterSource };
+  }
 }
 
 export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter> {
@@ -359,15 +412,22 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 		const representativeSnippet = midpoint(this.snippets); // TODO: this isn't that good of a heuristic
 		assert(representativeSnippet);
 
-		const {adapter, messages} = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter, representativeSnippet, this.queries, this.lexerPath, this.parserPath);
+		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter, representativeSnippet, this.queries, this.lexerPath, this.parserPath);
 		this.messages = messages;
 		return adapter;
 	}
 
-	async repairSolution(oldSolution: Adapter, failingExamples: Query[], failingResults: TestedAdapter[]): Promise<Adapter> {
-		// Use the first failing snippet in the array as a starting point.
-		throw new Error("Not implemented");
-	}
+	/**
+	 * Called by the autoCreationLoop when a solution fails some queries. We delegate
+	 * to AdapterContext#repairAdapter, which does the multi-step LLM repair loop.
+	 */
+	async repairSolution(
+    oldSolution: Adapter,
+    failingExamples: Query[],
+    failingResults: TestedAdapter[]
+  ): Promise<Adapter> {
+    return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults);
+  }
 }
 
 export class AdapterVerifier implements Verifier<Adapter, Query, TestedAdapter> {
