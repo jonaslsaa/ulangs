@@ -126,6 +126,7 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   maxRetries: number
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
     // 1) Ask the generator to repair
     const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults);
 
@@ -201,7 +202,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
   console.log(`[Snippet #1/${examples.length}] Passed ${candidate.score}/1 so far.`);
 
   // 3) Process subsequent examples in sequence
-  for (let i = 1; i < examples.length; i++) {
+  for (let i = 0; i < examples.length; i++) {
     const ex = examples[i];
 
     // a) Verify the new snippet in isolation
