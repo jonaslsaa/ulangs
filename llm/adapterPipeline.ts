@@ -278,7 +278,7 @@ export class AdapterContext {
 	
 		// Build the string output
 		for (const [type, messages] of errors.entries()) {
-			prompt += `\n<${type}Errors>\n${messages.join('\n * ')}\n</${type}Errors>`;
+			prompt += `\n<${type}Errors>\n${messages.map(m => " - " + m).join('\n')}\n</${type}Errors>`;
 		}
 	
 		return prompt;
@@ -318,7 +318,7 @@ export class AdapterContext {
 		);
 
 		let prompt: string = adapterGenerationMessage;
-		prompt += "\n<SourceCode>\n" + representativeSnippet + "\n</SourceCode>";
+		prompt += "\n<SourceCode>\n" + representativeSnippet.snippet + "\n</SourceCode>";
 		prompt += "\n<FullProlog>\n" + draftQuery + "\n</FullProlog>";
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
