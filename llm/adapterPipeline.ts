@@ -56,7 +56,7 @@ export class AdapterContext {
 	parserPath: string;
 	_snippetToTreeCache: Map<string, ParseableTree>;
 
-	MINUMUM_JUDGE_SCORE = 60;
+	MINUMUM_JUDGE_SCORE = 70;
 
 	constructor(lexerPath: string, parserPath: string, openAIEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -170,7 +170,6 @@ export class AdapterContext {
 		};
 
 		// Try to run the with swi-prolog
-		const { tree, parser } = await (await this.snippetToTree(this.lexerPath, this.parserPath, snippet)).unwrap();
 		const fullProlog = await this.createFullQuery(adapter.source, snippet, this.lexerPath, this.parserPath, query.path);
 
 		// Create temporary file with the clauses
@@ -279,7 +278,7 @@ export class AdapterContext {
 	
 		// Build the string output
 		for (const [type, messages] of errors.entries()) {
-			prompt += `\n<${type}Errors>\n${messages.join('\n')}\n</${type}Errors>`;
+			prompt += `\n<${type}Errors>\n${messages.join('\n * ')}\n</${type}Errors>`;
 		}
 	
 		return prompt;
