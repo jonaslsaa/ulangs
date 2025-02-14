@@ -41,6 +41,7 @@ type TestedAdapter = {
 	usedAdapter: Adapter;
 	errors?: AdapterError[];
 	success: boolean;
+	LLMScore?: number;
 }
 
 type ParseableTree = {
@@ -141,7 +142,7 @@ export class AdapterContext {
 	async scoreAdapter(snippet: Snippet, adapterOutput: string) {
 		const ScoringSchema = z.object({
 			reasons: z.array(z.string()),
-			score: z.number().min(0).max(100),
+			score: z.number(),
 		});
 
 		const completion = await this.openai.beta.chat.completions.parse({
@@ -250,6 +251,9 @@ export class AdapterContext {
 			line: undefined,
 			column: undefined,
 		}));
+		console.log("Scoring: ");
+		console.log(scoring);
+		testedAdapter.LLMScore = scoring.score;
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
 			return testedAdapter;
@@ -374,14 +378,14 @@ export class AdapterContext {
 		//let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
 		// Add failing snippets to prompt with errors
-		/*for (const tested of failingResults) {
+		for (const tested of failingResults) {
 			if (!tested.success) {
-				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				// prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
 				if (tested.errors && tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
 			}
-		}*/
+		}
 
 		prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
 Output exactly one <Adapter> block.`;
