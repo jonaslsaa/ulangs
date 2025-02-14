@@ -1,10 +1,9 @@
 import path from "path";
 import type { CLIInferGrammarArguments } from "../cli";
 import fs from 'fs';
-import { calculateComplexity } from "../heuristics/complexity";
 import { loadOpenAIEnvVars, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { ANTLRError } from "../syntactic/ErrorListener";
-import { constructPrompt, generateInitalGuess, makeCompletionRequest, Stats, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
+import { constructPrompt, generateInitalGuess, makeCompletionRequest, type Grammar, type Snippet, type TestedSnippet } from '../llm/grammar';
 import { checkGrammar } from "../syntactic/check-grammar";
 import { _createWorkingDirectory, _createTemporaryFile, findAllCodeFiles, loadFile } from './utils/io';
 import { compressMessages, countTokens } from '../llm/compress-messages';
@@ -12,8 +11,16 @@ import { loadSnippetsByComplexity } from './utils/snippets';
 import type { Result } from '../result';
 import { GrammarGenerator, GrammarVerifier } from '../llm/grammarPipeline';
 import { runInferenceLoop, type InferenceOptions } from '../llm/autoCreationLoop';
+import { ExitAndLogStats as _ExitAndLogStats } from './utils';
 
 const temporaryFileDirectoryRecords = new Set<string>();
+
+function ExitAndLogStats(exitCode: number = 0) {
+    for (const tempPath of temporaryFileDirectoryRecords) {
+        fs.rmSync(tempPath, { recursive: true, force: true });
+    }
+    _ExitAndLogStats(exitCode);
+}
 
 const createWorkingDirectory = () => _createWorkingDirectory('grammar');
 
@@ -101,7 +108,7 @@ export async function testGrammarOnMany(grammar: Grammar,
         }
     }
     const failOrPass = numberOfTestsPassed === numberOfTestsTotal ? 'PASS' : 'FAIL';
-    if (numberOfTestsPassed === 1 && numberOfTestsTotal === 1) console.log(`[${failOrPass}] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests.`); // HACKY way to avoid printing "1/1 test" when there's only one test
+    if (numberOfTestsPassed !== 1 && numberOfTestsTotal !== 1) console.log(`[${failOrPass}] Passed ${numberOfTestsPassed}/${numberOfTestsTotal} tests.`); // HACKY way to avoid printing "1/1 test" when there's only one test
 
     // Return all grammars
     if (newTested) {
@@ -227,31 +234,6 @@ export async function repairGrammar(
     return currentTestedSnippets;
 }
 
-function ExitAndLogStats(exitCode: number = 0) {
-    // Remove temporary file directory
-    for (const tempPath of temporaryFileDirectoryRecords) {
-        fs.rmSync(tempPath, { recursive: true, force: true });
-    }
-
-    console.log("\n[Stats]");
-    console.log(`Generated ${Stats.totalRequests} requests, and completed ${Stats.totalCompletedRequests} requests.`);
-    if (Stats.cachedInputTokens === 0) {
-        console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
-    } else {
-        const NonCachedTokens = Stats.inputTokens - Stats.cachedInputTokens;
-        console.log(`    Cached input tokens: ${Stats.cachedInputTokens}, Non-cached input tokens: ${NonCachedTokens}, Output tokens: ${Stats.outputTokens}`);
-    }
-
-    console.log(`    ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
-    if (Stats.score.size > 0) console.log("\n[Model scores]");
-    Array.from(Stats.score.entries())
-        .sort(([, scoreA], [, scoreB]) => scoreB - scoreA)
-        .forEach(([modelName, score]) => {
-            console.log(`    - ${modelName}: ${score}`);
-        });
-    process.exit(exitCode);
-}
-
 export async function buildFirstIntermediateSolution(openaiEnv: OpenAIEnv,
     initalLexer: string | undefined,
     initalParser: string | undefined,
@@ -298,14 +280,14 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     const messages: OpenAIMessage[] = [];
 
     // Instantiate the domain-specific components.
-    const generator = new GrammarGenerator(openaiEnv, messages);
+    const generator = new GrammarGenerator(openaiEnv, messages, options.initialLexer, options.initialParser);
     const verifier = new GrammarVerifier();
 
     // Configure inference options.
     const inferenceOptions: InferenceOptions = {
         maxRetries: 5,
-        stopOnFirstFailure: true,
-        incremental: true, // Use incremental (per-snippet) mode.
+        stopOnFirstFailure: false,
+        incrementalForInitial: false, // Use incremental (per-snippet) mode.
         repairAllFailingExamples: false,
         messageCompressor: compressMessages,
         checkpointHook: (candidate) => {

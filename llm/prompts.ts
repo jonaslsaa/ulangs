@@ -46,3 +46,18 @@ Ensuring all of this is correct when building a grammar is a challenge and requi
 Task:
 From code snippet files, create the full ANTLR (antlr4) grammar to fully parse this programming language. Make sure all logic adds up and originates from the start rule. Create both a MyLexer.g4 and MyParser.g4 file. Start rule must be called "program". Make it somewhat generic as these files are just examples. Check that the grammar works for each file given at least. Don't add comment unless needed for an expert to understand the logic.
 Always output the WHOLE and full grammar for both lexer and parser, within blocks like this  \`\`\`antlr `;
+
+
+export const adapterGenerationMessage = `Your goal is to analyze a CST and convert it into an AST while also extracting symbol information (declarations and references) from a given Prolog representation of a parsed source code file.
+You will develop an adapter that sits in the middle of the file. Make sure this adapter will make the Main query run successfully with correct output.
+You MUST only write within the WRITEABLE AREA. Output only the adapter / WRITEABLE AREA.`;
+
+export function adapterScoringMessage(snippet: string, adapterOutput: string): string {
+    return `Score 0 to 100 how well the definitions generated is by looking at the code snippet it is based on. 100 = means that the definitions perfectly describe the code snippet. 0 = means that the definitions don't make ANY sense. Supply also a list of reasons/errors (empty list if there are none, used as feedback).
+<CodeSnippet>
+${snippet}
+</CodeSnippet>
+<GeneratedDefinitions>
+${adapterOutput}
+</GeneratedDefinitions>`;
+}

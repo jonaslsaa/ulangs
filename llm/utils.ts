@@ -38,3 +38,10 @@ export function stripSystemMessage(messages: OpenAI.Chat.ChatCompletionMessagePa
 }
 
 export type OpenAIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+export function midpoint<T>(arr: T[]): T | undefined {
+	if (arr.length === 0) return undefined;
+	if (arr.length === 1) return arr[0];
+	if (arr.length === 2) return arr[0];
+	return arr[Math.floor(arr.length / 2)];
+}

@@ -5,6 +5,15 @@ import fs from 'fs';
 import assert from 'assert';
 import { resolveRPC } from './actions/rpc';
 import { configure } from './env';
+import { doInferAdapter } from './actions/inferAdapter';
+
+function checkFileExists(filePath: string | undefined) {
+    if (filePath === undefined) return; // We don't care if it's undefined
+    if (!fs.existsSync(filePath)) {
+        console.error(`File '${filePath}' does not exist`);
+        process.exit(1);
+    }
+}
 
 const cli = new Command();
 cli.name('ulangs-toolkit');
@@ -74,13 +83,6 @@ cli.command('infer-grammar')
         }
 
         // Check inital grammar files exist
-        function checkFileExists(filePath: string | undefined) {
-            if (filePath === undefined) return; // We don't care if it's undefined
-            if (!fs.existsSync(filePath)) {
-                console.error(`File '${filePath}' does not exist`);
-                process.exit(1);
-            }
-        }
         checkFileExists(options.initialLexer);
         checkFileExists(options.initialParser);
 
@@ -93,6 +95,58 @@ cli.command('infer-grammar')
         doInferGrammar(directory, extension, outputDir, options);
     });
 
+export type CLIInferAdapterArguments = {
+    recursive: boolean;
+    skipFirstGuess: boolean;
+    lexer: string;
+    parser: string;
+    outputDir: string;
+    initialAdapter: string | undefined;
+};
+
+cli.command('infer-adapter')
+    .description('Infer semantic adapter')
+    .argument('<directory>', 'Directory to infer adapter from')
+    .argument('<extension>', 'File extension to infer adapter from, ex: .pyl')
+    .argument('[outputDir]', 'Output directory for generated files', process.cwd())
+    .option('-L, --lexer <path>', 'Lexer file to use')
+    .option('-P, --parser <path>', 'Parser file to use')
+    .option('-iA, --initial-adapter <path>', 'Use a file as a starting point for the adapter', undefined)
+    .option('-R, --recursive', 'Detect grammar from subdirectories', false)
+    .option('-S, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
+    // .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
+    .action(async (directory: string, extension: string, outputDir: string, options: CLIInferAdapterArguments) => {
+        // Check if the directory exists
+        if (!fs.existsSync(directory)) {
+            console.error(`Directory ${directory} does not exist`);
+            process.exit(1);
+            return;
+        }
+        // Exit if extension does not start with a dot
+        if (!extension.startsWith('.')) {
+            console.error(`Extension ${extension} does not start with a dot`);
+            process.exit(1);
+            return;
+        }
+
+        // Check grammar files exist
+        checkFileExists(options.lexer);
+        checkFileExists(options.parser);
+
+        // Check if the output directory exists
+        if (!fs.existsSync(outputDir)) {
+            console.error(`Output directory '${outputDir}' does not exist`);
+            process.exit(1);
+            return;
+        }
+
+        // Check if the initial adapter file exists
+        if (options.initialAdapter) {
+            checkFileExists(options.initialAdapter);
+        }
+
+        doInferAdapter(directory, extension, outputDir, options);
+    });
 
 cli.command('rpc')
     .description('Remote procedure call')

@@ -4,6 +4,7 @@ import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
 import { Err, Ok, type Result } from "../result";
+import { Stats } from '../actions/utils';
 
 export type Grammar = {
     lexerSource: string;
@@ -23,33 +24,6 @@ export type TestedSnippet = {
     errors?: ANTLRError[];
     success: boolean;
 };
-
-export const Stats = {
-    totalRequests: 0,
-    totalCompletedRequests: 0,
-    inputTokens: 0,
-    cachedInputTokens: 0,
-    outputTokens: 0,
-    score: new Map<string, number>(), // Map from model name to score
-    get totalTokens () {
-        return this.inputTokens + this.outputTokens;
-    },
-    get avgTokensPerRequest () {
-        return this.totalTokens / this.totalRequests;
-    },
-    getCost(inputPricePerMillionTokens: number, outputPricePerMillionTokens: number) {
-        return this.totalTokens * inputPricePerMillionTokens + this.totalTokens * outputPricePerMillionTokens;
-    },
-    addRequest() {
-        this.totalRequests++;
-    },
-    addCompletedRequest(inputTokens: number, outputTokens: number, cachedInputTokens: number = 0) {
-        this.totalCompletedRequests++;
-        this.inputTokens += inputTokens;
-        this.cachedInputTokens += cachedInputTokens;
-        this.outputTokens += outputTokens;
-    }
-}
 
 function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
     const msg = error.message.replaceAll('\n', ' ');
@@ -252,7 +226,7 @@ export async function makeCompletionRequest(
         
         const result = parseCompletionToGrammar(content);
 
-        if (completion.usage) Stats.addCompletedRequest(completion.usage.prompt_tokens, completion.usage.completion_tokens, completion.usage?.prompt_tokens_details?.cached_tokens ?? 0);
+        if (completion.usage) Stats.addCompletedRequest(completion);
 
         // Add the assistant completion to the messages
         messages.push({
