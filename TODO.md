@@ -2,8 +2,8 @@
 
 ## Major
 
-* Implement automatic semantic adapter prolog synthesis
-  * Find a good verifier method (Prolog errors + Zod errors + LLM as a verifier on output?)
+* Create one query to rule them all - meaning it can be used to verify all other queries to some extent
+  * Switch over to using this query to verify all other queries, and verify on all snippets in the dataset
 * Automatic code splitting (can be done in its own step)
 * Finish proof-of-concept VSCode extension
 * Investigate agentic behaviour using *tool-use*.
