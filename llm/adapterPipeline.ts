@@ -463,6 +463,7 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 		// Choose a snippet that represents the language well
 		const representativeSnippet = midpoint(this.snippets); // TODO: this isn't that good of a heuristic
 		assert(representativeSnippet);
+		console.log("Using representative snippet: ", representativeSnippet.filePath);
 
 		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter, representativeSnippet, this.queries, this.lexerPath, this.parserPath);
 		this.messages = messages;
