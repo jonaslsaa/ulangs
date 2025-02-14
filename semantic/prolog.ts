@@ -39,7 +39,7 @@ export function getApplicableTreeClauses(cstTree: ParserRuleContext,
         if (isAdapterContent) {
             adapterClauses = adapterPathOrContent.split('\n');
         } else {
-            const adapterClauses = fileToLines(adapterPathOrContent);
+            adapterClauses = fileToLines(adapterPathOrContent);
         }
         const adapter = wrapWithComment(adapterClauses, 'Adapter'); // TODO: change comment
         return [...libraries, ...treeFacts, ...helpers, ...adapter];
