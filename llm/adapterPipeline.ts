@@ -219,7 +219,7 @@ export class AdapterContext {
 
 		// Now, let's check if output matches our schema
 		const output = queryResult.output;
-		const schema = DefinitionQueryResultSchema.safeParse(output);
+		const schema = DefinitionQueryResultSchema.safeParse(JSON.parse(output));
 		if (!schema.success) {
 			testedAdapter.errors?.push({
 				type: 'SCHEMA',
@@ -345,6 +345,12 @@ export class AdapterContext {
 		const content = completion.choices[0].message.content;
 		if (content === null) throw new Error('No completion provided');
 
+		// add content to messages
+		messages.push({
+			role: 'assistant',
+			content: content,
+		});
+
 		Stats.addCompletedRequest(completion);
 
 		// Extract the adapter from the completion
@@ -358,22 +364,33 @@ export class AdapterContext {
 	async repairAdapter(
 		oldAdapter: Adapter,
 		failingExamples: Query[],
-		failingResults: TestedAdapter[]
+		failingResults: TestedAdapter[],
+		messages: OpenAIMessage[]
 	): Promise<Adapter> {
 		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
-		let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+		let prompt: string = '';
 
-		for (const tested of failingResults) {
+		// Add adapter to prompt
+		//let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+
+		// Add failing snippets to prompt with errors
+		/*for (const tested of failingResults) {
 			if (!tested.success) {
 				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
 				if (tested.errors && tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
 			}
-		}
+		}*/
 
 		prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
 Output exactly one <Adapter> block.`;
+
+		// Add prompt to messages
+		messages.push({
+			role: 'user',
+			content: prompt,
+		});
 
 		// Make a single LLM call.
 		let newAdapterSource: string | undefined;
@@ -381,10 +398,9 @@ Output exactly one <Adapter> block.`;
 			Stats.addRequest();
 			const completion = await this.openai.chat.completions.create({
 				model: this.modelName,
-				messages: [
-					{ role: 'user', content: prompt },
-				],
+				messages: messages
 			});
+			console.log(JSON.stringify(messages, null, 2));
 			const content = completion.choices[0].message.content;
 			if (content === null) throw new Error('No completion provided');
 
@@ -395,6 +411,13 @@ Output exactly one <Adapter> block.`;
 				return oldAdapter; // Let autoCreationLoop decide next steps
 			}
 			newAdapterSource = adapterParse.unwrap();
+
+			// Add content to messages
+			messages.push({
+				role: 'assistant',
+				content: content,
+			});
+
 		} catch (err) {
 			console.error("LLM request failed:", err);
 			return oldAdapter; // fallback
@@ -450,7 +473,7 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 		failingExamples: Query[],
 		failingResults: TestedAdapter[]
 	): Promise<Adapter> {
-		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults);
+		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults, this.messages);
 	}
 }
 
