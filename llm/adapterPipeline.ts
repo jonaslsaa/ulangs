@@ -264,22 +264,24 @@ export class AdapterContext {
 	}
 
 	AdapterErrorsToString(adapterErrors?: AdapterError[]): string {
-		if (!adapterErrors) return '';
-
-		let prompt: string = '';
-		const errors: Record<AdapterError['type'], Array<string>> = {
-			PROLOG: [],
-			SCHEMA: [],
-			JUDGE: [],
-		};
-
-		adapterErrors.forEach(error => {
-			errors[error.type].push(error.message);
-		});
-
-		Object.entries(errors).forEach(([type, messages]) => {
+		if (!adapterErrors || adapterErrors.length === 0) {
+			return '';
+		}
+		let prompt = 'I got the following errors:';
+	
+		// Map error types to an array of messages
+		const errors = new Map<AdapterError['type'], string[]>();
+		for (const { type, message } of adapterErrors) {
+			const messages = errors.get(type) ?? [];
+			messages.push(message);
+			errors.set(type, messages);
+		}
+	
+		// Build the string output
+		for (const [type, messages] of errors.entries()) {
 			prompt += `\n<${type}Errors>\n${messages.join('\n')}\n</${type}Errors>`;
-		});
+		}
+	
 		return prompt;
 	}
 
@@ -387,7 +389,7 @@ export class AdapterContext {
 			}
 		}
 
-		prompt += `\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
+		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
 Output exactly one <Adapter> block.`;
 
 		// Add prompt to messages
