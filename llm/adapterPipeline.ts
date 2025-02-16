@@ -55,7 +55,7 @@ export class AdapterContext {
 	parserPath: string;
 	_snippetToTreeCache: Map<string, ParseableTree>;
 
-	MINUMUM_JUDGE_SCORE = 70;
+	MINUMUM_JUDGE_SCORE = 60;
 
 	constructor(lexerPath: string, parserPath: string, openAIEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -160,6 +160,7 @@ export class AdapterContext {
 	}
 
 	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query): Promise<TestedAdapter> {
+		console.log("  - Testing adapter on snippet:", snippet.fileName);
 		const testedAdapter: TestedAdapter = {
 			onQuery: query,
 			withSnippet: snippet,
@@ -187,6 +188,7 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			}));
+			console.log("    - Failed to run query (0/5).");
 			return testedAdapter;
 		}
 
@@ -199,6 +201,7 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			});
+			console.log("    - Empty result (1/5).");
 			return testedAdapter;
 		}
 
@@ -213,6 +216,7 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			});
+			console.log("    - Invalid JSON (2/5).");
 			return testedAdapter;
 		}
 
@@ -237,6 +241,7 @@ export class AdapterContext {
 					column: undefined,
 				});
 			}
+			console.log("    - Invalid JSON schema (3/5).");
 			return testedAdapter;
 		}
 
@@ -249,13 +254,15 @@ export class AdapterContext {
 			line: undefined,
 			column: undefined,
 		}));
-		console.log("Scoring: ");
-		console.log(scoring);
+		
 		testedAdapter.LLMScore = scoring.score;
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
+			console.log("    - Score too low (4/5), scoring:");
+			console.log(scoring);
 			return testedAdapter;
 		}
+		console.log("    - Score:", scoring.score);
 
 		testedAdapter.success = true;
 		return testedAdapter;
