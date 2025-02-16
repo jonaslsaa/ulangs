@@ -1,5 +1,5 @@
 import type { Generator, Verifier } from "./autoCreationLoop";
-import { midpoint, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
+import { midpoint, overlayErrorsOnCode, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { Snippet } from './grammar';
 import fs from 'fs';
 import assert from 'assert';
@@ -405,9 +405,22 @@ export class AdapterContext {
 		// Add failing snippets to prompt with errors
 		for (const tested of failingResults) {
 			if (tested.errors && !tested.success) {
+				// If we have JUDGE errors, add the source code as context
 				if (this.hasErrorsOfType(tested.errors, 'JUDGE')) {
 					prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
 				}
+
+				// If we have PROLOG errors, add the prolog code as context with the errors in comments
+				if (this.hasErrorsOfType(tested.errors, 'PROLOG')) {
+					const errorsWithLines = tested.errors.filter(error => error.line !== undefined);
+					if (errorsWithLines.length > 0) {
+						const prologCodeWithErrorsOverlay = overlayErrorsOnCode(oldAdapter.source, errorsWithLines);
+						prompt += '\nHere is the prolog i ran with the errors in // comments:\n';
+						prompt += `<PrologCodeRanWithErrors>\n${prologCodeWithErrorsOverlay}\n</PrologCodeRanWithErrors>`;
+					}
+				}
+
+				// Add all the errors to the prompt as well
 				if (tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
