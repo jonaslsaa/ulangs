@@ -57,7 +57,7 @@ async function testGrammar(grammar: Grammar, snippet: Snippet): Promise<TestedSn
     } catch (error: any) {
         console.error("Failed to check grammar:", error);
         testedSnippet.errors = [{
-            grammarType: 'UNKNOWN',
+            type: 'UNKNOWN',
             source: 'BUILD',
             message: error['message'],
             file: lexerFilePath,

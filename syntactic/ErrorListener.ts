@@ -1,15 +1,16 @@
 import { ErrorListener, Lexer, Parser, RecognitionException, Token } from 'antlr4';
 import antlr4 from 'antlr4';
+import type { AnyErrorWithLine } from '../llm/utils';
 
 
 export type ANTLRError = {
-    grammarType: 'LEXER' | 'PARSER' | 'UNKNOWN';
+    type: 'LEXER' | 'PARSER' | 'UNKNOWN';
     source: 'BUILD' | 'RUNTIME';
     message: string;
     file?: string;
     line?: number;
     column?: number;
-}
+};
 
 export class CustomErrorListener extends ErrorListener<Token> {
     private errors: ANTLRError[] = [];
@@ -27,7 +28,7 @@ export class CustomErrorListener extends ErrorListener<Token> {
 
         // Determine which file and what type of grammar is being parsed
         let file = '<unknown>';
-        let type: ANTLRError['grammarType'] = 'UNKNOWN';
+        let type: ANTLRError['type'] = 'UNKNOWN';
 
         if (recognizer instanceof Lexer || recognizer instanceof Parser) {
             if (recognizer instanceof Lexer) type = 'LEXER';
@@ -39,7 +40,7 @@ export class CustomErrorListener extends ErrorListener<Token> {
         }
 
         this.errors.push({
-            grammarType: type,
+            type: type,
             source: 'RUNTIME',
             message: msg,
             file: file,

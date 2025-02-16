@@ -45,3 +45,41 @@ export function midpoint<T>(arr: T[]): T | undefined {
 	if (arr.length === 2) return arr[0];
 	return arr[Math.floor(arr.length / 2)];
 }
+
+export type AnyErrorWithLine = { line?: number, message: string, type: string };
+
+export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, errors: T[]): string {
+    let newCodeLines = code.split('\n');
+    const errorOnLineMap = new Map<number, T[]>();
+    // add errors to the errorOnLineMap
+    for (const error of errors) {
+        if (error.line === undefined) {
+            throw new Error(`Error line number is undefined, this really shouldn't happen!!!: ${error.message}`);
+        }
+        const lineNumber = error.line - 1;
+        // check if the line number is valid
+        if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
+            console.warn(`Invalid line number: ${lineNumber}: ${error.message}`);
+            error.type = 'UNKNOWN';
+            //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
+        }
+        if (!errorOnLineMap.has(lineNumber)) {
+            errorOnLineMap.set(lineNumber, []);
+        }
+        errorOnLineMap.get(lineNumber)!.push(error);
+    }
+
+    // for each line in map, add a comment with the errors
+    for (const [lineNumber, errorsOnLine] of errorOnLineMap.entries()) {
+        const line = newCodeLines[lineNumber];
+        // todo: de-dupe errors
+        let allErrors = errorsOnLine.map(error => error.message).join(', ');
+        const trimLength = 256;
+        if (allErrors.length >= trimLength) {
+            allErrors = allErrors.substring(0, trimLength-1) + '...';
+        }
+        const comment = `// ANTLR Error: ${allErrors}`;
+        newCodeLines[lineNumber] = `${line} ${comment}`;
+    }
+    return newCodeLines.join('\n');   
+}

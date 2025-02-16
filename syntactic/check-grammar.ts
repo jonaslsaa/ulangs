@@ -119,7 +119,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
     // Collect all warnings from that occured during the build of the grammar
     for (const warning of checker.warnings) {
         errors.push({
-            grammarType: 'UNKNOWN',
+            type: 'UNKNOWN',
             source: 'BUILD',
             message: warning['msg'],
             file: codePath,
@@ -129,7 +129,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
     // Collect all errors from that occured during the build of the grammar
     for (const error of checker.lexer_grammar_errors) {
         errors.push({
-            grammarType: 'LEXER',
+            type: 'LEXER',
             source: 'BUILD',
             message: error.msg,
             file: codePath,
@@ -140,7 +140,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
 
     for (const error of checker.parser_grammar_errors) {
         errors.push({
-            grammarType: 'PARSER',
+            type: 'PARSER',
             source: 'BUILD',
             message: error.msg,
             file: codePath,
@@ -153,7 +153,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         if (checker.result.parse_errors) {
             for (const error of checker.result.parse_errors) {
                 errors.push({
-                    grammarType: 'PARSER',
+                    type: 'PARSER',
                     source: 'RUNTIME',
                     message: error.msg,
                     file: codePath,
@@ -166,7 +166,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         if (checker.result.lex_errors) {
             for (const error of checker.result.lex_errors) {
                 errors.push({
-                    grammarType: 'LEXER',
+                    type: 'LEXER',
                     source: 'RUNTIME',
                     message: error.msg,
                     file: codePath,
@@ -180,7 +180,7 @@ export async function checkGrammar(lexerPath: string, parserPath: string, codePa
         if (checker.result.number_of_nodes < 2) {
             console.error('Grammar was not parsed correctly - only 1 node was created. TODO: better detection of this type of error');
             errors.push({
-                grammarType: 'UNKNOWN',
+                type: 'UNKNOWN',
                 source: 'RUNTIME',
                 message: `Grammar was not parsed correctly - only ${checker.result.number_of_nodes} node was created.`,
                 file: codePath,

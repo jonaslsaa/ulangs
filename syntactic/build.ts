@@ -30,7 +30,7 @@ function toANTLRError(_error: string): ANTLRError {
         }
     }
 
-    let errorType: ANTLRError['grammarType'];
+    let errorType: ANTLRError['type'];
     if (error.toLowerCase().includes('lexer')) {
         errorType = 'LEXER';
     } else if (error.toLowerCase().includes('parser')) {
@@ -48,7 +48,7 @@ function toANTLRError(_error: string): ANTLRError {
     }
 
     return {
-        grammarType: errorType,
+        type: errorType,
         source: 'BUILD',
         message: error,
         file: file,

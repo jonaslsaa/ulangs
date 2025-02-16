@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { type OpenAIEnv, type OpenAIMessage, loadOpenAIEnvVars } from './utils';
+import { type OpenAIEnv, type OpenAIMessage, loadOpenAIEnvVars, overlayErrorsOnCode } from './utils';
 import { TimeoutError, timeout } from 'promise-timeout';
 import { grammarGenerationDeveloperMessage } from "./prompts";
 import type { ANTLRError } from "../syntactic/ErrorListener";
@@ -24,49 +24,6 @@ export type TestedSnippet = {
     errors?: ANTLRError[];
     success: boolean;
 };
-
-function errorToString(error: ANTLRError, showGrammarType: boolean = true): string {
-    const msg = error.message.replaceAll('\n', ' ');
-    const firstPart = error.source === 'BUILD' ? 'while building' : 'under parsing';
-    const grammarPart = showGrammarType ? ` in the ${error.grammarType.toLowerCase()} grammar` : '';
-    return `Got error ${firstPart}${grammarPart}: ${msg}`;
-}
-
-function overlayErrorsOnCode(code: string, errors: ANTLRError[]): string {
-    let newCodeLines = code.split('\n');
-    const errorOnLineMap = new Map<number, ANTLRError[]>();
-    // add errors to the errorOnLineMap
-    for (const error of errors) {
-        if (error.line === undefined) {
-            throw new Error(`Error line number is undefined, this really shouldn't happen!!!: ${error.message}`);
-        }
-        const lineNumber = error.line - 1;
-        // check if the line number is valid
-        if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
-            console.warn(`Invalid line number: ${lineNumber}: ${error.message}`);
-            error.grammarType = 'UNKNOWN';
-            //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
-        }
-        if (!errorOnLineMap.has(lineNumber)) {
-            errorOnLineMap.set(lineNumber, []);
-        }
-        errorOnLineMap.get(lineNumber)!.push(error);
-    }
-
-    // for each line in map, add a comment with the errors
-    for (const [lineNumber, errorsOnLine] of errorOnLineMap.entries()) {
-        const line = newCodeLines[lineNumber];
-        // todo: de-dupe errors
-        let allErrors = errorsOnLine.map(error => error.message).join(', ');
-        const trimLength = 256;
-        if (allErrors.length >= trimLength) {
-            allErrors = allErrors.substring(0, trimLength-1) + '...';
-        }
-        const comment = `// ANTLR Error: ${allErrors}`;
-        newCodeLines[lineNumber] = `${line} ${comment}`;
-    }
-    return newCodeLines.join('\n');   
-}
 
 export function constructPrompt(currentIntermediateSolution: Grammar,
                         firstNonWorkingTestedSnippet: TestedSnippet,
@@ -106,12 +63,12 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
 
         // Add error messages
         // Overlay the error messages on the code by adding a comment
-        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'LEXER' && error.source === 'BUILD');
-        const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'BUILD');
+        const lexerErrorsWithLine = errors.filter(error => error.line !== undefined && error.type === 'LEXER' && error.source === 'BUILD');
+        const parserErrorsWithLine = errors.filter(error => error.line !== undefined && error.type === 'PARSER' && error.source === 'BUILD');
         lexerSource = overlayErrorsOnCode(currentIntermediateSolution.lexerSource, lexerErrorsWithLine);
         parserSource = overlayErrorsOnCode(currentIntermediateSolution.parserSource, parserErrorsWithLine);
 
-        const runtimeErrorsWithLine = errors.filter(error => error.line !== undefined && error.grammarType === 'PARSER' && error.source === 'RUNTIME');
+        const runtimeErrorsWithLine = errors.filter(error => error.line !== undefined && error.type === 'PARSER' && error.source === 'RUNTIME');
 
         const remainingErrors = errors.filter(error => !(lexerErrorsWithLine.includes(error) || parserErrorsWithLine.includes(error) || runtimeErrorsWithLine.includes(error)));
 
@@ -121,7 +78,7 @@ export function constructPrompt(currentIntermediateSolution: Grammar,
         // Put other error messages in its own block
         if (remainingErrors.length > 0) {
             otherErrorsBlock = `<OtherErrors>
-    ${remainingErrors.map(error => `Under ${error.source}, in the ${error.grammarType} the following error occurred: ${error.message}`).join('\n')}
+    ${remainingErrors.map(error => `Under ${error.source}, in the ${error.type} the following error occurred: ${error.message}`).join('\n')}
     </OtherErrors>`;
         }
 
