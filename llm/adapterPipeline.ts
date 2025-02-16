@@ -188,13 +188,13 @@ export class AdapterContext {
 		if (queryResult.errors.length > 0) {
 			queryResult.errors.forEach(error => testedAdapter.errors?.push({
 				type: 'PROLOG',
-				message: error,
+				message: error.message,
 				file: snippet.filePath,
-				line: undefined,
-				column: undefined,
+				line: error.line,
+				column: error.column,
 			}));
 			console.log("    - Failed to run query (0/5).");
-			console.log(queryResult.errors);
+			console.dir(queryResult.errors);
 			console.log("Ran prolog:", tempFilePath.name, "and got:");
 			console.log(queryResult.output);
 			return testedAdapter;
@@ -387,6 +387,11 @@ export class AdapterContext {
 		failingResults: TestedAdapter[],
 		messages: OpenAIMessage[]
 	): Promise<Adapter> {
+
+		if (messages.length === 0) {
+			throw new Error('No messages provided, this should not happen as the repairAdapter doesn\'t add context to the messages.');
+		}
+
 		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
 		let prompt: string = '';
 
