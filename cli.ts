@@ -7,6 +7,7 @@ import { resolveRPC } from './actions/rpc';
 import { configure } from './env';
 import { doInferAdapter } from './actions/inferAdapter';
 import { QueryNames } from './rules/queries/mapping';
+import { ExitAndLogStats, Stats } from './actions/utils';
 
 function checkFileExists(filePath: string | undefined) {
     if (filePath === undefined) return; // We don't care if it's undefined
@@ -199,5 +200,12 @@ cli.command('rpc')
         }
     });
 
-configure();
+// Handle SIGINT (Ctrl+C) to gracefully exit
+process.on('SIGINT', function() {
+    console.log("\nStopping... Goodbye!");
+    ExitAndLogStats(1);
+});
+
+configure(); // Configure environment variables
+
 cli.parse();
