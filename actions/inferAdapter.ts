@@ -39,6 +39,8 @@ export async function doInferAdapter(
   //    (Contains references to the parser/lexer and LLM client.)
   const adapterContext = new AdapterContext(options.lexer, options.parser, openaiEnv);
 
+  const holotypeQuery = GetQuery('definitions'); // TODO: investigate what the best holotype query is
+
   // 4. Create the AdapterGenerator and AdapterVerifier.
   const generator = new AdapterGenerator(
     openaiEnv,
@@ -46,9 +48,9 @@ export async function doInferAdapter(
     options.lexer,
     options.parser,
     options.initialAdapter,
-    snippets
+    holotypeQuery
   );
-  const verifier = new AdapterVerifier(adapterContext, snippets);
+  const verifier = new AdapterVerifier(adapterContext, snippets, holotypeQuery);
 
   // 5. For demonstration, we use a single “definitions” query as the example.
   //    If you have more queries, you can add them here in an array.
@@ -72,7 +74,7 @@ export async function doInferAdapter(
 
   // 7. Run the inference loop, producing an “Adapter” solution that
   //    passes all queries (or as many as possible).
-  const candidate = await runInferenceLoop(generator, verifier, allQueries, inferenceOptions);
+  const candidate = await runInferenceLoop(generator, verifier, snippets, inferenceOptions);
 
   if (candidate.score < allQueries.length) {
     console.warn(`Final solution passes ${candidate.score} out of ${allQueries.length} queries (some issues remain).`);
