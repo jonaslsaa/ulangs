@@ -13,7 +13,7 @@ import { ExitAndLogStats } from './utils';
  * doInferAdapter
  * 
  * Infers (or repairs) a Prolog adapter file that maps CST -> AST / symbol definitions,
- * ensuring we can run the "definitions" query on the given code snippets successfully.
+ * ensuring we can run the holotype query on the given code snippets successfully.
  */
 export async function doInferAdapter(
   directory: string,
@@ -52,10 +52,6 @@ export async function doInferAdapter(
   );
   const verifier = new AdapterVerifier(adapterContext, snippets, holotypeQuery);
 
-  // 5. For demonstration, we use a single “definitions” query as the example.
-  //    If you have more queries, you can add them here in an array.
-  const definitionsQuery = GetQuery("definitions");
-
   // 6. Configure inference options to either test each snippet in turn
   //    or do single-pass; here we just do standard incremental usage with
   //    “stopOnFirstFailure: false,” etc.
@@ -72,13 +68,13 @@ export async function doInferAdapter(
   };
 
   // 7. Run the inference loop, producing an “Adapter” solution that
-  //    passes all queries (or as many as possible).
+  //    passes all examples (or as many as possible).
   const candidate = await runInferenceLoop(generator, verifier, snippets, inferenceOptions);
 
   if (candidate.score < snippets.length) {
-    console.warn(`Final solution passes ${candidate.score} out of ${snippets.length} queries (some issues remain).`);
+    console.warn(`Final solution passes ${candidate.score} out of ${snippets.length} examples (some issues remain).`);
   } else {
-    console.log("Final solution passed all queries!");
+    console.log("Final solution passed all examples!");
   }
 
   // 8. Write the final adapter to the output directory as `MyAdapter.pl`.
