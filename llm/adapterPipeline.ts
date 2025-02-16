@@ -262,7 +262,7 @@ export class AdapterContext {
 			line: undefined,
 			column: undefined,
 		}));
-		
+
 		testedAdapter.LLMScore = scoring.score;
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
@@ -282,7 +282,7 @@ export class AdapterContext {
 			return '';
 		}
 		let prompt = 'I got the following errors:';
-	
+
 		// Map error types to an array of messages
 		const errors = new Map<AdapterError['type'], string[]>();
 		for (const { type, message } of adapterErrors) {
@@ -290,12 +290,12 @@ export class AdapterContext {
 			messages.push(message);
 			errors.set(type, messages);
 		}
-	
+
 		// Build the string output
 		for (const [type, messages] of errors.entries()) {
 			prompt += `\n<${type}Errors>\n${messages.map(m => " - " + m).join('\n')}\n</${type}Errors>`;
 		}
-	
+
 		return prompt;
 	}
 
@@ -381,6 +381,10 @@ export class AdapterContext {
 		return { adapter, messages };
 	}
 
+	hasErrorsOfType(errors: AdapterError[], type: 'PROLOG' | 'SCHEMA' | 'JUDGE'): boolean {
+		return errors.some(error => error.type === type);
+	}
+
 	async repairAdapter(
 		oldAdapter: Adapter,
 		failingExamples: Snippet[],
@@ -400,9 +404,11 @@ export class AdapterContext {
 
 		// Add failing snippets to prompt with errors
 		for (const tested of failingResults) {
-			if (!tested.success) {
-				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
-				if (tested.errors && tested.errors.length > 0) {
+			if (tested.errors && !tested.success) {
+				if (this.hasErrorsOfType(tested.errors, 'JUDGE')) {
+					prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				}
+				if (tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
 			}
@@ -483,10 +489,10 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 		console.log("Using representative query:", this.holotypeQuery.path);
 
 		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter,
-																																														this.holotypeQuery,
-																																														this.examples,
-																																														this.lexerPath,
-																																														this.parserPath);
+			this.holotypeQuery,
+			this.examples,
+			this.lexerPath,
+			this.parserPath);
 		this.messages = messages;
 		return adapter;
 	}
