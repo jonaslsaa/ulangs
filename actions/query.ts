@@ -1,10 +1,11 @@
 import fs from 'fs';
 import { callSWIProlog } from '../semantic/call';
-import type { CLIGenerateArguments } from '../cli';
+import type { CLIQueryArguments } from '../cli';
 import { compileANTLRFiles } from '../syntactic/build';
 import { _createWorkingDirectory, _createTemporaryFile } from './utils/io';
 import { checkGrammar } from '../syntactic/check-grammar';
 import path from 'path';
+import { GetQuery, type Query } from '../rules/queries/mapping';
 
 interface PrologQueryData {
     filePath: string;
@@ -22,7 +23,7 @@ export async function generatePrologQuery(
     lexerPath: string,
     parserPath: string,
     adapterPath: string | undefined,
-    queryPath: string,
+    query: Query,
 ): Promise<PrologQueryData> {
     const workingDirectory = _createWorkingDirectory('query');
 
@@ -66,7 +67,7 @@ export async function generatePrologQuery(
     // Generate clauses
     const clauses = [
         ...getApplicableTreeClauses(tree, parser, adapterPath),
-        ...getQueryClauses(queryPath)
+        ...getQueryClauses(query.path)
     ];
 
     if (clauses.length === 0) {
@@ -96,14 +97,16 @@ export async function doQuery(
     targetPath: string,
     lexerPath: string,
     parserPath: string,
-    options: CLIGenerateArguments
+    options: CLIQueryArguments
 ): Promise<void> {
     try {
+        
+        const query = GetQuery(options.query);
+
         // Generate Prolog query
-        const prologData = await generatePrologQuery(targetPath, lexerPath, parserPath, options.adapter, options.query);
+        const prologData = await generatePrologQuery(targetPath, lexerPath, parserPath, options.adapter, query);
 
         console.log("Target:", targetPath);
-        console.log("Target parsed successfully.");
 
         // Handle no-adapter case
         if (options.adapter === undefined) {
@@ -126,6 +129,14 @@ export async function doQuery(
         if (!queryResult.output) {
             console.error("Prolog returned empty result");
         } else {
+            // Validate output against the schema
+            if (!options.ignoreSchema) {
+                const schema = query.schema.safeParse(JSON.parse(queryResult.output));
+                if (!schema.success) {
+                    console.error("Prolog returned invalid JSON");
+                    console.error(schema.error.message);
+                }
+            }
             console.log(queryResult.output);
         }
 

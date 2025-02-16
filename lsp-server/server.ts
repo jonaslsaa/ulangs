@@ -177,7 +177,7 @@ async function GetNewDefinitions(document: TextDocument) {
 		lexerPath: 'test-dsl/py-like/solution/MyLexer.g4',
 		parserPath: 'test-dsl/py-like/solution/MyParser.g4',
 		adapterPath: 'test-dsl/py-like/solution/MyAdapter.pl',
-		queryPath: 'test-dsl/py-like/solution/definitions.pl',
+		queryName: 'definitions',
 	});
 };
 

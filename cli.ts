@@ -6,6 +6,7 @@ import assert from 'assert';
 import { resolveRPC } from './actions/rpc';
 import { configure } from './env';
 import { doInferAdapter } from './actions/inferAdapter';
+import { QueryNames } from './rules/queries/mapping';
 
 function checkFileExists(filePath: string | undefined) {
     if (filePath === undefined) return; // We don't care if it's undefined
@@ -20,10 +21,20 @@ cli.name('ulangs-toolkit');
 cli.description('Universal Language Server Toolkit');
 cli.version('0.1.0');
 
-export type CLIGenerateArguments = {
+export type CLIQueryArguments = {
     adapter: string | undefined;
     query: string;
+    ignoreSchema: boolean;
 };
+
+cli.command('list-queries')
+    .description('List all available queries')
+    .action(() => {
+        console.log('Available queries:');
+        for (const queryName of QueryNames()) {
+            console.log(`- ${queryName}`);
+        }
+    });
 
 cli.command('query')
     .description('Generates Prolog from file with a given query')
@@ -31,13 +42,25 @@ cli.command('query')
     .argument('<lexer>', 'Lexer (path) file to use')
     .argument('<parser>', 'Parser (path) file to use')
     .option('-a, --adapter <adapter>', 'Adapter (path) file to use')
-    .option('-q, --query <query>', 'Query file to run after generating facts', "printAST.pl")
-    .action(async (target: string, lexer: string, parser: string, options: CLIGenerateArguments) => {
+    .option('-q, --query <query>', 'Query to run after generating facts', "printAST")
+    .option('-I, --ignore-schema', 'Ignore schema validation', false)
+    .action(async (target: string, lexer: string, parser: string, options: CLIQueryArguments) => {
         assert(fs.existsSync(target), 'Target file does not exist');
         assert(fs.existsSync(lexer), 'Lexer file does not exist');
         assert(fs.existsSync(parser), 'Parser file does not exist');
         if (options.adapter) {
-            assert(fs.existsSync(options.adapter), 'Adapter file does not exist');
+            checkFileExists(options.adapter);
+        }
+        if (options.query) {
+            // If the query ends with .pl, remove it
+            if (options.query.endsWith('.pl')) {
+                options.query = options.query.slice(0, -3);
+            }
+            // Check if the query exists
+            if(!(QueryNames().includes(options.query))) {
+                console.error(`Query '${options.query}' not found`);
+                process.exit(1);
+            }
         }
         doQuery(target, lexer, parser, options);
     });

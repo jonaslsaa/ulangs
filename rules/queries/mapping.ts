@@ -2,6 +2,7 @@ import type { ZodSchema } from 'zod';
 import { DefinitionQueryResultSchema } from './schemas/definitions';
 import fs from 'fs';
 import path from 'path';
+import { ASTSchema } from './schemas/printAST';
 
 type AnyString = string & {};
 
@@ -22,10 +23,16 @@ const queries = {
     path: 'definitions.pl',
     schema: DefinitionQueryResultSchema,
   },
+  printAST: {
+    path: 'printAST.pl',
+    schema: ASTSchema,
+  }
 } as const;
 
+const queryNames = Object.keys(queries) as (keyof typeof queries)[];
+
 // This gives you the literal type of all query names
-type QueryNames = keyof typeof queries
+type QueryNames = typeof queryNames[number];
 
 function relativePathToLessRelativePath(relPath: string): string {
   return path.join('rules', 'queries', relPath);
@@ -54,9 +61,6 @@ export function GetQuery(queryName: (keyof typeof queries) | AnyString): Query {
   return query;
 }
 
-/**
- * Get all queries as an array.
- */
-export function Queries(): Query[] {
-  return Object.values(preloadedQueries);
+export function QueryNames(): string[] {
+  return queryNames;
 }
