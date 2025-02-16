@@ -147,6 +147,7 @@ export class AdapterContext {
 			score: z.number(),
 		});
 
+		Stats.addRequest();
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.modelName, // TODO: make this configurable
 			messages: [
@@ -154,6 +155,7 @@ export class AdapterContext {
 			],
 			response_format: zodResponseFormat(ScoringSchema, "score"),
 		});
+		Stats.addCompletedRequest(completion);
 
 		const scoring = completion.choices[0].message.parsed;
 		if (!scoring) {
