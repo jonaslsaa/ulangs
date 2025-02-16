@@ -258,8 +258,8 @@ export class AdapterContext {
 		testedAdapter.LLMScore = scoring.score;
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
-			console.log("    - Score too low (4/5), scoring:");
-			console.log(scoring);
+			console.log("    - Score too low (4/5), reasons:");
+			console.log(scoring.reasons);
 			return testedAdapter;
 		}
 		console.log("    - Score:", scoring.score);
@@ -377,7 +377,7 @@ export class AdapterContext {
 		let prompt: string = '';
 
 		// Add adapter to prompt
-		prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+		// prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
 		// Add failing snippets to prompt with errors
 		for (const tested of failingResults) {
