@@ -3,7 +3,6 @@
 ## Major
 
 * Create one query to rule them all - meaning it can be used to verify all other queries to some extent
-  * Switch over to using this query to verify all other queries, and verify on all snippets in the dataset
 * Automatic code splitting (can be done in its own step)
 * Finish proof-of-concept VSCode extension
 * Investigate agentic behaviour using *tool-use*.
@@ -11,6 +10,7 @@
 
 ## Minor
 
+* When in repair loop, all judge scoring should be in the same chat thread (`messages`).
 * Investigate what happens to "Invalid line number" type errors (should be added to the 'Others' list of errors)
 * Dynamically increase reasoning_effort from the second repair attempt and onwards.
 * Find a good way to handle increasingly large contexts
