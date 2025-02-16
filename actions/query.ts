@@ -12,9 +12,17 @@ interface PrologQueryData {
     clauses: string[];
 }
 
+type PrologError = {
+    file: string;
+    line?: number;
+    column?: number;
+    type: 'ERROR' | 'Warning';
+    message: string;
+}
+
 interface QueryResult {
     output: string | null;
-    errors: string[];
+    errors: PrologError[];
 }
 
 // Core function to generate Prolog query
@@ -83,12 +91,42 @@ export async function generatePrologQuery(
     };
 }
 
+const PrologErrorRegex = /^(ERROR|Warning):\s+([^:]+):(\d+)(?::(\d+))?:(.*)$/;
+function parseStdErr(stderr: string): PrologError[] {
+    const errors: PrologError[] = [];
+    const lines = stderr.split('\n');
+
+    for (const line of lines) {
+        const match = line.match(PrologErrorRegex);
+        if (match) {
+            const type = match[1] as 'ERROR' | 'Warning';
+            const file = match[2].trim();
+            // If the line number is missing, it remains undefined.
+            const lineNumber = match[3] ? parseInt(match[3], 10) : undefined;
+            // Similarly, if the column is missing, it will be undefined.
+            const column = match[4] ? parseInt(match[4], 10) : undefined;
+            const message = match[5].trim();
+
+            errors.push({
+                file,
+                line: lineNumber,
+                column,
+                type,
+                message
+            });
+        }
+    }
+
+    return errors;
+}
+
 // Execute Prolog query
 export function executePrologQuery(prologFile: string): QueryResult {
     const result = callSWIProlog(prologFile);
+    const errors = parseStdErr(result.stderr);
     return {
         output: result.stdout.trim() || null,
-        errors: result.stderr ? [result.stderr] : []
+        errors: errors
     };
 }
 
@@ -100,7 +138,7 @@ export async function doQuery(
     options: CLIQueryArguments
 ): Promise<void> {
     try {
-        
+
         const query = GetQuery(options.query);
 
         // Generate Prolog query
@@ -123,7 +161,7 @@ export async function doQuery(
         // Handle results
         if (queryResult.errors.length > 0) {
             console.error("Prolog failed:");
-            queryResult.errors.forEach(error => console.error(error));
+            queryResult.errors.forEach(error => console.error(error.message));
         }
 
         if (!queryResult.output) {
