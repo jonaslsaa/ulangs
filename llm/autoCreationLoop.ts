@@ -123,7 +123,8 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   processedExamples: Example[],
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
-  maxRetries: number
+  maxRetries: number,
+  stopOnFirstFailure: boolean
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
@@ -131,7 +132,7 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
     const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults);
 
     // 2) Evaluate the repaired solution over the processed examples
-    const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, false);
+    const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure);
 
     // 3) Check if the repair solved all issues
     if (candidate.score === processedExamples.length) {
@@ -238,7 +239,8 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
         examples.slice(0, i + 1),
         generator,
         verifier,
-        maxRetries
+        maxRetries,
+        stopOnFirstFailure
       );
 
       if (repairedCandidate) {

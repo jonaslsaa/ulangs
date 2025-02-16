@@ -129,6 +129,9 @@ export class AdapterContext {
 		parserPath: string,
 		mainQueryPath: string,
 	): Promise<string> {
+		if (adapterSource && adapterSource.split('\n').length < 2) {
+			throw new Error("Adapter source must contain at least two lines, got this: " + adapterSource);
+		}
 		const { tree, parser } = await (await this.snippetToTree(lexerPath, parserPath, snippet)).unwrap();
 
 		const treeClauses = getApplicableTreeClauses(tree, parser, adapterSource, true);
@@ -144,6 +147,7 @@ export class AdapterContext {
 			score: z.number(),
 		});
 
+		Stats.addRequest();
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.modelName, // TODO: make this configurable
 			messages: [
@@ -151,6 +155,7 @@ export class AdapterContext {
 			],
 			response_format: zodResponseFormat(ScoringSchema, "score"),
 		});
+		Stats.addCompletedRequest(completion);
 
 		const scoring = completion.choices[0].message.parsed;
 		if (!scoring) {
@@ -160,6 +165,7 @@ export class AdapterContext {
 	}
 
 	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query): Promise<TestedAdapter> {
+		console.log("  - Testing adapter on snippet:", snippet.fileName);
 		const testedAdapter: TestedAdapter = {
 			onQuery: query,
 			withSnippet: snippet,
@@ -187,6 +193,10 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			}));
+			console.log("    - Failed to run query (0/5).");
+			console.log(queryResult.errors);
+			console.log("Ran prolog:", tempFilePath.name, "and got:");
+			console.log(queryResult.output);
 			return testedAdapter;
 		}
 
@@ -199,6 +209,7 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			});
+			console.log("    - Empty result (1/5).");
 			return testedAdapter;
 		}
 
@@ -213,6 +224,7 @@ export class AdapterContext {
 				line: undefined,
 				column: undefined,
 			});
+			console.log("    - Invalid JSON (2/5).");
 			return testedAdapter;
 		}
 
@@ -237,6 +249,7 @@ export class AdapterContext {
 					column: undefined,
 				});
 			}
+			console.log("    - Invalid JSON schema (3/5).");
 			return testedAdapter;
 		}
 
@@ -249,13 +262,16 @@ export class AdapterContext {
 			line: undefined,
 			column: undefined,
 		}));
-		console.log("Scoring: ");
-		console.log(scoring);
+		
 		testedAdapter.LLMScore = scoring.score;
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
+			console.log("    - Score too low (4/5), reasons:");
+			console.log(scoring.reasons);
+			console.log("      - Score:", scoring.score);
 			return testedAdapter;
 		}
+		console.log("    - Score:", scoring.score);
 
 		testedAdapter.success = true;
 		return testedAdapter;
@@ -289,31 +305,31 @@ export class AdapterContext {
 		return Ok(adapterSource[1]);
 	}
 
-	_midpoint(array: any[]): any {
-		if (array.length === 0) return undefined;
-		if (array.length === 1) return array[0];
-		if (array.length === 2) return array[0];
-		return array[Math.floor(array.length / 2)];
-	}
-
 	async buildFirstIntermediateSolution(
-		initialAdapter: string | undefined,
-		representativeSnippet: Snippet,
-		queries: Query[],
+		initialAdapterPath: string | undefined,
+		holotypeQuery: Query,
+		examples: Snippet[],
 		lexerPath: string,
 		parserPath: string,
 	): Promise<{ adapter: Adapter, messages: OpenAIMessage[] }> {
 		const messages: OpenAIMessage[] = [];
 
-		const query = queries[0]; // TODO: buildFirstIntermediateSolution should create a generic adapter/solution that solves all queries
+		// TODO: decide if we should have more than one representative snippet
+		const representativeSnippet = midpoint(examples); // Let's just choose one
+		assert(representativeSnippet);
 
 		// Create draft query (this will either have no or just a template adapter)
+		let initialAdapter: string | undefined;
+		if (initialAdapterPath) {
+			initialAdapter = fs.readFileSync(initialAdapterPath, 'utf8');
+		}
+
 		const draftQuery = await this.createFullQuery(
 			initialAdapter,
 			representativeSnippet,
 			lexerPath,
 			parserPath,
-			query.path
+			holotypeQuery.path
 		);
 
 		let prompt: string = adapterGenerationMessage;
@@ -322,11 +338,11 @@ export class AdapterContext {
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
 		// Do inital test if an initial adapter was provided
-		if (initialAdapter) {
+		if (initialAdapterPath) {
 			const adapter: Adapter = {
-				source: initialAdapter,
+				source: fs.readFileSync(initialAdapterPath, 'utf8'),
 			};
-			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, query);
+			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
 			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
 
 			// Add errors to the prompt
@@ -367,7 +383,7 @@ export class AdapterContext {
 
 	async repairAdapter(
 		oldAdapter: Adapter,
-		failingExamples: Query[],
+		failingExamples: Snippet[],
 		failingResults: TestedAdapter[],
 		messages: OpenAIMessage[]
 	): Promise<Adapter> {
@@ -375,12 +391,12 @@ export class AdapterContext {
 		let prompt: string = '';
 
 		// Add adapter to prompt
-		//let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+		// prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
 		// Add failing snippets to prompt with errors
 		for (const tested of failingResults) {
 			if (!tested.success) {
-				// prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
 				if (tested.errors && tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
@@ -432,22 +448,22 @@ Output exactly one <Adapter> block.`;
 	}
 }
 
-export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter> {
+export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapter> {
 	openaiEnv: OpenAIEnv;
 	messages: OpenAIMessage[];
-	snippets: Snippet[];
-	queries: Query[];
+	holotypeQuery: Query;
+	examples: Snippet[];
 	adapterContext: AdapterContext;
 
 	lexerPath: string;
 	parserPath: string;
 	initialAdapter: string | undefined;
 
-	constructor(openaiEnv: OpenAIEnv, messages: OpenAIMessage[], lexerPath: string, parserPath: string, initialAdapter: string | undefined, snippets: Snippet[]) {
+	constructor(openaiEnv: OpenAIEnv, messages: OpenAIMessage[], lexerPath: string, parserPath: string, initialAdapter: string | undefined, query: Query) {
 		this.openaiEnv = openaiEnv;
 		this.messages = messages;
-		this.snippets = snippets;
-		this.queries = [];
+		this.holotypeQuery = query;
+		this.examples = [];
 		this.lexerPath = lexerPath;
 		this.parserPath = parserPath;
 		this.initialAdapter = initialAdapter;
@@ -455,16 +471,17 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv);
 	}
 
-	async generateInitialSolution(examples: Query[]): Promise<Adapter> {
+	async generateInitialSolution(examples: Snippet[]): Promise<Adapter> {
 		if (this.messages.length > 0) throw new Error('Cannot generate initial solution after messages have been set');
-		this.queries = examples;
+		this.examples = examples;
 
-		// Choose a snippet that represents the language well
-		const representativeSnippet = midpoint(this.snippets); // TODO: this isn't that good of a heuristic
-		assert(representativeSnippet);
-		console.log("Using representative snippet: ", representativeSnippet.filePath);
+		console.log("Using representative query:", this.holotypeQuery.path);
 
-		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter, representativeSnippet, this.queries, this.lexerPath, this.parserPath);
+		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter,
+																																														this.holotypeQuery,
+																																														this.examples,
+																																														this.lexerPath,
+																																														this.parserPath);
 		this.messages = messages;
 		return adapter;
 	}
@@ -475,26 +492,25 @@ export class AdapterGenerator implements Generator<Adapter, Query, TestedAdapter
 	 */
 	async repairSolution(
 		oldSolution: Adapter,
-		failingExamples: Query[],
+		failingExamples: Snippet[],
 		failingResults: TestedAdapter[]
 	): Promise<Adapter> {
 		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults, this.messages);
 	}
 }
 
-export class AdapterVerifier implements Verifier<Adapter, Query, TestedAdapter> {
+export class AdapterVerifier implements Verifier<Adapter, Snippet, TestedAdapter> {
 	snippets: Snippet[];
 	adapterContext: AdapterContext;
+	holotypeQuery: Query;
 
-	constructor(adapterContext: AdapterContext, snippets: Snippet[]) {
+	constructor(adapterContext: AdapterContext, snippets: Snippet[], holotypeQuery: Query) {
 		this.adapterContext = adapterContext;
 		this.snippets = snippets;
+		this.holotypeQuery = holotypeQuery;
 	}
 
-	async verify(solution: Adapter, example: Query): Promise<TestedAdapter> {
-		// Use stop-on-first-failure style for verifying a single example.
-		const representativeSnippet = midpoint(this.snippets);
-		assert(representativeSnippet);
-		return await this.adapterContext.testAdapterOnSnippet(solution, representativeSnippet, example);
+	async verify(solution: Adapter, example: Snippet): Promise<TestedAdapter> {
+		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery);
 	}
 }
