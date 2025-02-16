@@ -420,6 +420,11 @@ export class AdapterContext {
 					prompt += `<PrologOutput>\n${tested.output}\n</PrologOutput>\n`;
 				}
 
+				// Add score if available
+				if (tested.LLMScore) {
+					prompt += `\nI'd give this adapter a score of ${tested.LLMScore} out of 100.\n`;
+				}
+
 				// If we have PROLOG errors, add the prolog code as context with the errors in comments
 				if (this.hasErrorsOfType(tested.errors, 'PROLOG')) {
 					const errorsWithLines = tested.errors.filter(error => error.line !== undefined);
