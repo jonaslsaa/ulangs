@@ -88,7 +88,6 @@ async function evaluateSolution<Solution, Example, Result extends { success: boo
   if (stopOnFirstFailure) {
     // Sequentially test each example until a failure occurs
     for (const ex of examples) {
-      console.log("Calling verify() on example:", ex);
       const result = await verifier.verify(solution, ex);
       results.push({ example: ex, result });
       if (!result.success) break;
