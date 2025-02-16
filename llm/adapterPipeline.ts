@@ -8,7 +8,6 @@ import type { Parser, ParserRuleContext } from 'antlr4';
 import { Err, Ok, type Result } from '../result';
 import { checkGrammar } from '../syntactic/check-grammar';
 import { createParserFromGrammar } from '../syntactic/context-free-parser';
-import { init } from 'tiktoken/init';
 import { executePrologQuery } from '../actions/query';
 import tmp from 'tmp';
 import { DefinitionQueryResultSchema } from '../rules/queries/schemas/definitions';
