@@ -152,7 +152,7 @@ export class AdapterContext {
 	async scoreAdapter(snippet: Snippet, adapterOutput: string) {
 		const _key = snippet.snippet + '|' + adapterOutput;
 		if (this._scoreAdapterCache.has(_key)) {
-			console.log("Cache hit for adapter scoring:", _key);
+			console.log("Cache hit for adapter scoring.");
 			return this._scoreAdapterCache.get(_key)!;
 		}
 	
