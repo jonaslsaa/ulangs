@@ -16,5 +16,6 @@
 * Find a good way to handle increasingly large contexts
   * Restart context sometimes?
   * Also compress assistant code blocks (only diffs? llm compression?)
+* Compress messages for semantic adapter generation
 * Way to strip out comments from code
 * Restore to a previous checkpoint candidate if we have messed up badly
