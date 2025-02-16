@@ -49,12 +49,18 @@ type ParseableTree = {
 	parser: Parser;
 }
 
+const ScoringSchema = z.object({
+	reasons: z.array(z.string()),
+	score: z.number(),
+});
+
 export class AdapterContext {
 	openai: OpenAI;
 	modelName: string;
 	lexerPath: string;
 	parserPath: string;
 	_snippetToTreeCache: Map<string, ParseableTree>;
+	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
 	MINUMUM_JUDGE_SCORE = 70;
 
@@ -68,6 +74,7 @@ export class AdapterContext {
 		this.modelName = openAIEnv.model;
 
 		this._snippetToTreeCache = new Map<string, ParseableTree>();
+		this._scoreAdapterCache = new Map<string, z.infer<typeof ScoringSchema>>();
 	}
 
 	async snippetToTree(
@@ -143,11 +150,12 @@ export class AdapterContext {
 	}
 
 	async scoreAdapter(snippet: Snippet, adapterOutput: string) {
-		const ScoringSchema = z.object({
-			reasons: z.array(z.string()),
-			score: z.number(),
-		});
-
+		const _key = snippet.snippet + '|' + adapterOutput;
+		if (this._scoreAdapterCache.has(_key)) {
+			console.log("Cache hit for adapter scoring:", _key);
+			return this._scoreAdapterCache.get(_key)!;
+		}
+	
 		Stats.addRequest();
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.modelName, // TODO: make this configurable
@@ -162,6 +170,7 @@ export class AdapterContext {
 		if (!scoring) {
 			throw new Error("Failed to parse score: " + completion.choices[0].message.content);
 		}
+		this._scoreAdapterCache.set(_key, scoring); // Cache the result
 		return scoring;
 	}
 
