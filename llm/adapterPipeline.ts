@@ -454,7 +454,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 		if (this.messages.length > 0) throw new Error('Cannot generate initial solution after messages have been set');
 		this.examples = examples;
 
-		console.log("Using representative query: ", this.holotypeQuery.path);
+		console.log("Using representative query:", this.holotypeQuery.path);
 
 		const { adapter, messages } = await this.adapterContext.buildFirstIntermediateSolution(this.initialAdapter,
 																																														this.holotypeQuery,

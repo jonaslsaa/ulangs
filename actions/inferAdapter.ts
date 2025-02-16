@@ -55,7 +55,6 @@ export async function doInferAdapter(
   // 5. For demonstration, we use a single “definitions” query as the example.
   //    If you have more queries, you can add them here in an array.
   const definitionsQuery = GetQuery("definitions");
-  const allQueries = [definitionsQuery];
 
   // 6. Configure inference options to either test each snippet in turn
   //    or do single-pass; here we just do standard incremental usage with
@@ -68,7 +67,7 @@ export async function doInferAdapter(
     messageCompressor: compressMessages,
     checkpointHook: (candidate) => {
       // Whenever we get a new best candidate, log the updated score:
-      console.log(`Checkpoint: ${candidate.score}/${allQueries.length} queries passing so far.`);
+      console.log(`Checkpoint: ${candidate.score}/${snippets.length} queries passing so far.`);
     },
   };
 
@@ -76,8 +75,8 @@ export async function doInferAdapter(
   //    passes all queries (or as many as possible).
   const candidate = await runInferenceLoop(generator, verifier, snippets, inferenceOptions);
 
-  if (candidate.score < allQueries.length) {
-    console.warn(`Final solution passes ${candidate.score} out of ${allQueries.length} queries (some issues remain).`);
+  if (candidate.score < snippets.length) {
+    console.warn(`Final solution passes ${candidate.score} out of ${snippets.length} queries (some issues remain).`);
   } else {
     console.log("Final solution passed all queries!");
   }
