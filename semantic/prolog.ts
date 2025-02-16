@@ -41,6 +41,9 @@ export function getApplicableTreeClauses(cstTree: ParserRuleContext,
         } else {
             adapterClauses = fileToLines(adapterPathOrContent);
         }
+        if (adapterClauses.length < 2) {
+            throw new Error("Adapter file must contain at least two lines, got this: " + adapterClauses);
+        }
         const adapter = wrapWithComment(adapterClauses, 'Adapter'); // TODO: change comment
         return [...libraries, ...treeFacts, ...helpers, ...adapter];
     }

@@ -129,6 +129,9 @@ export class AdapterContext {
 		parserPath: string,
 		mainQueryPath: string,
 	): Promise<string> {
+		if (adapterSource && adapterSource.split('\n').length < 2) {
+			throw new Error("Adapter source must contain at least two lines, got this: " + adapterSource);
+		}
 		const { tree, parser } = await (await this.snippetToTree(lexerPath, parserPath, snippet)).unwrap();
 
 		const treeClauses = getApplicableTreeClauses(tree, parser, adapterSource, true);
@@ -189,6 +192,9 @@ export class AdapterContext {
 				column: undefined,
 			}));
 			console.log("    - Failed to run query (0/5).");
+			console.log(queryResult.errors);
+			console.log("Ran prolog:", tempFilePath.name, "and got:");
+			console.log(queryResult.output);
 			return testedAdapter;
 		}
 
@@ -332,7 +338,7 @@ export class AdapterContext {
 		// Do inital test if an initial adapter was provided
 		if (initialAdapterPath) {
 			const adapter: Adapter = {
-				source: initialAdapterPath,
+				source: fs.readFileSync(initialAdapterPath, 'utf8'),
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
 			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
