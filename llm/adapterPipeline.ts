@@ -55,7 +55,7 @@ export class AdapterContext {
 	parserPath: string;
 	_snippetToTreeCache: Map<string, ParseableTree>;
 
-	MINUMUM_JUDGE_SCORE = 60;
+	MINUMUM_JUDGE_SCORE = 70;
 
 	constructor(lexerPath: string, parserPath: string, openAIEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -260,6 +260,7 @@ export class AdapterContext {
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
 			console.log("    - Score too low (4/5), reasons:");
 			console.log(scoring.reasons);
+			console.log("      - Score:", scoring.score);
 			return testedAdapter;
 		}
 		console.log("    - Score:", scoring.score);
