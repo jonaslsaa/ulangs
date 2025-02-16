@@ -38,6 +38,7 @@ type TestedAdapter = {
 	onQuery: Query;
 	withSnippet: Snippet;
 	usedAdapter: Adapter;
+	output?: string;
 	errors?: AdapterError[];
 	success: boolean;
 	LLMScore?: number;
@@ -212,6 +213,9 @@ export class AdapterContext {
 			console.log("    - Empty result (1/5).");
 			return testedAdapter;
 		}
+
+		// add the output to the testedAdapter
+		testedAdapter.output = queryResult.output;
 
 		// Now, let's check the output is valid JSON
 		try {
@@ -408,6 +412,12 @@ export class AdapterContext {
 				// If we have JUDGE errors, add the source code as context
 				if (this.hasErrorsOfType(tested.errors, 'JUDGE')) {
 					prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				}
+
+				// If we have schema or judge errors, add the prolog output as context
+				if (this.hasErrorsOfType(tested.errors, 'SCHEMA') || this.hasErrorsOfType(tested.errors, 'JUDGE')) {
+					assert(tested.output);
+					prompt += `<PrologOutput>\n${tested.output}\n</PrologOutput>\n`;
 				}
 
 				// If we have PROLOG errors, add the prolog code as context with the errors in comments
