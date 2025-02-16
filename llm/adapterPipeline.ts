@@ -425,6 +425,9 @@ export class AdapterContext {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
 			}
+			if (!tested.success && (tested.errors || []).length === 0) {
+				throw new Error('Unsucessful test result with no errors ???');
+			}
 		}
 
 		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
