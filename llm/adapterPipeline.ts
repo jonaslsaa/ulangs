@@ -377,12 +377,12 @@ export class AdapterContext {
 		let prompt: string = '';
 
 		// Add adapter to prompt
-		//let prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
+		prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
 		// Add failing snippets to prompt with errors
 		for (const tested of failingResults) {
 			if (!tested.success) {
-				// prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
+				prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
 				if (tested.errors && tested.errors.length > 0) {
 					prompt += this.AdapterErrorsToString(tested.errors);
 				}
