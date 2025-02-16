@@ -298,7 +298,7 @@ export class AdapterContext {
 	}
 
 	async buildFirstIntermediateSolution(
-		initialAdapter: string | undefined,
+		initialAdapterPath: string | undefined,
 		holotypeQuery: Query,
 		examples: Snippet[],
 		lexerPath: string,
@@ -311,6 +311,11 @@ export class AdapterContext {
 		assert(representativeSnippet);
 
 		// Create draft query (this will either have no or just a template adapter)
+		let initialAdapter: string | undefined;
+		if (initialAdapterPath) {
+			initialAdapter = fs.readFileSync(initialAdapterPath, 'utf8');
+		}
+
 		const draftQuery = await this.createFullQuery(
 			initialAdapter,
 			representativeSnippet,
@@ -325,9 +330,9 @@ export class AdapterContext {
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
 		// Do inital test if an initial adapter was provided
-		if (initialAdapter) {
+		if (initialAdapterPath) {
 			const adapter: Adapter = {
-				source: initialAdapter,
+				source: initialAdapterPath,
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
 			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
