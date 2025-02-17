@@ -134,6 +134,7 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
     console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
     // 1) Ask the generator to repair
     const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults, lastExampleWasNotSolved);
+    lastExampleWasNotSolved = false; // reset this flag in this scope
 
     // 2) Evaluate the repaired solution over the processed examples
     const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure);
@@ -254,7 +255,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
         stopOnFirstFailure,
         lastExampleWasNotSolved
       );
-      lastExampleWasNotSolved = false; // reset this flag
+      lastExampleWasNotSolved = false; // reset this flag in this scope as well
 
       if (repairedCandidate) {
         // If we got a fully passing solution for all processed examples
