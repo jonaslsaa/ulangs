@@ -67,8 +67,8 @@ export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, er
         const lineNumber = error.line - 1;
         // check if the line number is valid
         if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
-            console.warn(`Invalid line number: ${lineNumber}: ${error.message}`);
-            error.type = 'UNKNOWN';
+            console.warn(`Invalid line number: ${lineNumber}: ${error.message}, file length: ${newCodeLines.length}`);
+            //error.type = 'UNKNOWN';
             //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
         }
         if (!errorOnLineMap.has(lineNumber)) {
