@@ -10,7 +10,6 @@ import { checkGrammar } from '../syntactic/check-grammar';
 import { createParserFromGrammar } from '../syntactic/context-free-parser';
 import { executePrologQuery } from '../actions/query';
 import tmp from 'tmp';
-import { DefinitionQueryResultSchema } from '../rules/queries/schemas/definitions';
 import { z, ZodSchema } from 'zod';
 import { OpenAI } from 'openai';
 import { zodResponseFormat } from "openai/helpers/zod";
@@ -277,7 +276,7 @@ export class AdapterContext {
 
 		// Now, let's check if output matches our schema
 		const output = queryResult.output;
-		const schema = DefinitionQueryResultSchema.safeParse(JSON.parse(output));
+		const schema = query.schema.safeParse(JSON.parse(output));
 		if (!schema.success) {
 			testedAdapter.errors?.push({
 				type: 'SCHEMA',
@@ -290,7 +289,7 @@ export class AdapterContext {
 			if (schema.error.issues.length > 0) {
 				testedAdapter.errors?.push({
 					type: 'SCHEMA',
-					message: 'JSON schema MUST be valid: ' + JSON.stringify(zodToJsonSchema(DefinitionQueryResultSchema), null, 2),
+					message: 'JSON schema MUST be valid: ' + JSON.stringify(zodToJsonSchema(query.schema), null, 2),
 					file: snippet.filePath,
 					line: undefined,
 					column: undefined,
@@ -386,12 +385,15 @@ export class AdapterContext {
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
 		// Do inital test if an initial adapter was provided
-		if (initialAdapterPath) {
+		if (initialAdapter) {
 			const adapter: Adapter = {
-				source: fs.readFileSync(initialAdapterPath, 'utf8'),
+				source: initialAdapter,
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
 			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
+
+			// Add initial adapter errors to the prompt
+			prompt += '\n<CurrentAdapter>\n' + adapter.source + '\n</CurrentAdapter>\n';
 
 			// Add errors to the prompt
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
