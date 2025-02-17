@@ -124,9 +124,11 @@ function parseStdErr(stderr: string): PrologError[] {
 export function executePrologQuery(prologFile: string): QueryResult {
     const result = callSWIProlog(prologFile);
     const errors = parseStdErr(result.stderr);
+    // Filter out errors with empty messages
+    const filteredErrors = errors.filter(error => error.message.trim() !== '');
     return {
         output: result.stdout.trim() || null,
-        errors: errors
+        errors: filteredErrors
     };
 }
 
