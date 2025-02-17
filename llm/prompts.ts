@@ -55,7 +55,7 @@ You MUST only write within the WRITEABLE AREA. Output only the adapter / WRITEAB
 export function adapterScoringMessage(snippet: string, adapterOutput: string): string {
     return `Score 0 to 100 how well the definitions generated is by looking at the code snippet it is based on. 100 = means that the definitions perfectly describe the code snippet. 0 = means that the definitions don't make ANY sense.
 Note: Ignore following "errors": builtin functions
-Supply also a list of reasons/errors (empty list if there are none, used as feedback).
+Supply also a list of reasons/errors (empty list if there are none if **perfect**, it is used as feedback).
 <CodeSnippet>
 ${snippet}
 </CodeSnippet>
