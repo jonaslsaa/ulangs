@@ -1,27 +1,3 @@
-//
-// The "switch" statement lets you match the possible values of an
-// expression and perform a different action for each.
-//
-// This switch:
-//
-//     switch (players) {
-//         1 => startOnePlayerGame(),
-//         2 => startTwoPlayerGame(),
-//         else => {
-//             alert();
-//             return GameError.TooManyPlayers;
-//         }
-//     }
-//
-// Is equivalent to this if/else:
-//
-//     if (players == 1) startOnePlayerGame();
-//     else if (players == 2) startTwoPlayerGame();
-//     else {
-//         alert();
-//         return GameError.TooManyPlayers;
-//     }
-//
 const std = @import("std");
 
 pub fn main() void {
@@ -39,13 +15,8 @@ pub fn main() void {
             8 => std.debug.print("H", .{}),
             9 => std.debug.print("I", .{}),
             10 => std.debug.print("J", .{}),
-            // ... we don't need everything in between ...
             25 => std.debug.print("Y", .{}),
             26 => std.debug.print("Z", .{}),
-            // Switch statements must be "exhaustive" (there must be a
-            // match for every possible value).  Please add an "else"
-            // to this switch to print a question mark "?" when c is
-            // not one of the existing matches.
             else => std.debug.print("?", .{}),
         }
     }
