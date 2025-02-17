@@ -449,6 +449,10 @@ export class AdapterContext {
 		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
 		let prompt: string = '';
 
+		if (lastExampleWasNotSolved) {
+			prompt += "Hmm, this isn't working out. Let's try with some other snippets.\n";
+		}
+
 		// Add adapter to prompt
 		// prompt = `<Adapter>\n${oldAdapter.source}\n</Adapter>\n\n`;
 
