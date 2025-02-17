@@ -157,6 +157,8 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
     currentSolution = repairedSolution;
   }
 
+  console.log("[Repair Attempts] ❌ All attempts failed. Using best solution so far with score " + bestScore);
+
   // If we exhaust maxRetries without fully fixing, return the best we got (null candidate means no perfect fix)
   return { candidate: null, solution: bestSolution };
 }
