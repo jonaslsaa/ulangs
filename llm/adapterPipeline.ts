@@ -176,29 +176,28 @@ export class AdapterContext {
 		return scoring;
 	}
 
-	_findAdapterLineRange(fullProlog: string, adapterSource: string): { start: number, end: number } | undefined {
-		// Split the fullProlog and adapterSource into lines.
-		const fullPrologLines = fullProlog.split(/\r?\n/);
-		const adapterSourceLines = adapterSource.split(/\r?\n/).filter(line => line.trim() !== '');
-		if (adapterSourceLines.length === 0) return undefined;
-
-		// Look for the adapterSource block in the fullProlog lines.
-		for (let i = 0; i <= fullPrologLines.length - adapterSourceLines.length; i++) {
-			let found = true;
-			for (let j = 0; j < adapterSourceLines.length; j++) {
-				// Compare trimmed lines to ignore leading/trailing whitespace differences.
-				if (fullPrologLines[i + j].trim() !== adapterSourceLines[j].trim()) {
-					found = false;
-					break;
-				}
-			}
-			if (found) {
-				// Return line numbers using 1-indexing.
-				return { start: i + 1, end: i + adapterSourceLines.length };
-			}
+	_findAdapterLineRange(fullProlog: string, adapterSource: string): { start: number; end: number } | undefined {
+		// Find the first exact occurrence of the adapterSource in the fullProlog.
+		const idx = fullProlog.indexOf(adapterSource);
+		if (idx === -1) {
+			// If there's no exact match, return undefined.
+			return undefined;
 		}
-		// If no matching block is found, return undefined.
-		return undefined;
+	
+		// Count how many lines occur in fullProlog before the match.
+		// Using slice(0, idx) means all characters before the match.
+		const before = fullProlog.slice(0, idx);
+		const startLine = before.split('\n').length; // 1-based line indexing.
+	
+		// How many lines does the adapter source span?
+		// This is simply how many line-breaks are in the adapterSource itself.
+		const adapterLineCount = adapterSource.split('\n').length;
+	
+		// The end line is (startLine + adapterLineCount - 1).
+		// -1 because if you start on line 5 and the adapter is 1 line long, it also ends on line 5.
+		const endLine = startLine + adapterLineCount - 1;
+	
+		return { start: startLine, end: endLine };
 	}
 
 
