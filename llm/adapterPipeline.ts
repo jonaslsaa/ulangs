@@ -1,5 +1,5 @@
 import type { Generator, Verifier } from "./autoCreationLoop";
-import { midpoint, overlayErrorsOnCode, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
+import { midpoint, overlayErrorsOnCodeWithSnippetRange, type OpenAIEnv, type OpenAIMessage } from "../llm/utils";
 import type { Snippet } from './grammar';
 import fs from 'fs';
 import assert from 'assert';
@@ -38,6 +38,8 @@ type TestedAdapter = {
 	onQuery: Query;
 	withSnippet: Snippet;
 	usedAdapter: Adapter;
+	completeProlog: string;
+	adapterLineRange: { start: number, end: number };
 	output?: string;
 	errors?: AdapterError[];
 	success: boolean;
@@ -155,7 +157,7 @@ export class AdapterContext {
 			console.log("Cache hit for adapter scoring.");
 			return this._scoreAdapterCache.get(_key)!;
 		}
-	
+
 		Stats.addRequest();
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.openaiEnv.soModel,
@@ -174,18 +176,51 @@ export class AdapterContext {
 		return scoring;
 	}
 
+	_findAdapterLineRange(fullProlog: string, adapterSource: string): { start: number, end: number } | undefined {
+		// Split the fullProlog and adapterSource into lines.
+		const fullPrologLines = fullProlog.split(/\r?\n/);
+		const adapterSourceLines = adapterSource.split(/\r?\n/).filter(line => line.trim() !== '');
+		if (adapterSourceLines.length === 0) return undefined;
+
+		// Look for the adapterSource block in the fullProlog lines.
+		for (let i = 0; i <= fullPrologLines.length - adapterSourceLines.length; i++) {
+			let found = true;
+			for (let j = 0; j < adapterSourceLines.length; j++) {
+				// Compare trimmed lines to ignore leading/trailing whitespace differences.
+				if (fullPrologLines[i + j].trim() !== adapterSourceLines[j].trim()) {
+					found = false;
+					break;
+				}
+			}
+			if (found) {
+				// Return line numbers using 1-indexing.
+				return { start: i + 1, end: i + adapterSourceLines.length };
+			}
+		}
+		// If no matching block is found, return undefined.
+		return undefined;
+	}
+
+
 	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query): Promise<TestedAdapter> {
 		console.log("  - Testing adapter on snippet:", snippet.fileName);
+
+		// Try to run the with swi-prolog
+		const fullProlog = await this.createFullQuery(adapter.source, snippet, this.lexerPath, this.parserPath, query.path);
+
+		// Find where the adapter is in the code
+		const adapterLineRange = this._findAdapterLineRange(fullProlog, adapter.source);
+		assert(adapterLineRange);
+
 		const testedAdapter: TestedAdapter = {
 			onQuery: query,
 			withSnippet: snippet,
 			usedAdapter: adapter,
+			completeProlog: fullProlog,
+			adapterLineRange,
 			errors: [],
 			success: false,
 		};
-
-		// Try to run the with swi-prolog
-		const fullProlog = await this.createFullQuery(adapter.source, snippet, this.lexerPath, this.parserPath, query.path);
 
 		// Create temporary file with the clauses
 		const tempFilePath = tmp.fileSync();
@@ -441,7 +476,7 @@ export class AdapterContext {
 					const errorsWithLines = tested.errors.filter(error => error.line !== undefined);
 					if (errorsWithLines.length > 0) {
 						assert(oldAdapter.source.split('\n').length > 2);
-						const prologCodeWithErrorsOverlay = overlayErrorsOnCode(oldAdapter.source, errorsWithLines);
+						const prologCodeWithErrorsOverlay = overlayErrorsOnCodeWithSnippetRange(tested.usedAdapter.source, errorsWithLines, tested.adapterLineRange);
 						prompt += '\nHere is the prolog i ran with the errors in // comments:\n';
 						prompt += `<PrologCodeRanWithErrors>\n${prologCodeWithErrorsOverlay}\n</PrologCodeRanWithErrors>`;
 					}

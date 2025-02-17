@@ -48,10 +48,10 @@ export function stripSystemMessage(messages: OpenAI.Chat.ChatCompletionMessagePa
 export type OpenAIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
 export function midpoint<T>(arr: T[]): T | undefined {
-	if (arr.length === 0) return undefined;
-	if (arr.length === 1) return arr[0];
-	if (arr.length === 2) return arr[0];
-	return arr[Math.floor(arr.length / 2)];
+    if (arr.length === 0) return undefined;
+    if (arr.length === 1) return arr[0];
+    if (arr.length === 2) return arr[0];
+    return arr[Math.floor(arr.length / 2)];
 }
 
 export type AnyErrorWithLine = { line?: number, message: string, type: string };
@@ -67,6 +67,7 @@ export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, er
         const lineNumber = error.line - 1;
         // check if the line number is valid
         if (lineNumber < 0 || lineNumber >= newCodeLines.length) {
+            console.log(newCodeLines);
             console.warn(`Invalid line number: ${lineNumber}: ${error.message}, file length: ${newCodeLines.length}`);
             //error.type = 'UNKNOWN';
             //throw new Error(`Invalid line number: ${lineNumber}: ${error.message}`);
@@ -84,10 +85,24 @@ export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, er
         let allErrors = errorsOnLine.map(error => error.message).join(', ');
         const trimLength = 256;
         if (allErrors.length >= trimLength) {
-            allErrors = allErrors.substring(0, trimLength-1) + '...';
+            allErrors = allErrors.substring(0, trimLength - 1) + '...';
         }
         const comment = `// ANTLR Error: ${allErrors}`;
         newCodeLines[lineNumber] = `${line} ${comment}`;
     }
-    return newCodeLines.join('\n');   
+    return newCodeLines.join('\n');
+}
+
+export function overlayErrorsOnCodeWithSnippetRange<T extends AnyErrorWithLine>(code: string,
+    errors: T[],
+    snippetRange: { start: number, end: number }): string {
+
+    // Transform the errors to be relative to the snippet range.
+    const relativeErrors = errors.map(error => {
+        return {
+            ...error,
+            line: error.line && error.line - snippetRange.start + 1,
+        };
+    });
+    return overlayErrorsOnCode(code, relativeErrors);
 }
