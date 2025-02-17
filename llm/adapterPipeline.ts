@@ -56,7 +56,7 @@ const ScoringSchema = z.object({
 
 export class AdapterContext {
 	openai: OpenAI;
-	modelName: string;
+	openaiEnv: OpenAIEnv;
 	lexerPath: string;
 	parserPath: string;
 	_snippetToTreeCache: Map<string, ParseableTree>;
@@ -64,14 +64,14 @@ export class AdapterContext {
 
 	MINUMUM_JUDGE_SCORE = 70;
 
-	constructor(lexerPath: string, parserPath: string, openAIEnv: OpenAIEnv) {
+	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
 		this.parserPath = parserPath;
 		this.openai = new OpenAI({
-			baseURL: openAIEnv.baseUrl,
-			apiKey: openAIEnv.apiKey,
+			baseURL: openaiEnv.baseUrl,
+			apiKey: openaiEnv.apiKey,
 		});
-		this.modelName = openAIEnv.model;
+		this.openaiEnv = openaiEnv;
 
 		this._snippetToTreeCache = new Map<string, ParseableTree>();
 		this._scoreAdapterCache = new Map<string, z.infer<typeof ScoringSchema>>();
@@ -158,7 +158,7 @@ export class AdapterContext {
 	
 		Stats.addRequest();
 		const completion = await this.openai.beta.chat.completions.parse({
-			model: this.modelName, // TODO: make this configurable
+			model: this.openaiEnv.soModel,
 			messages: [
 				{ role: "user", content: adapterScoringMessage(snippet.snippet, adapterOutput) },
 			],
@@ -346,8 +346,9 @@ export class AdapterContext {
 		);
 
 		let prompt: string = adapterGenerationMessage;
-		prompt += "\n<SourceCode>\n" + representativeSnippet.snippet + "\n</SourceCode>";
 		prompt += "\n<FullProlog>\n" + draftQuery + "\n</FullProlog>";
+		prompt += "\nThe auto-generated tree is generated from the following code:";
+		prompt += "\n<SourceCode>\n" + representativeSnippet.snippet + "\n</SourceCode>";
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
 		// Do inital test if an initial adapter was provided
@@ -363,7 +364,8 @@ export class AdapterContext {
 		}
 
 		// Ask for a draft solution
-		prompt += "\nTask: Develop and output a new adapter. You MUST output in XML tag, in following format:\n<Adapter>\n// WRITEABLE AREA\n...\n</Adapter>";
+		prompt += "\nTask: Develop and output a new adapter. Make sure that the current main query will run with the adapter.";
+		prompt += "\nYou MUST output in XML tag, in following format:\n<Adapter>\n// WRITEABLE AREA\n...\n</Adapter>";
 		messages.push({
 			role: 'user',
 			content: prompt,
@@ -371,7 +373,7 @@ export class AdapterContext {
 
 		Stats.addRequest();
 		const completion = await this.openai.chat.completions.create({
-			model: this.modelName,
+			model: this.openaiEnv.model,
 			messages,
 		});
 
@@ -429,7 +431,7 @@ export class AdapterContext {
 					prompt += `<PrologOutput>\n${tested.output}\n</PrologOutput>\n`;
 				}
 
-				// Add score if available
+				// Add score if availablesource
 				if (tested.LLMScore) {
 					prompt += `\nI'd give this adapter a score of ${tested.LLMScore} out of 100.\n`;
 				}
@@ -438,6 +440,7 @@ export class AdapterContext {
 				if (this.hasErrorsOfType(tested.errors, 'PROLOG')) {
 					const errorsWithLines = tested.errors.filter(error => error.line !== undefined);
 					if (errorsWithLines.length > 0) {
+						assert(oldAdapter.source.split('\n').length > 2);
 						const prologCodeWithErrorsOverlay = overlayErrorsOnCode(oldAdapter.source, errorsWithLines);
 						prompt += '\nHere is the prolog i ran with the errors in // comments:\n';
 						prompt += `<PrologCodeRanWithErrors>\n${prologCodeWithErrorsOverlay}\n</PrologCodeRanWithErrors>`;
@@ -468,7 +471,7 @@ Output exactly one <Adapter> block.`;
 		try {
 			Stats.addRequest();
 			const completion = await this.openai.chat.completions.create({
-				model: this.modelName,
+				model: this.openaiEnv.model,
 				messages: messages
 			});
 			console.log(JSON.stringify(messages, null, 2));

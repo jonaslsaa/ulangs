@@ -3,6 +3,7 @@ import { OpenAI } from 'openai';
 export type OpenAIEnv = {
     apiKey: string;
     model: string;
+    soModel: string; /* Structured output model */
     baseUrl?: string;
 };
 
@@ -18,16 +19,22 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
     const openaiBaseUrl = getEnvVar('OPENAI_COMPATIBLE_BASEURL');
     const openaiApiKey = getEnvVar('OPENAI_COMPATIBLE_API_KEY');
     const openaiModel = getEnvVar('OPENAI_COMPATIBLE_MODEL');
+    let openaiSOModel = getEnvVar('OPENAI_COMPATIBLE_SO_MODEL');
     if (openaiApiKey === undefined || openaiModel === undefined) {
         throw new Error('OpenAI environment variables not set');
+    }
+
+    if (openaiSOModel !== undefined) {
+        openaiSOModel = openaiModel;
     }
 
     const r = {
         baseUrl: openaiBaseUrl,
         apiKey: openaiApiKey,
         model: openaiModel,
+        soModel: openaiSOModel as string,
     };
-    console.log("Loaded OpenAI environment variables. Using model:", r.model);
+    console.log("Loaded OpenAI environment variables. Using model:", r.model, "(SO model:", r.soModel, ")");
     // console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
     return r;
 }
