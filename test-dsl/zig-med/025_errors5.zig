@@ -1,12 +1,3 @@
-//
-// Zig has a handy "try" shortcut for this common error handling pattern:
-//
-//     canFail() catch |err| return err;
-//
-// which can be more compactly written as:
-//
-//     try canFail();
-//
 const std = @import("std");
 
 const MyNumberError = error{
@@ -23,9 +14,6 @@ pub fn main() void {
 }
 
 fn addFive(n: u32) MyNumberError!u32 {
-    // This function needs to return any error which might come back from detect().
-    // Please use a "try" statement rather than a "catch".
-    //
     const x = try detect(n);
 
     return x + 5;

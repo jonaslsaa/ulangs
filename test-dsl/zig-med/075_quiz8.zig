@@ -1,12 +1,3 @@
-//
-// Quiz Time!
-//
-// Let's revisit the Hermit's Map from Quiz 7.
-//
-// Oh, don't worry, it's not nearly as big without all the
-// explanatory comments. And we're only going to change one part
-// of it.
-//
 const print = @import("std").debug.print;
 
 const TripError = error{ Unreachable, EatenByAGrue };
@@ -23,9 +14,6 @@ var d = Place{ .name = "Dogwood Grove" };
 var e = Place{ .name = "East Pond" };
 var f = Place{ .name = "Fox Pond" };
 
-// Remember how we didn't have to declare the numeric type of the
-// place_count because it is only used at compile time? That
-// probably makes a lot more sense now. :-)
 const place_count = 6;
 
 const Path = struct {
@@ -34,20 +22,6 @@ const Path = struct {
     dist: u8,
 };
 
-// Okay, so as you may recall, we had to create each Path struct
-// by hand and each one took 5 lines of code to define:
-//
-//    Path{
-//        .from = &a, // from: Archer's Point
-//        .to = &b,   //   to: Bridge
-//        .dist = 2,
-//    },
-//
-// Well, armed with the knowledge that we can run code at compile
-// time, we can perhaps shorten this a bit with a simple function
-// instead.
-//
-// Please fill in the body of this function!
 fn makePath(from: *Place, to: *Place, dist: u8) Path {
     return Path{
         .from = from,
@@ -56,30 +30,12 @@ fn makePath(from: *Place, to: *Place, dist: u8) Path {
     };
 }
 
-// Using our new function, these path definitions take up considerably less
-// space in our program now!
 const a_paths = [_]Path{makePath(&a, &b, 2)};
 const b_paths = [_]Path{ makePath(&b, &a, 2), makePath(&b, &d, 1) };
 const c_paths = [_]Path{ makePath(&c, &d, 3), makePath(&c, &e, 2) };
 const d_paths = [_]Path{ makePath(&d, &b, 1), makePath(&d, &c, 3), makePath(&d, &f, 7) };
 const e_paths = [_]Path{ makePath(&e, &c, 2), makePath(&e, &f, 1) };
 const f_paths = [_]Path{makePath(&f, &d, 7)};
-//
-// But is it more readable? That could be argued either way.
-//
-// We've seen that it is possible to parse strings at compile
-// time, so the sky's really the limit on how fancy we could get
-// with this.
-//
-// For example, we could create our own "path language" and
-// create Paths from that. Something like this, perhaps:
-//
-//    a -> (b[2])
-//    b -> (a[2] d[1])
-//    c -> (d[3] e[2])
-//    ...
-//
-// Feel free to implement something like that as a SUPER BONUS EXERCISE!
 
 const TripItem = union(enum) {
     place: *const Place,
@@ -158,17 +114,6 @@ pub fn main() void {
     const start = &a; // Archer's Point
     const destination = &f; // Fox Pond
 
-    // We could either have this:
-    //
-    //   a.paths = a_paths[0..];
-    //   b.paths = b_paths[0..];
-    //   c.paths = c_paths[0..];
-    //   d.paths = d_paths[0..];
-    //   e.paths = e_paths[0..];
-    //   f.paths = f_paths[0..];
-    //
-    // or this comptime wizardry:
-    //
     const letters = [_][]const u8{ "a", "b", "c", "d", "e", "f" };
     inline for (letters) |letter| {
         @field(@This(), letter).paths = @field(@This(), letter ++ "_paths")[0..];
