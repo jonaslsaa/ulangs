@@ -33,13 +33,12 @@ export const Stats = {
 export function ExitAndLogStats(exitCode: number = 0) {
 		console.log("\n[Stats]");
 		console.log(`Generated ${Stats.totalRequests} requests, and completed ${Stats.totalCompletedRequests} requests.`);
+		console.log(`    ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
 		if (Stats.cachedInputTokens === 0) {
 				console.log(`    Input tokens: ${Stats.inputTokens}, Output tokens: ${Stats.outputTokens}`);
 		} else {
 				const NonCachedTokens = Stats.inputTokens - Stats.cachedInputTokens;
 				console.log(`    Cached input tokens: ${Stats.cachedInputTokens}, Non-cached input tokens: ${NonCachedTokens}, Output tokens: ${Stats.outputTokens}`);
 		}
-
-		console.log(`    ${Stats.totalTokens} tokens (${Stats.avgTokensPerRequest} avg tokens per request)`);
 		process.exit(exitCode);
 }
