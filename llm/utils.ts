@@ -56,7 +56,7 @@ export function midpoint<T>(arr: T[]): T | undefined {
 
 export type AnyErrorWithLine = { line?: number, message: string, type: string };
 
-export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, errors: T[]): string {
+export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, errors: T[], commentPrefix = '//'): string {
     let newCodeLines = code.split('\n');
     const errorOnLineMap = new Map<number, T[]>();
     // add errors to the errorOnLineMap
@@ -87,7 +87,7 @@ export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, er
         if (allErrors.length >= trimLength) {
             allErrors = allErrors.substring(0, trimLength - 1) + '...';
         }
-        const comment = `// ANTLR Error: ${allErrors}`;
+        const comment = `// Error: ${allErrors}`;
         newCodeLines[lineNumber] = `${line} ${comment}`;
     }
     return newCodeLines.join('\n');
@@ -95,6 +95,7 @@ export function overlayErrorsOnCode<T extends AnyErrorWithLine>(code: string, er
 
 export function overlayErrorsOnCodeWithSnippetRange<T extends AnyErrorWithLine>(code: string,
     errors: T[],
+    commentPrefix = '//',
     snippetRange: { start: number, end: number }): string {
 
     // Transform the errors to be relative to the snippet range.
@@ -104,5 +105,5 @@ export function overlayErrorsOnCodeWithSnippetRange<T extends AnyErrorWithLine>(
             line: error.line && error.line - snippetRange.start + 1,
         };
     });
-    return overlayErrorsOnCode(code, relativeErrors);
+    return overlayErrorsOnCode(code, relativeErrors, commentPrefix);
 }

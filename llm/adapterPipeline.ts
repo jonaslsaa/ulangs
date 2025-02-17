@@ -399,7 +399,7 @@ export class AdapterContext {
 
 		// Ask for a draft solution
 		prompt += "\nTask: Develop and output a new adapter. Make sure that the current main query will run with the adapter.";
-		prompt += "\nYou MUST output in XML tag, in following format:\n<Adapter>\n// WRITEABLE AREA\n...\n</Adapter>";
+		prompt += "\nYou MUST output in XML tag, in following format:\n<Adapter>\n% WRITEABLE AREA\n...\n</Adapter>";
 		messages.push({
 			role: 'user',
 			content: prompt,
@@ -475,8 +475,8 @@ export class AdapterContext {
 					const errorsWithLines = tested.errors.filter(error => error.line !== undefined);
 					if (errorsWithLines.length > 0) {
 						assert(oldAdapter.source.split('\n').length > 2);
-						const prologCodeWithErrorsOverlay = overlayErrorsOnCodeWithSnippetRange(tested.usedAdapter.source, errorsWithLines, tested.adapterLineRange);
-						prompt += '\nHere is the prolog i ran with the errors in // comments:\n';
+						const prologCodeWithErrorsOverlay = overlayErrorsOnCodeWithSnippetRange(tested.usedAdapter.source, errorsWithLines, '%', tested.adapterLineRange);
+						prompt += '\nHere is the prolog i ran with the errors in % comments:\n';
 						prompt += `<PrologCodeRanWithErrors>\n${prologCodeWithErrorsOverlay}\n</PrologCodeRanWithErrors>`;
 					}
 				}
@@ -492,7 +492,7 @@ export class AdapterContext {
 		}
 
 		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
-Output exactly one <Adapter> block.`;
+Output exactly one <Adapter> block, then a <ExpectedOutput> block with the expected output of the query (can be summarized).`;
 
 		// Add prompt to messages
 		messages.push({
@@ -508,7 +508,6 @@ Output exactly one <Adapter> block.`;
 				model: this.openaiEnv.model,
 				messages: messages
 			});
-			console.log(JSON.stringify(messages, null, 2));
 			const content = completion.choices[0].message.content;
 			if (content === null) throw new Error('No completion provided');
 
@@ -525,6 +524,9 @@ Output exactly one <Adapter> block.`;
 				role: 'assistant',
 				content: content,
 			});
+
+			// DEBUG LOG
+			console.log(JSON.stringify(messages, null, 2));
 
 		} catch (err) {
 			console.error("LLM request failed:", err);
