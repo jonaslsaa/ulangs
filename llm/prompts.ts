@@ -54,8 +54,10 @@ You will develop an adapter that sits in the middle of the file. Make sure this 
 You MUST only write within the WRITEABLE AREA. Output only the adapter / WRITEABLE AREA.`;
 
 export function adapterScoringMessage(snippet: string, adapterOutput: string): string {
-    return `Score 0 to 100 how well the AST tree generated is by looking at the code snippet it is based on. 100 = means that the AST tree perfectly describe the code snippet. 0 = means that the AST tree don't make ANY sense.
-Note: Ignore following "errors": builtin functions
+    return `Score 0 to 100 how well the definitions and AST tree generated is by looking at the code snippet it is based on. 100 = means that the definitions and AST tree perfectly describe the code snippet. 0 = means that the output don't make ANY sense.
+Note: Ignore following: builtin functions, undefined symbols, etc.
+HEAVILY PENALIZE symbols, defintions and references that are missing, incorrect, or not relevant. BUT don't penalize impossible symbols to resolve by context.
+* Do symbols/definitions have references?
 Supply also a list of reasons/errors (empty list if there are none if **perfect**, it is used as feedback).
 <CodeSnippet>
 ${snippet}

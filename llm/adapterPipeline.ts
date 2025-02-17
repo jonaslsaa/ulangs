@@ -51,7 +51,7 @@ type ParseableTree = {
 }
 
 const ScoringSchema = z.object({
-	reasons: z.array(z.string()),
+	errorsAndLimitations: z.array(z.string()),
 	score: z.number(),
 });
 
@@ -63,7 +63,7 @@ export class AdapterContext {
 	_snippetToTreeCache: Map<string, ParseableTree>;
 	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
-	MINUMUM_JUDGE_SCORE = 70;
+	MINUMUM_JUDGE_SCORE = 80;
 
 	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -301,7 +301,7 @@ export class AdapterContext {
 
 		// Finally, let's check if the output matches the expected definition
 		const scoring = await this.scoreAdapter(snippet, queryResult.output);
-		scoring.reasons.forEach(reason => testedAdapter.errors?.push({
+		scoring.errorsAndLimitations.forEach(reason => testedAdapter.errors?.push({
 			type: 'JUDGE',
 			message: reason,
 			file: snippet.filePath,
@@ -313,10 +313,11 @@ export class AdapterContext {
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
 			console.log("    - Score too low (4/5), reasons:");
-			console.log(scoring.reasons);
+			console.log(scoring.errorsAndLimitations);
 			console.log("      - Score:", scoring.score);
 			return testedAdapter;
 		}
+		console.log(scoring.errorsAndLimitations);
 		console.log("    - Score:", scoring.score);
 
 		testedAdapter.success = true;
