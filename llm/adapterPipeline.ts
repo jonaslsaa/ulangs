@@ -436,6 +436,14 @@ export class AdapterContext {
 		return errors.some(error => error.type === type);
 	}
 
+	_compressJSONIfPossible(json: string): string {
+		try {
+			return JSON.stringify(JSON.parse(json), null, 1);
+		} catch (e) {
+			return json;
+		}
+	}
+
 	async repairAdapter(
 		oldAdapter: Adapter,
 		failingExamples: Snippet[],
@@ -469,7 +477,8 @@ export class AdapterContext {
 				// If we have schema or judge errors, add the prolog output as context
 				if (this.hasErrorsOfType(tested.errors, 'SCHEMA') || this.hasErrorsOfType(tested.errors, 'JUDGE')) {
 					assert(tested.output);
-					prompt += `<PrologOutput>\n${tested.output}\n</PrologOutput>\n`;
+					const compressedOutput = this._compressJSONIfPossible(tested.output);
+					prompt += `<PrologOutput>\n${compressedOutput}\n</PrologOutput>\n`;
 				}
 
 				// Add score if availablesource
@@ -498,8 +507,8 @@ export class AdapterContext {
 			}
 		}
 
-		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic. 
-Output exactly one <Adapter> block, then a <ExpectedOutput> block with the expected output of the query (can be summarized).`;
+		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic.
+Output exactly one <Adapter> block, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`;
 
 		// Add prompt to messages
 		messages.push({
