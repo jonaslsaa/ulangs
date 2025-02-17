@@ -1,5 +1,4 @@
 import z from 'zod'
-import health from './rpc/health';
 import query from './rpc/query';
 import check from './rpc/check-file';
 
@@ -9,7 +8,6 @@ export type RPCFunction = {
 };
 
 export const registeredFunctions = {
-	health,
 	query,
 	check
 } as const;
