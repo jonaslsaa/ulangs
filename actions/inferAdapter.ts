@@ -39,7 +39,7 @@ export async function doInferAdapter(
   //    (Contains references to the parser/lexer and LLM client.)
   const adapterContext = new AdapterContext(options.lexer, options.parser, openaiEnv);
 
-  const holotypeQuery = GetQuery('definitions'); // TODO: investigate what the best holotype query is
+  const holotypeQuery = GetQuery('printAST'); // TODO: investigate what the best holotype query is
 
   // 4. Create the AdapterGenerator and AdapterVerifier.
   const generator = new AdapterGenerator(
