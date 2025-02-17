@@ -61,7 +61,7 @@ export class GrammarGenerator implements Generator<Grammar, Snippet, TestedSnipp
     );
   }
 
-  async repairSolution(oldSolution: Grammar, failingExamples: Snippet[], failingResults: TestedSnippet[]): Promise<Grammar> {
+  async repairSolution(oldSolution: Grammar, failingExamples: Snippet[], failingResults: TestedSnippet[], lastExampleWasNotSolved: boolean): Promise<Grammar> {
     // Use the first failing snippet in the array as a starting point.
     const repairResults = await repairGrammar(
       this.openaiEnv,

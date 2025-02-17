@@ -438,7 +438,8 @@ export class AdapterContext {
 		oldAdapter: Adapter,
 		failingExamples: Snippet[],
 		failingResults: TestedAdapter[],
-		messages: OpenAIMessage[]
+		messages: OpenAIMessage[],
+		lastExampleWasNotSolved: boolean
 	): Promise<Adapter> {
 
 		if (messages.length === 0) {
@@ -583,9 +584,10 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 	async repairSolution(
 		oldSolution: Adapter,
 		failingExamples: Snippet[],
-		failingResults: TestedAdapter[]
+		failingResults: TestedAdapter[],
+		lastExampleWasNotSolved: boolean
 	): Promise<Adapter> {
-		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults, this.messages);
+		return await this.adapterContext.repairAdapter(oldSolution, failingExamples, failingResults, this.messages, lastExampleWasNotSolved);
 	}
 }
 

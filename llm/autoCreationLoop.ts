@@ -26,7 +26,8 @@ export interface Generator<Solution, Example, Result> {
   repairSolution(
     oldSolution: Solution,
     failingExamples: Example[],
-    failingResults: Result[]
+    failingResults: Result[],
+    lastExampleWasNotSolved: boolean
   ): Promise<Solution>;
 
 	/**
@@ -124,15 +125,24 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
   maxRetries: number,
-  stopOnFirstFailure: boolean
+  stopOnFirstFailure: boolean,
+  lastExampleWasNotSolved: boolean
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
+  let bestSolution: Solution = currentSolution;
+  let bestScore = 0;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
     // 1) Ask the generator to repair
-    const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults);
+    const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults, lastExampleWasNotSolved);
 
     // 2) Evaluate the repaired solution over the processed examples
     const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure);
+    
+    // 3) If improved, store a repair checkpoint candidate
+    if (candidate.score > bestScore) {
+      bestScore = candidate.score;
+      bestSolution = repairedSolution;
+    }
 
     // 3) Check if the repair solved all issues
     if (candidate.score === processedExamples.length) {
@@ -147,7 +157,7 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   }
 
   // If we exhaust maxRetries without fully fixing, return the best we got (null candidate means no perfect fix)
-  return { candidate: null, solution: currentSolution };
+  return { candidate: null, solution: bestSolution };
 }
 
 /**
@@ -203,6 +213,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
   console.log(`[Snippet #1/${examples.length}] Passed ${candidate.score}/1 so far.`);
 
   // 3) Process subsequent examples in sequence
+  let lastExampleWasNotSolved = false;
   for (let i = 0; i < examples.length; i++) {
     const ex = examples[i];
 
@@ -240,8 +251,10 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
         generator,
         verifier,
         maxRetries,
-        stopOnFirstFailure
+        stopOnFirstFailure,
+        lastExampleWasNotSolved
       );
+      lastExampleWasNotSolved = false; // reset this flag
 
       if (repairedCandidate) {
         // If we got a fully passing solution for all processed examples
@@ -253,6 +266,8 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
           checkpoints.push(bestCandidate);
           if (options.checkpointHook) options.checkpointHook(bestCandidate);
         }
+      } else {
+        lastExampleWasNotSolved = true; // Set flag for next iteration
       }
     }
 
@@ -269,75 +284,6 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
 
     // f) Optionally compress messages if an LLM is used
     maybeCompressMessages(generator, options);
-  }
-
-  return bestCandidate;
-}
-
-/**
- * runBatchLoop
- *
- * Processes all examples at once. In each iteration, it identifies the failing examples,
- * attempts a repair, and updates the best candidate if it improves. Also stores
- * internal checkpoints for each new best candidate.
- */
-async function runBatchLoop<Solution, Example, Result extends { success: boolean }>(
-  generator: Generator<Solution, Example, Result>,
-  verifier: Verifier<Solution, Example, Result>,
-  examples: Example[],
-  options: InferenceOptions
-): Promise<Candidate<Solution, Example, Result>> {
-  const maxRetries = options.maxRetries ?? 5;
-  const stopOnFirstFailure = options.stopOnFirstFailure ?? false;
-
-  // Maintain a local list of checkpoints
-  const checkpoints: Candidate<Solution, Example, Result>[] = [];
-
-  // 1) Generate initial solution & evaluate
-  let currentSolution: Solution = await generator.generateInitialSolution(examples);
-  let candidate = await evaluateSolution(currentSolution, examples, verifier, stopOnFirstFailure);
-  let bestCandidate = candidate;
-  checkpoints.push(candidate);
-
-  let retryCount = 0;
-
-  // 2) Keep repairing until all pass or we reach maxRetries
-  while (retryCount < maxRetries && candidate.score < examples.length) {
-    const failingExamples: Example[] = [];
-    const failingResults: Result[] = [];
-
-    // Collect all failing examples
-    candidate.results.forEach(({ example, result }) => {
-      if (!result.success) {
-        failingExamples.push(example);
-        failingResults.push(result);
-      }
-    });
-
-    if (failingExamples.length === 0) {
-      // Means we pass all, so break out
-      break;
-    }
-
-    // a) Attempt to repair
-    currentSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults);
-
-    // b) Re-evaluate
-    candidate = await evaluateSolution(currentSolution, examples, verifier, stopOnFirstFailure);
-
-    // c) If improved, store checkpoint
-    if (candidate.score > bestCandidate.score) {
-      bestCandidate = candidate;
-      checkpoints.push(candidate);
-      if (options.checkpointHook) {
-        options.checkpointHook(candidate);
-      }
-    }
-
-    // d) Possibly compress LLM messages
-    maybeCompressMessages(generator, options);
-
-    retryCount++;
   }
 
   return bestCandidate;
