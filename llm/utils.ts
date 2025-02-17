@@ -20,11 +20,12 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
     const openaiApiKey = getEnvVar('OPENAI_COMPATIBLE_API_KEY');
     const openaiModel = getEnvVar('OPENAI_COMPATIBLE_MODEL');
     let openaiSOModel = getEnvVar('OPENAI_COMPATIBLE_SO_MODEL');
+
     if (openaiApiKey === undefined || openaiModel === undefined) {
         throw new Error('OpenAI environment variables not set');
     }
 
-    if (openaiSOModel !== undefined) {
+    if (openaiSOModel === undefined) {
         openaiSOModel = openaiModel;
     }
 
@@ -32,7 +33,7 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
         baseUrl: openaiBaseUrl,
         apiKey: openaiApiKey,
         model: openaiModel,
-        soModel: openaiSOModel as string,
+        soModel: openaiSOModel,
     };
     console.log("Loaded OpenAI environment variables. Using model:", r.model, "(SO model:", r.soModel, ")");
     // console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
