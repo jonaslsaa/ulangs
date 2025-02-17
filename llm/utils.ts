@@ -35,7 +35,7 @@ export function loadOpenAIEnvVars(): OpenAIEnv {
         model: openaiModel,
         soModel: openaiSOModel,
     };
-    console.log("Loaded OpenAI environment variables. Using model:", r.model, "(SO model:", r.soModel, ")");
+    console.log("Loaded OpenAI environment variables. Using model:", r.model, "(Structured output model:", r.soModel, ")");
     // console.log(r.baseUrl, r.apiKey.substring(0, 8) + '...', r.model);
     return r;
 }
