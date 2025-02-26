@@ -1,1 +1,0 @@
-* I have to figure out if the lines insside ANTLR errors refer to the lexer, parser or code snippet itself!
