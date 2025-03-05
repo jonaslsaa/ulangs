@@ -182,20 +182,20 @@ export class AdapterContext {
 			// If there's no exact match, return undefined.
 			return undefined;
 		}
-	
+
 		// Count how many lines occur in fullProlog before the match.
 		// Using slice(0, idx) means all characters before the match.
 		const before = fullProlog.slice(0, idx);
 		const startLine = before.split('\n').length; // 1-based line indexing.
-	
+
 		// How many lines does the adapter source span?
 		// This is simply how many line-breaks are in the adapterSource itself.
 		const adapterLineCount = adapterSource.split('\n').length;
-	
+
 		// The end line is (startLine + adapterLineCount - 1).
 		// -1 because if you start on line 5 and the adapter is 1 line long, it also ends on line 5.
 		const endLine = startLine + adapterLineCount - 1;
-	
+
 		return { start: startLine, end: endLine };
 	}
 
@@ -391,7 +391,17 @@ export class AdapterContext {
 				source: initialAdapter,
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
-			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
+			prompt += "\nThis runs without issue and is a valid adapter. But let's try to improve it.";
+			if (testedInitialAdapter.success) { // Return early if the initial adapter is valid
+				messages.push({
+					role: 'user',
+					content: prompt,
+				});
+				return {
+					adapter,
+					messages,
+				};
+			}
 
 			// Add initial adapter errors to the prompt
 			prompt += '\n<CurrentAdapter>\n' + adapter.source + '\n</CurrentAdapter>\n';
@@ -454,7 +464,7 @@ export class AdapterContext {
 	): Promise<Adapter> {
 
 		if (messages.length === 0) {
-			throw new Error('No messages provided, this should not happen as the repairAdapter doesn\'t add context to the messages.');
+			throw new Error("No messages provided, this should not happen as the repairAdapter doesn't add context to the messages.");
 		}
 
 		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
@@ -590,6 +600,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 			this.lexerPath,
 			this.parserPath);
 		this.messages = messages;
+		assert(this.messages.length > 0);
 		return adapter;
 	}
 
