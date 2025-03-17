@@ -41,7 +41,7 @@ export async function doInferAdapter(
 
   const holotypeQuery = GetQuery('holotype'); // TODO: investigate what the best holotype query is
 
-  // 4. Create the AdapterGenerator and AdapterVerifier.
+  // 4. Create the AdapterGenerator and get its associated AdapterVerifier.
   const generator = new AdapterGenerator(
     openaiEnv,
     messages,
@@ -50,7 +50,7 @@ export async function doInferAdapter(
     options.initialAdapter,
     holotypeQuery
   );
-  const verifier = new AdapterVerifier(adapterContext, snippets, holotypeQuery);
+  const verifier = generator.getVerifier(snippets);
 
   // 6. Configure inference options to either test each snippet in turn
   //    or do single-pass; here we just do standard incremental usage with

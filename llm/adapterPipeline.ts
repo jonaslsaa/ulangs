@@ -150,7 +150,7 @@ export class AdapterContext {
 		return clauses.join('\n');
 	}
 
-	async scoreAdapter(snippet: Snippet, adapterOutput: string) {
+	async scoreAdapter(snippet: Snippet, adapterOutput: string, messages?: OpenAIMessage[]) {
 		const _key = snippet.snippet + '|' + adapterOutput;
 		if (this._scoreAdapterCache.has(_key)) {
 			console.log("Cache hit for adapter scoring.");
@@ -158,11 +158,16 @@ export class AdapterContext {
 		}
 
 		Stats.addRequest();
+		
+		// If messages were provided, use them to maintain conversation thread
+		const scoringPrompt = adapterScoringMessage(snippet.snippet, adapterOutput);
+		const scoringMessages: OpenAIMessage[] = messages ? 
+			[...messages, { role: "user", content: scoringPrompt }] : 
+			[{ role: "user", content: scoringPrompt }];
+		
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.openaiEnv.soModel,
-			messages: [
-				{ role: "user", content: adapterScoringMessage(snippet.snippet, adapterOutput) },
-			],
+			messages: scoringMessages,
 			response_format: zodResponseFormat(ScoringSchema, "score"),
 		});
 		Stats.addCompletedRequest(completion);
@@ -171,6 +176,15 @@ export class AdapterContext {
 		if (!scoring) {
 			throw new Error("Failed to parse score: " + completion.choices[0].message.content);
 		}
+		
+		// If messages were provided, add the response to maintain thread
+		if (messages) {
+			messages.push({ 
+				role: "assistant", 
+				content: completion.choices[0].message.content || JSON.stringify(scoring)
+			});
+		}
+		
 		this._scoreAdapterCache.set(_key, scoring); // Cache the result
 		return scoring;
 	}
@@ -200,7 +214,7 @@ export class AdapterContext {
 	}
 
 
-	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query): Promise<TestedAdapter> {
+	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query, messages?: OpenAIMessage[]): Promise<TestedAdapter> {
 		console.log("  - Testing adapter on snippet:", snippet.fileName);
 
 		// Try to run the with swi-prolog
@@ -300,7 +314,8 @@ export class AdapterContext {
 		}
 
 		// Finally, let's check if the output matches the expected definition
-		const scoring = await this.scoreAdapter(snippet, queryResult.output);
+		// Pass the messages array to maintain conversation thread
+		const scoring = await this.scoreAdapter(snippet, queryResult.output, messages);
 		scoring.errorsAndLimitations.forEach(reason => testedAdapter.errors?.push({
 			type: 'JUDGE',
 			message: reason,
@@ -518,7 +533,7 @@ export class AdapterContext {
 			}
 		}
 
-		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic.
+		prompt += `\n\nFix the <Adapter> so the queries succeed without breaking previously passing logic.
 Output exactly one <Adapter> block, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`;
 
 		// Add prompt to messages
@@ -571,6 +586,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 	holotypeQuery: Query;
 	examples: Snippet[];
 	adapterContext: AdapterContext;
+	verifier?: AdapterVerifier;
 
 	lexerPath: string;
 	parserPath: string;
@@ -586,6 +602,22 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 		this.initialAdapter = initialAdapter;
 
 		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv);
+	}
+	
+	/**
+	 * Creates and returns an AdapterVerifier that shares the message thread
+	 */
+	getVerifier(snippets: Snippet[]): AdapterVerifier {
+		// Create verifier if it doesn't exist, or return existing one
+		if (!this.verifier) {
+			this.verifier = new AdapterVerifier(
+				this.adapterContext, 
+				snippets, 
+				this.holotypeQuery, 
+				this.messages
+			);
+		}
+		return this.verifier;
 	}
 
 	async generateInitialSolution(examples: Snippet[]): Promise<Adapter> {
@@ -622,14 +654,16 @@ export class AdapterVerifier implements Verifier<Adapter, Snippet, TestedAdapter
 	snippets: Snippet[];
 	adapterContext: AdapterContext;
 	holotypeQuery: Query;
+	messages: OpenAIMessage[];
 
-	constructor(adapterContext: AdapterContext, snippets: Snippet[], holotypeQuery: Query) {
+	constructor(adapterContext: AdapterContext, snippets: Snippet[], holotypeQuery: Query, messages: OpenAIMessage[] = []) {
 		this.adapterContext = adapterContext;
 		this.snippets = snippets;
 		this.holotypeQuery = holotypeQuery;
+		this.messages = messages;
 	}
 
 	async verify(solution: Adapter, example: Snippet): Promise<TestedAdapter> {
-		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery);
+		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery, this.messages);
 	}
 }
