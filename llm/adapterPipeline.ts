@@ -13,7 +13,7 @@ import tmp from 'tmp';
 import { z, ZodSchema } from 'zod';
 import { OpenAI } from 'openai';
 import { zodResponseFormat } from "openai/helpers/zod";
-import { adapterGenerationMessage, adapterScoringMessage } from './prompts';
+import { adapterGenerationMessage, adapterScoringMessage, adapterTipSQLAsAnExample } from './prompts';
 import type { Query } from '../rules/queries/mapping';
 import zodToJsonSchema from 'zod-to-json-schema';
 import { Stats } from '../actions/utils';
@@ -424,6 +424,8 @@ export class AdapterContext {
 			// Add errors to the prompt
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
 		}
+
+		prompt += `\nTip: ${adapterTipSQLAsAnExample}\n`;
 
 		// Ask for a draft solution
 		prompt += "\nTask: Develop and output a new adapter. Make sure that the current main query will run with the adapter.";
