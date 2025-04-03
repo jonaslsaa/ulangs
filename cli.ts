@@ -153,6 +153,8 @@ cli.command('infer-adapter')
             return;
         }
 
+        if (options.skipFirstGuess) throw new Error("Not implemented");
+
         // Check grammar files exist
         checkFileExists(options.lexer);
         checkFileExists(options.parser);

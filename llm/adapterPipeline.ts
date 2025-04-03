@@ -13,7 +13,7 @@ import tmp from 'tmp';
 import { z, ZodSchema } from 'zod';
 import { OpenAI } from 'openai';
 import { zodResponseFormat } from "openai/helpers/zod";
-import { adapterGenerationMessage, adapterScoringMessage } from './prompts';
+import { adapterGenerationMessage, adapterScoringMessage, adapterTipSQLAsAnExample } from './prompts';
 import type { Query } from '../rules/queries/mapping';
 import zodToJsonSchema from 'zod-to-json-schema';
 import { Stats } from '../actions/utils';
@@ -51,7 +51,7 @@ type ParseableTree = {
 }
 
 const ScoringSchema = z.object({
-	reasons: z.array(z.string()),
+	errorsAndLimitations: z.array(z.string()),
 	score: z.number(),
 });
 
@@ -63,7 +63,7 @@ export class AdapterContext {
 	_snippetToTreeCache: Map<string, ParseableTree>;
 	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
-	MINUMUM_JUDGE_SCORE = 70;
+	MINUMUM_JUDGE_SCORE = 80;
 
 	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -150,7 +150,7 @@ export class AdapterContext {
 		return clauses.join('\n');
 	}
 
-	async scoreAdapter(snippet: Snippet, adapterOutput: string) {
+	async scoreAdapter(snippet: Snippet, adapterOutput: string, messages?: OpenAIMessage[]) {
 		const _key = snippet.snippet + '|' + adapterOutput;
 		if (this._scoreAdapterCache.has(_key)) {
 			console.log("Cache hit for adapter scoring.");
@@ -158,11 +158,16 @@ export class AdapterContext {
 		}
 
 		Stats.addRequest();
+		
+		// If messages were provided, use them to maintain conversation thread
+		const scoringPrompt = adapterScoringMessage(snippet.snippet, adapterOutput);
+		const scoringMessages: OpenAIMessage[] = messages ? 
+			[...messages, { role: "user", content: scoringPrompt }] : 
+			[{ role: "user", content: scoringPrompt }];
+		
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.openaiEnv.soModel,
-			messages: [
-				{ role: "user", content: adapterScoringMessage(snippet.snippet, adapterOutput) },
-			],
+			messages: scoringMessages,
 			response_format: zodResponseFormat(ScoringSchema, "score"),
 		});
 		Stats.addCompletedRequest(completion);
@@ -171,6 +176,15 @@ export class AdapterContext {
 		if (!scoring) {
 			throw new Error("Failed to parse score: " + completion.choices[0].message.content);
 		}
+		
+		// If messages were provided, add the response to maintain thread
+		if (messages) {
+			messages.push({ 
+				role: "assistant", 
+				content: completion.choices[0].message.content || JSON.stringify(scoring)
+			});
+		}
+		
 		this._scoreAdapterCache.set(_key, scoring); // Cache the result
 		return scoring;
 	}
@@ -182,25 +196,25 @@ export class AdapterContext {
 			// If there's no exact match, return undefined.
 			return undefined;
 		}
-	
+
 		// Count how many lines occur in fullProlog before the match.
 		// Using slice(0, idx) means all characters before the match.
 		const before = fullProlog.slice(0, idx);
 		const startLine = before.split('\n').length; // 1-based line indexing.
-	
+
 		// How many lines does the adapter source span?
 		// This is simply how many line-breaks are in the adapterSource itself.
 		const adapterLineCount = adapterSource.split('\n').length;
-	
+
 		// The end line is (startLine + adapterLineCount - 1).
 		// -1 because if you start on line 5 and the adapter is 1 line long, it also ends on line 5.
 		const endLine = startLine + adapterLineCount - 1;
-	
+
 		return { start: startLine, end: endLine };
 	}
 
 
-	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query): Promise<TestedAdapter> {
+	async testAdapterOnSnippet(adapter: Adapter, snippet: Snippet, query: Query, messages?: OpenAIMessage[]): Promise<TestedAdapter> {
 		console.log("  - Testing adapter on snippet:", snippet.fileName);
 
 		// Try to run the with swi-prolog
@@ -300,8 +314,9 @@ export class AdapterContext {
 		}
 
 		// Finally, let's check if the output matches the expected definition
-		const scoring = await this.scoreAdapter(snippet, queryResult.output);
-		scoring.reasons.forEach(reason => testedAdapter.errors?.push({
+		// Pass the messages array to maintain conversation thread
+		const scoring = await this.scoreAdapter(snippet, queryResult.output, messages);
+		scoring.errorsAndLimitations.forEach(reason => testedAdapter.errors?.push({
 			type: 'JUDGE',
 			message: reason,
 			file: snippet.filePath,
@@ -313,10 +328,11 @@ export class AdapterContext {
 
 		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
 			console.log("    - Score too low (4/5), reasons:");
-			console.log(scoring.reasons);
+			console.log(scoring.errorsAndLimitations);
 			console.log("      - Score:", scoring.score);
 			return testedAdapter;
 		}
+		console.log(scoring.errorsAndLimitations);
 		console.log("    - Score:", scoring.score);
 
 		testedAdapter.success = true;
@@ -390,7 +406,17 @@ export class AdapterContext {
 				source: initialAdapter,
 			};
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
-			if (testedInitialAdapter.success) return { adapter, messages }; // Return early if the initial adapter is valid
+			prompt += "\nThis runs without issue and is a valid adapter. But let's try to improve it.";
+			if (testedInitialAdapter.success) { // Return early if the initial adapter is valid
+				messages.push({
+					role: 'user',
+					content: prompt,
+				});
+				return {
+					adapter,
+					messages,
+				};
+			}
 
 			// Add initial adapter errors to the prompt
 			prompt += '\n<CurrentAdapter>\n' + adapter.source + '\n</CurrentAdapter>\n';
@@ -398,6 +424,8 @@ export class AdapterContext {
 			// Add errors to the prompt
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
 		}
+
+		prompt += `\nTip: ${adapterTipSQLAsAnExample}\n`;
 
 		// Ask for a draft solution
 		prompt += "\nTask: Develop and output a new adapter. Make sure that the current main query will run with the adapter.";
@@ -453,7 +481,7 @@ export class AdapterContext {
 	): Promise<Adapter> {
 
 		if (messages.length === 0) {
-			throw new Error('No messages provided, this should not happen as the repairAdapter doesn\'t add context to the messages.');
+			throw new Error("No messages provided, this should not happen as the repairAdapter doesn't add context to the messages.");
 		}
 
 		// Build a user prompt that includes the old adapter, failing snippet(s), and errors.
@@ -507,7 +535,7 @@ export class AdapterContext {
 			}
 		}
 
-		prompt += `\n\nPlease fix the <Adapter> so the queries succeed without breaking previously passing logic.
+		prompt += `\n\nFix the <Adapter> so the queries succeed without breaking previously passing logic.
 Output exactly one <Adapter> block, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`;
 
 		// Add prompt to messages
@@ -560,6 +588,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 	holotypeQuery: Query;
 	examples: Snippet[];
 	adapterContext: AdapterContext;
+	verifier?: AdapterVerifier;
 
 	lexerPath: string;
 	parserPath: string;
@@ -576,6 +605,22 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 
 		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv);
 	}
+	
+	/**
+	 * Creates and returns an AdapterVerifier that shares the message thread
+	 */
+	getVerifier(snippets: Snippet[]): AdapterVerifier {
+		// Create verifier if it doesn't exist, or return existing one
+		if (!this.verifier) {
+			this.verifier = new AdapterVerifier(
+				this.adapterContext, 
+				snippets, 
+				this.holotypeQuery, 
+				this.messages
+			);
+		}
+		return this.verifier;
+	}
 
 	async generateInitialSolution(examples: Snippet[]): Promise<Adapter> {
 		if (this.messages.length > 0) throw new Error('Cannot generate initial solution after messages have been set');
@@ -589,6 +634,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 			this.lexerPath,
 			this.parserPath);
 		this.messages = messages;
+		assert(this.messages.length > 0);
 		return adapter;
 	}
 
@@ -610,14 +656,16 @@ export class AdapterVerifier implements Verifier<Adapter, Snippet, TestedAdapter
 	snippets: Snippet[];
 	adapterContext: AdapterContext;
 	holotypeQuery: Query;
+	messages: OpenAIMessage[];
 
-	constructor(adapterContext: AdapterContext, snippets: Snippet[], holotypeQuery: Query) {
+	constructor(adapterContext: AdapterContext, snippets: Snippet[], holotypeQuery: Query, messages: OpenAIMessage[] = []) {
 		this.adapterContext = adapterContext;
 		this.snippets = snippets;
 		this.holotypeQuery = holotypeQuery;
+		this.messages = messages;
 	}
 
 	async verify(solution: Adapter, example: Snippet): Promise<TestedAdapter> {
-		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery);
+		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery, this.messages);
 	}
 }

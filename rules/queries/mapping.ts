@@ -3,6 +3,7 @@ import { DefinitionQueryResultSchema } from './schemas/definitions';
 import fs from 'fs';
 import path from 'path';
 import { ASTSchema } from './schemas/printAST';
+import { HolotypeSchema } from './schemas/holotype';
 
 type AnyString = string & {};
 
@@ -26,7 +27,11 @@ const queries = {
   printAST: {
     path: 'printAST.pl',
     schema: ASTSchema,
-  }
+  },
+  holotype: {
+    path: 'holotype.pl',
+    schema: HolotypeSchema,
+  },
 } as const;
 
 const queryNames = Object.keys(queries) as (keyof typeof queries)[];

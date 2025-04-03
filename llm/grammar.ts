@@ -169,6 +169,11 @@ export async function makeCompletionRequest(
             messages: messages,
             max_completion_tokens: 32000,
             //temperature: 0.8,
+            store: true,
+			metadata: {
+				type: "synthesis",
+                subType: "synthesis-and-repair",
+			},
         };
 
         Stats.addRequest();

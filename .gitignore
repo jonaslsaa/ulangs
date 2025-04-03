@@ -183,5 +183,5 @@ test.pl
 *.tmp.g4
 *.partial.g4
 
-*.g4
-*.pl
+/*.g4
+/*.pl
