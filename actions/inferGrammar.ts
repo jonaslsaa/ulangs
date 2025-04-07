@@ -298,7 +298,7 @@ export async function doInferGrammar(directory: string, extension: string, outpu
     // Run the inference loop.
     const candidate = await runInferenceLoop(generator, verifier, sortedSnippets, inferenceOptions);
 
-    if (candidate.score !== sortedSnippets.length) {
+    if (candidate.score < sortedSnippets.length) {
         console.warn(`Final solution only passes ${candidate.score} out of ${sortedSnippets.length} examples.`);
     } else {
         console.log("Final solution passed all examples.");
