@@ -536,7 +536,9 @@ export class AdapterContext {
 		}
 
 		prompt += `\n\nFix the <Adapter> so the queries succeed without breaking previously passing logic.
-Output exactly one <Adapter> block, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`;
+Output exactly one <Adapter> block`;
+		// TODO: remove debug prompt below this one 
+		prompt += `, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`
 
 		// Add prompt to messages
 		messages.push({
