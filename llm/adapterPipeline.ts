@@ -304,7 +304,7 @@ export class AdapterContext {
 			if (schema.error.issues.length > 0) {
 				testedAdapter.errors?.push({
 					type: 'SCHEMA',
-					message: 'JSON schema MUST be valid: ' + JSON.stringify(zodToJsonSchema(query.schema), null, 2),
+					message: 'JSON schema MUST be valid:\n```json\n' + JSON.stringify(zodToJsonSchema(query.schema), null, 2) + '\n```',
 					file: snippet.filePath,
 					line: undefined,
 					column: undefined,
