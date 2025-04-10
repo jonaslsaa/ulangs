@@ -406,9 +406,11 @@ export class AdapterContext {
 			const adapter: Adapter = {
 				source: initialAdapter,
 			};
+			prompt += '\n<CurrentAdapter>\n' + adapter.source + '\n</CurrentAdapter>\n';
+
 			const testedInitialAdapter = await this.testAdapterOnSnippet(adapter, representativeSnippet, holotypeQuery);
-			prompt += "\nThis runs without issue and is a valid adapter. But let's try to improve it.";
 			if (testedInitialAdapter.success) { // Return early if the initial adapter is valid
+				prompt += "\nThe adapter runs without issue and is a valid adapter. But let's try to improve/extend it.";
 				messages.push({
 					role: 'user',
 					content: prompt,
@@ -418,9 +420,6 @@ export class AdapterContext {
 					messages,
 				};
 			}
-
-			// Add initial adapter errors to the prompt
-			prompt += '\n<CurrentAdapter>\n' + adapter.source + '\n</CurrentAdapter>\n';
 
 			// Add errors to the prompt
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
