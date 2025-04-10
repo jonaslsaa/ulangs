@@ -20,6 +20,7 @@ import { Stats } from '../actions/utils';
 import { compileANTLRFiles } from '../syntactic/build';
 import path from 'path';
 import { _createWorkingDirectory } from '../actions/utils/io';
+import { NoNodesError } from '../prolog-generator/cst';
 
 type Adapter = {
 	source: string;
@@ -158,13 +159,13 @@ export class AdapterContext {
 		}
 
 		Stats.addRequest();
-		
+
 		// If messages were provided, use them to maintain conversation thread
 		const scoringPrompt = adapterScoringMessage(snippet.snippet, adapterOutput);
-		const scoringMessages: OpenAIMessage[] = messages ? 
-			[...messages, { role: "user", content: scoringPrompt }] : 
+		const scoringMessages: OpenAIMessage[] = messages ?
+			[...messages, { role: "user", content: scoringPrompt }] :
 			[{ role: "user", content: scoringPrompt }];
-		
+
 		const completion = await this.openai.beta.chat.completions.parse({
 			model: this.openaiEnv.soModel,
 			messages: scoringMessages,
@@ -176,15 +177,15 @@ export class AdapterContext {
 		if (!scoring) {
 			throw new Error("Failed to parse score: " + completion.choices[0].message.content);
 		}
-		
+
 		// If messages were provided, add the response to maintain thread
 		if (messages) {
-			messages.push({ 
-				role: "assistant", 
+			messages.push({
+				role: "assistant",
 				content: completion.choices[0].message.content || JSON.stringify(scoring)
 			});
 		}
-		
+
 		this._scoreAdapterCache.set(_key, scoring); // Cache the result
 		return scoring;
 	}
@@ -605,7 +606,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 
 		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv);
 	}
-	
+
 	/**
 	 * Creates and returns an AdapterVerifier that shares the message thread
 	 */
@@ -613,9 +614,9 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 		// Create verifier if it doesn't exist, or return existing one
 		if (!this.verifier) {
 			this.verifier = new AdapterVerifier(
-				this.adapterContext, 
-				snippets, 
-				this.holotypeQuery, 
+				this.adapterContext,
+				snippets,
+				this.holotypeQuery,
 				this.messages
 			);
 		}
@@ -665,7 +666,16 @@ export class AdapterVerifier implements Verifier<Adapter, Snippet, TestedAdapter
 		this.messages = messages;
 	}
 
-	async verify(solution: Adapter, example: Snippet): Promise<TestedAdapter> {
-		return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery, this.messages);
+	async verify(solution: Adapter, example: Snippet): Promise<TestedAdapter | null> {
+		try {
+			return await this.adapterContext.testAdapterOnSnippet(solution, example, this.holotypeQuery, this.messages);
+		} catch (error) {
+			if (error instanceof NoNodesError) {
+				return null;
+			} else {
+				throw error; // rethrow, should never happen
+				// return null;
+			}
+		}
 	}
 }
