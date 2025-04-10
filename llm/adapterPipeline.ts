@@ -506,7 +506,7 @@ export class AdapterContext {
 				if (this.hasErrorsOfType(tested.errors, 'SCHEMA') || this.hasErrorsOfType(tested.errors, 'JUDGE')) {
 					assert(tested.output);
 					const compressedOutput = this._compressJSONIfPossible(tested.output);
-					prompt += `<PrologOutput>\n${compressedOutput}\n</PrologOutput>\n`;
+					prompt += `<PrologOutput>\n\`\`\`json\n${compressedOutput}\n\`\`\`\n</PrologOutput>\n`;
 				}
 
 				// Add score if availablesource
