@@ -41,7 +41,7 @@ export interface Verifier<Solution, Example, Result> {
   /**
    * Verifies a solution on a single example.
    */
-  verify(solution: Solution, example: Example): Promise<Result>;
+  verify(solution: Solution, example: Example): Promise<Result | null>;
 }
 
 /** Candidate type: stores a solution, its test results, and a score. */
@@ -90,18 +90,19 @@ async function evaluateSolution<Solution, Example, Result extends { success: boo
     // Sequentially test each example until a failure occurs
     for (const ex of examples) {
       const result = await verifier.verify(solution, ex);
+      if (result === null) continue;
       results.push({ example: ex, result });
       if (!result.success) break;
       score++;
     }
   } else {
     // Verify all examples in parallel, then accumulate pass/fail
-    const verifications = await Promise.all(
+    const verifications = (await Promise.all(
       examples.map(async (ex) => {
         const result = await verifier.verify(solution, ex);
         return { example: ex, result };
       })
-    );
+    )).filter(v => v.result !== null) as Array<{ example: Example; result: Result }>;
     verifications.forEach(({ result }) => {
       if (result.success) score++;
     });
@@ -222,6 +223,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
 
     // a) Verify the new snippet in isolation
     const singleResult = await verifier.verify(currentSolution, ex);
+    if (singleResult === null) continue;
     // b) Merge that into the candidate’s results
     candidate.results.push({ example: ex, result: singleResult });
     if (singleResult.success) {
