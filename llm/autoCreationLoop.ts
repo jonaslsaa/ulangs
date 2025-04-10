@@ -131,31 +131,38 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
   let bestSolution: Solution = currentSolution;
   let bestScore = 0;
+  
+  // First, evaluate the current solution to get its baseline score
+  const baselineCandidate = await evaluateSolution(currentSolution, processedExamples, verifier, stopOnFirstFailure);
+  bestScore = baselineCandidate.score;
+  
+  let currentAttemptSolution = currentSolution;
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
     // 1) Ask the generator to repair
-    const repairedSolution = await generator.repairSolution(currentSolution, failingExamples, failingResults, lastExampleWasNotSolved);
+    const repairedSolution = await generator.repairSolution(currentAttemptSolution, failingExamples, failingResults, lastExampleWasNotSolved);
     lastExampleWasNotSolved = false; // reset this flag in this scope
 
     // 2) Evaluate the repaired solution over the processed examples
     const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure);
     
-    // 3) If improved, store a repair checkpoint candidate
+    // 3) If improved, store a repair checkpoint candidate and use it as the new baseline
     if (candidate.score > bestScore) {
       bestScore = candidate.score;
       bestSolution = repairedSolution;
+      currentAttemptSolution = repairedSolution; // Only update the base for next repair if it's better
+      console.log(`[Repair Attempt ${attempt}] ✅ Improved solution with score ${candidate.score}/${processedExamples.length}`);
+    } else {
+      console.log(`[Repair Attempt ${attempt}] ❌ No improvement or regression (score: ${candidate.score}/${processedExamples.length})`);
+      // Don't update currentAttemptSolution, keep using the better solution
     }
 
-    // 3) Check if the repair solved all issues
+    // 4) Check if the repair solved all issues
     if (candidate.score === processedExamples.length) {
       console.log(`[Repair Attempt ${attempt}] ✅ All ${processedExamples.length} examples now passing.`);
       return { candidate, solution: repairedSolution };
-    } else {
-      console.log(`[Repair Attempt ${attempt}] ❌ Still failing on some examples or introduced regressions.`);
     }
-
-    // 4) If not perfect, keep the new solution as the baseline for the next attempt
-    currentSolution = repairedSolution;
   }
 
   console.log("[Repair Attempts] ❌ All attempts failed. Using best solution so far with score " + bestScore);
