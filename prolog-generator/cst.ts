@@ -32,6 +32,15 @@ function asserted<T>(value: T): T {
   return value;
 }
 
+export class NoNodesError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoNodesError";
+    Object.setPrototypeOf(this, NoNodesError.prototype);
+  }
+}
+
+
 export function generatePrologFacts(
   tree: ParserRuleContext, 
   parser: Parser, 
@@ -64,7 +73,7 @@ export function generatePrologFacts(
       return nodeId;
     }
 
-    assert(node.getChildCount() > 0, `Node ${node.constructor.name} has no children`);
+    if (node.getChildCount() === 0) throw new NoNodesError(`Node ${node.constructor.name} has no children`);
 
     const start = node.start;
       const stop = node.stop;
