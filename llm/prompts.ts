@@ -79,6 +79,7 @@ Always have a dedicated identifier_name/2 rule that reads the literal text from 
 export function adapterScoringMessage(snippet: string, adapterOutput: string): string {
     return `Score 0 to 100 how well the definitions and AST tree generated is by looking at the code snippet it is based on. 100 = means that the definitions and AST tree perfectly describe the code snippet. 0 = means that the output don't make ANY sense.
 Note: Ignore following: builtin functions, undefined symbols, etc.
+Note: Ignore readability of the output, e.g., if the output is too verbose or too terse. The output has already passed the schema validation.
 HEAVILY PENALIZE symbols, defintions and references that are missing, incorrect, or not relevant. BUT don't penalize impossible symbols to resolve by context.
 * Do symbols/definitions have references?
 
