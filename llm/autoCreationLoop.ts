@@ -118,7 +118,7 @@ async function evaluateSolution<Solution, Example, Result extends { success: boo
  * Attempts to repair the solution based on failing examples until either all
  * processed examples pass or the maximum number of retries is reached.
  */
-async function repairLoop<Solution, Example, Result extends { success: boolean }>(
+async function repairLoop<Solution, Example extends { fileName: string }, Result extends { success: boolean }>(
   currentSolution: Solution,
   failingExamples: Example[],
   failingResults: Result[],
@@ -127,7 +127,7 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   verifier: Verifier<Solution, Example, Result>,
   maxRetries: number,
   stopOnFirstFailure: boolean,
-  lastExampleWasNotSolved: boolean
+  lastExampleWasNotSolved: boolean,
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
   let bestSolution: Solution = currentSolution;
   let bestScore = 0;
@@ -139,7 +139,11 @@ async function repairLoop<Solution, Example, Result extends { success: boolean }
   let currentAttemptSolution = currentSolution;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    console.log(`[Repair Attempt ${attempt}/${maxRetries}]`);
+    if (failingExamples.length === 1) {
+      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName}...`);
+    } else {
+      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples.length} examples...`);
+    }
     // 1) Ask the generator to repair
     const repairedSolution = await generator.repairSolution(currentAttemptSolution, failingExamples, failingResults, lastExampleWasNotSolved);
     lastExampleWasNotSolved = false; // reset this flag in this scope
@@ -198,7 +202,7 @@ function maybeCompressMessages<Solution, Example, Result extends { success: bool
  * it performs a cumulative evaluation and logs a single consolidated
  * status message. Also stores internal checkpoints of best solutions.
  */
-async function runLoop<Solution, Example, Result extends { success: boolean }>(
+async function runLoop<Solution, Example extends { fileName: string }, Result extends { success: boolean }>(
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
   examples: Example[],
@@ -210,6 +214,9 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
 
   // Maintain a local list of checkpoint candidates
   const checkpoints: Candidate<Solution, Example, Result>[] = [];
+
+  // Maintain a list of skipped examples (those we can't solve and don't want to try to repair)
+  const skippedExamples: Example[] = [];
 
   // 1) Initialize with the first example
   let examplesForInitialGuess = examples;
@@ -264,7 +271,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
         verifier,
         maxRetries,
         stopOnFirstFailure,
-        lastExampleWasNotSolved
+        lastExampleWasNotSolved,
       );
       lastExampleWasNotSolved = false; // reset this flag in this scope as well
 
@@ -280,6 +287,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
         }
       } else {
         lastExampleWasNotSolved = true; // Set flag for next iteration
+        skippedExamples.push(examples[i]); // Add to skipped examples
       }
     }
 
@@ -308,7 +316,7 @@ async function runLoop<Solution, Example, Result extends { success: boolean }>(
  * Returns the best final candidate after either finishing all snippets or
  * reaching the max number of retries.
  */
-export async function runInferenceLoop<Solution, Example, Result extends { success: boolean }>(
+export async function runInferenceLoop<Solution, Example extends { fileName: string }, Result extends { success: boolean }>(
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
   examples: Example[],
