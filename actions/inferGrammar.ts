@@ -176,7 +176,7 @@ export async function repairGrammar(
         );
 
         // Now we ask the LLM for a repaired grammar
-        console.log(JSON.stringify(messages, null, 2));
+        //console.log(JSON.stringify(messages, null, 2)); // DEBUG log
         console.log("Sent tokens:", countTokens(messages));
         let retryCompletion = true;
         let completionResult: Result<Grammar>;
@@ -186,7 +186,7 @@ export async function repairGrammar(
                 messages,
                 openaiEnv.model,
             /* debug */ undefined,      // set to 'input'|'output'|'both' if you want logs
-            /* timeoutSeconds */ 60 * 5
+            /* timeoutSeconds */ 60 * 5,
             );
 
             retryCompletion = false; // Let's start by assuming we won't need to retry

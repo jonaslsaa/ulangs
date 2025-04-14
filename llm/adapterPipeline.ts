@@ -170,6 +170,10 @@ export class AdapterContext {
 			model: this.openaiEnv.soModel,
 			messages: scoringMessages,
 			response_format: zodResponseFormat(ScoringSchema, "score"),
+			store: true,
+			metadata: {
+				type: "semantic-score",
+			},
 		});
 		Stats.addCompletedRequest(completion);
 
@@ -333,7 +337,7 @@ export class AdapterContext {
 			console.log("      - Score:", scoring.score);
 			return testedAdapter;
 		}
-		console.log(scoring.errorsAndLimitations);
+		// console.log(scoring.errorsAndLimitations); // DEBUG log
 		console.log("    - Score:", scoring.score);
 
 		testedAdapter.success = true;
@@ -439,6 +443,11 @@ export class AdapterContext {
 		const completion = await this.openai.chat.completions.create({
 			model: this.openaiEnv.model,
 			messages,
+			store: true,
+			metadata: {
+				type: "semantic",
+				subType: "synthesis"
+			},
 		});
 
 		const content = completion.choices[0].message.content;
@@ -552,7 +561,12 @@ Output exactly one <Adapter> block`;
 			Stats.addRequest();
 			const completion = await this.openai.chat.completions.create({
 				model: this.openaiEnv.model,
-				messages: messages
+				messages: messages,
+				store: true,
+				metadata: {
+					type: "semantic",
+					subType: "repair"
+				},
 			});
 			const content = completion.choices[0].message.content;
 			if (content === null) throw new Error('No completion provided');
@@ -572,7 +586,7 @@ Output exactly one <Adapter> block`;
 			});
 
 			// DEBUG LOG
-			console.log(JSON.stringify(messages, null, 2));
+			//console.log(JSON.stringify(messages, null, 2));
 
 		} catch (err) {
 			console.error("LLM request failed:", err);
