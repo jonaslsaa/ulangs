@@ -2,7 +2,6 @@
 
 ## Major
 
-* Create one query to rule them all - meaning it can be used to verify all other queries to some extent
 * Automatic code splitting (can be done in its own step)
 * Finish proof-of-concept VSCode extension
 * Investigate agentic behaviour using *tool-use*.
@@ -16,6 +15,5 @@
 * Find a good way to handle increasingly large contexts
   * Restart context sometimes?
   * Also compress assistant code blocks (only diffs? llm compression?)
-* Compress messages for semantic adapter generation
-* Way to strip out comments from code
+* Find a way to strip out comments from code examples
 * Restore to a previous checkpoint candidate if we have messed up badly

@@ -72,3 +72,8 @@ See the [TODO](TODO.md) file for a list of planned features and improvements.
   ```bash
   pnpm run cli infer-grammar <directory> <extension> [outputDir] [options]
   ```
+
+- **Infer Semantic Adapter**:
+  ```bash
+  pnpm run cli infer-adapter <directory> <extension> [outputDir] [options]
+  ```
