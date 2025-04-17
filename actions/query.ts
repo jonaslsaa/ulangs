@@ -83,6 +83,7 @@ export async function generatePrologQuery(
     }
 
     const outputPath = path.join(workingDirectory, 'query.pl');
+    console.log("Prolog path", outputPath);
     fs.writeFileSync(outputPath, clauses.join('\n'));
 
     return {
