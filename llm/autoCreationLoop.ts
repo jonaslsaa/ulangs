@@ -296,6 +296,7 @@ async function runLoop<Solution, Example extends { fileName: string }, Result ex
     // d) Always re-evaluate cumulatively
     candidate = await evaluateSolution(currentSolution, examples.slice(0, i + 1), verifier, stopOnFirstFailure);
     if (candidate.score > bestCandidate.score) {
+      console.log('Found new best candidate with score', candidate.score, `(was ${bestCandidate.score})`);
       bestCandidate = candidate;
       checkpoints.push(bestCandidate);
       if (options.checkpointHook) options.checkpointHook(bestCandidate);
