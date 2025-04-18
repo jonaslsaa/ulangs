@@ -81,14 +81,17 @@ async function evaluateSolution<Solution, Example, Result extends { success: boo
   solution: Solution,
   examples: Example[],
   verifier: Verifier<Solution, Example, Result>,
-  stopOnFirstFailure: boolean
+  stopOnFirstFailure: boolean,
+  reverseOrder: boolean = false
 ): Promise<Candidate<Solution, Example, Result>> {
   const results: Array<{ example: Example; result: Result }> = [];
   let score = 0;
 
   if (stopOnFirstFailure) {
     // Sequentially test each example until a failure occurs
-    for (const ex of examples) {
+    let wkExamples = examples;
+    if (reverseOrder) { wkExamples = [...examples].reverse(); }
+    for (const ex of wkExamples) {
       const result = await verifier.verify(solution, ex);
       if (result === null) continue;
       results.push({ example: ex, result });
@@ -149,7 +152,7 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
     lastExampleWasNotSolved = false; // reset this flag in this scope
 
     // 2) Evaluate the repaired solution over the processed examples
-    const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure);
+    const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure, true /* reverse order */);
     
     // 3) If improved, store a repair checkpoint candidate and use it as the new baseline
     if (candidate.score > bestScore) {
