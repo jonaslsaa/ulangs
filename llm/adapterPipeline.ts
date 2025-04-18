@@ -512,7 +512,7 @@ export class AdapterContext {
 				// If we have JUDGE errors, add the source code as context
 				if (this.hasErrorsOfType(tested.errors, 'SCHEMA') || this.hasErrorsOfType(tested.errors, 'JUDGE')) {
 					prompt += `<SourceCode>\n${tested.withSnippet.snippet}\n</SourceCode>\n`;
-					const prologCode = this.createFullQuery(tested.usedAdapter.source, tested.withSnippet, this.lexerPath, this.parserPath, tested.onQuery.path);
+					const prologCode = await this.createFullQuery(tested.usedAdapter.source, tested.withSnippet, this.lexerPath, this.parserPath, tested.onQuery.path);
 					prompt += "\n<FullProlog>\n```prolog\n" + prologCode + "\n```\n</FullProlog>\n";
 				}
 
