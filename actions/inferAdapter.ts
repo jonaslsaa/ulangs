@@ -56,7 +56,7 @@ export async function doInferAdapter(
   //    or do single-pass; here we just do standard incremental usage with
   //    “stopOnFirstFailure: false,” etc.
   const inferenceOptions: InferenceOptions = {
-    maxRetries: 5,
+    maxRetries: 3,
     stopOnFirstFailure: true,
     incrementalForInitial: false,
     repairAllFailingExamples: false,
