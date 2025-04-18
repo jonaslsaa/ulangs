@@ -549,7 +549,7 @@ export class AdapterContext {
 			}
 		}
 
-		prompt += `\n\nFix the <Adapter> so the queries succeed without breaking previously passing logic.
+		prompt += `\n\nImprove the <Adapter> so the queries succeed without breaking previously passing logic.
 Output exactly one <Adapter> block`;
 		// TODO: remove debug prompt below this one 
 		prompt += `, then a concise <ChangesAndNotes> block with the changes and notes for the work so far`
