@@ -48,12 +48,38 @@ From code snippet files, create the full ANTLR (antlr4) grammar to fully parse t
 Always output the WHOLE and full grammar for both lexer and parser, within blocks like this  \`\`\`antlr `;
 
 // System message
-export const adapterGenerationMessage = `Your goal is to analyze a CST and convert it into an AST while also extracting symbol information (declarations and references) from a given Prolog representation of a parsed source code file.
-I will give you many source code files and your goal is to find a optimal adapter that can transform all code correctly.
-You will develop an adapter that sits in the middle of the file. Make sure this adapter will make the Main query run successfully with correct output.
+export const adapterGenerationMessage = `Your goal is to generate a robust, correct, and optimal Prolog adapter that transforms a Concrete Syntax Tree (CST) into an Abstract Syntax Tree (AST), accurately extracting symbol information (declarations and references) suitable for Language Server Protocol (LSP) symbol listing.
+
+## Adapter Goals
+Your adapter MUST accomplish the following precisely and reliably:
+
+- **Declarations:**  
+  Identify exactly which CST nodes represent symbol **declarations**. A declaration introduces a new named entity in the source code (variables, parameters, functions, classes, etc.).
+
+- **References:**  
+  Identify exactly which CST nodes represent **references** to already-declared symbols. A reference mentions an existing symbol without redeclaring it.
+
+- **Uniqueness:**  
+  Each declaration should appear **once** and should link accurately to all its corresponding references. No declaration duplicates should appear.
+
+- **Ordering and Scoping:**  
+  Respect source-file ordering. A symbol is declared exactly once at the earliest occurrence, and all subsequent occurrences are references. If the language has special scoping rules (locals, globals, parameters, etc.), ensure your adapter logic correctly reflects those rules.
+
+## Adapter Requirements
+- You MUST only write within the provided WRITEABLE AREA.
+- Output ONLY Prolog code. This code will be placed into an adapter file.
+- Ensure that your code makes the provided Main query execute successfully and correctly.
+- Do NOT emit incomplete or placeholder code—every emitted rule or predicate must have well-defined behavior and work as-is.
+
+## Writing Instructions
+- **Define helper predicates** first to simplify your main logic (e.g., predicates like \`earlier_in_file/2\`, \`is_declaration/3\`, \`is_reference/2\`).
+- **Implement clear logic rules**: a node is either a declaration or a reference, never both.
+- **Explicitly handle symbol kinds** such as variables (13), functions (12), parameters (variable or parameter kind), and others as relevant to the CST provided.
+- Write your adapter incrementally and test your reasoning by carefully considering counterexamples (e.g., shadowed names, reassigned variables, nested scopes).
+
 You MUST only write within the WRITEABLE AREA. Output only the adapter / WRITEABLE AREA.`;
 
-// Given in inital guess generation
+// Given in inital guess generation (not used)
 export const adapterTipSQLAsAnExample = `Focus on Clear Domain Mappings (using SQL as an example)
 
 “CREATE TABLE should be recognized as a top-level structure (like a class).”
@@ -73,11 +99,73 @@ One rule for each distinct ‘declaration’ type.
 A single reference rule that says ‘if it’s not a declaration, it’s a reference.’
 Ensure Identifier Extraction
 
-Always have a dedicated identifier_name/2 rule that reads the literal text from the parse tree node.`;
+Always have a dedicated identifier_name/2 rule that reads the literal text from the parse tree node.
+
+Example for SQL:
+\`\`\`
+% WRITEABLE AREA
+% Capture table names in FROM clause as "variable".
+declaration_node(Node, "variable", IdNode) :-
+    has_type(Node, 'FromClauseContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+% Capture column names in SELECT clause as "field".
+declaration_node(Node, "field", IdNode) :-
+    has_type(Node, 'IdentifierListContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+% Capture column names in WHERE clause as "field".
+declaration_node(Node, "field", IdNode) :-
+    has_type(Node, 'WhereClauseContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+% Capture string literals in WHERE clause as "string".
+declaration_node(Node, "string", IdNode) :-
+    has_type(Node, 'ValueContext'),
+    get_child_with_type(Node, 'STRING_LITERAL', IdNode).
+
+% ------------------------------------------------------------------------------
+% 2) reference_node(+ASTNode, -IdNode)
+% ------------------------------------------------------------------------------
+% References are similar to declarations, since SQL is mostly usage-based.
+
+reference_node(Node, IdNode) :-
+    has_type(Node, 'SelectStmtContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+reference_node(Node, IdNode) :-
+    has_type(Node, 'FromClauseContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+reference_node(Node, IdNode) :-
+    has_type(Node, 'WhereClauseContext'),
+    get_child_with_type(Node, 'IDENTIFIER', IdNode).
+
+reference_node(Node, IdNode) :-
+    has_type(Node, 'WhereClauseContext'),
+    get_child_with_type(Node, 'STRING_LITERAL', IdNode).
+
+% ------------------------------------------------------------------------------
+% 3) identifier_name(+IdNode, -Name)
+% ------------------------------------------------------------------------------
+identifier_name(IdNode, Name) :-
+    has_type(IdNode, 'IDENTIFIER'),
+    value(IdNode, Name).
+
+identifier_name(IdNode, Name) :-
+    has_type(IdNode, 'STRING_LITERAL'),
+    value(IdNode, Name).
+
+% End of adapter
+% ------------------------------------------------------------------------------
+% [/WRITABLE]
+\`\`\`
+`;
 
 // System message to score adapter output
 export function adapterScoringMessage(snippet: string, adapterOutput: string): string {
-    return `Score 0 to 100 how well the definitions and AST tree generated is by looking at the code snippet it is based on. 100 = means that the definitions and AST tree perfectly describe the code snippet. 0 = means that the output don't make ANY sense.
+    return `Score 0 to 100 how well the generated definitions and references is by looking at the code snippet it is based on. 100 = means that the definitions perfectly describe the code snippet. 0 = means that the output don't make ANY sense. 50 = means that the output is mostly correct, but there are some errors but should be passing.
+You will also be given the AST as context.
 Note: Ignore following: builtin functions, undefined symbols, etc.
 Note: Ignore readability of the output, e.g., if the output is too verbose or too terse. The output has already passed the schema validation.
 HEAVILY PENALIZE symbols, defintions and references that are missing, incorrect, or not relevant. BUT don't penalize impossible symbols to resolve by context.
