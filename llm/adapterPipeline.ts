@@ -11,7 +11,7 @@ import { createParserFromGrammar } from '../syntactic/context-free-parser';
 import { executePrologQuery } from '../actions/query';
 import tmp from 'tmp';
 import { z, ZodSchema } from 'zod';
-import { OpenAI } from 'openai';
+import { BadRequestError, OpenAI } from 'openai';
 import { zodResponseFormat } from "openai/helpers/zod";
 import { adapterGenerationMessage, adapterScoringMessage, adapterTipSQLAsAnExample } from './prompts';
 import type { Query } from '../rules/queries/mapping';
@@ -21,6 +21,7 @@ import { compileANTLRFiles } from '../syntactic/build';
 import path from 'path';
 import { _createWorkingDirectory } from '../actions/utils/io';
 import { NoNodesError } from '../prolog-generator/cst';
+import { exit } from 'process';
 
 type Adapter = {
 	source: string;
@@ -64,7 +65,7 @@ export class AdapterContext {
 	_snippetToTreeCache: Map<string, ParseableTree>;
 	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
-	MINUMUM_JUDGE_SCORE = 80;
+	MINUMUM_JUDGE_SCORE = 60;
 
 	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -242,6 +243,7 @@ export class AdapterContext {
 		// Create temporary file with the clauses
 		const tempFilePath = tmp.fileSync();
 		fs.writeFileSync(tempFilePath.name, fullProlog);
+		console.log("Full prolog path:", tempFilePath.name); // DEBUG
 
 		// Run the query
 		const queryResult = executePrologQuery(tempFilePath.name);
@@ -299,7 +301,7 @@ export class AdapterContext {
 		if (!schema.success) {
 			testedAdapter.errors?.push({
 				type: 'SCHEMA',
-				message: 'The prolog result did not match the expected schema: ' + schema.error.message,
+				message: 'The prolog result did not match the expected schema, error: ' + schema.error.message,
 				file: snippet.filePath,
 				line: undefined,
 				column: undefined,
@@ -400,9 +402,9 @@ export class AdapterContext {
 		);
 
 		let prompt: string = adapterGenerationMessage;
-		prompt += "\n<FullProlog>\n" + draftQuery + "\n</FullProlog>";
+		prompt += "\n<FullProlog>\n```prolog\n" + draftQuery + "\n```\n</FullProlog>";
 		prompt += "\nThe auto-generated tree is generated from the following code:";
-		prompt += "\n<SourceCode>\n" + representativeSnippet.snippet + "\n</SourceCode>";
+		prompt += "\n<SourceCode>\n```\n" + representativeSnippet.snippet + "\n```\n</SourceCode>";
 		// NOTE: we could also hint the JSON Schema but it should be implicit from the main query, we can rather hint it if it fails
 
 		// Do inital test if an initial adapter was provided
@@ -429,7 +431,8 @@ export class AdapterContext {
 			prompt += this.AdapterErrorsToString(testedInitialAdapter.errors);
 		}
 
-		prompt += `\nTip: ${adapterTipSQLAsAnExample}\n`;
+		// TODO: consider if tips are useful
+		// prompt += `\nTips:\n${adapterTipSQLAsAnExample}\n`;
 
 		// Ask for a draft solution
 		prompt += "\nTask: Develop and output a new adapter. Make sure that the current main query will run with the adapter.";
@@ -588,9 +591,17 @@ Output exactly one <Adapter> block`;
 			});
 
 			// DEBUG LOG
-			//console.log(JSON.stringify(messages, null, 2));
+			const tempFile = tmp.fileSync();
+			fs.writeFileSync(tempFile.name, JSON.stringify(messages, null, 2));
+			console.log("LLM messages written to", tempFile.name);
 
 		} catch (err) {
+			if (err instanceof BadRequestError) {
+				if (err.code === 'context_length_exceeded') {
+					console.error("LLM context length exceeded. Stopping adapter generation.");
+					exit(1);
+				}
+			}
 			console.error("LLM request failed:", err);
 			return oldAdapter; // fallback
 		}
