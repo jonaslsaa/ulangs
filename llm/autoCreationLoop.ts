@@ -132,11 +132,14 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   stopOnFirstFailure: boolean,
   lastExampleWasNotSolved: boolean,
 ): Promise<{ candidate: Candidate<Solution, Example, Result> | null; solution: Solution }> {
+  let _lastExampleWasNotSolved = lastExampleWasNotSolved;
+  
   let bestSolution: Solution = currentSolution;
   let bestScore = 0;
   
   // First, evaluate the current solution to get its baseline score
-  const baselineCandidate = await evaluateSolution(currentSolution, processedExamples, verifier, stopOnFirstFailure);
+  const baselineCandidate = await evaluateSolution(currentSolution, processedExamples, verifier, stopOnFirstFailure, true /* reverse order */);
+  console.log("Baseline score (before repair):", baselineCandidate.score);
   bestScore = baselineCandidate.score;
   
   let currentAttemptSolution = currentSolution;
@@ -148,8 +151,8 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
       console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples.length} examples...`);
     }
     // 1) Ask the generator to repair
-    const repairedSolution = await generator.repairSolution(currentAttemptSolution, failingExamples, failingResults, lastExampleWasNotSolved);
-    lastExampleWasNotSolved = false; // reset this flag in this scope
+    const repairedSolution = await generator.repairSolution(currentAttemptSolution, failingExamples, failingResults, _lastExampleWasNotSolved);
+    _lastExampleWasNotSolved = false; // reset this flag in this scope
 
     // 2) Evaluate the repaired solution over the processed examples
     const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure, true /* reverse order */);
@@ -218,12 +221,9 @@ async function runLoop<Solution, Example extends { fileName: string }, Result ex
   // Maintain a local list of checkpoint candidates
   const checkpoints: Candidate<Solution, Example, Result>[] = [];
 
-  // Maintain a list of skipped examples (those we can't solve and don't want to try to repair)
-  const skippedExamples: Example[] = [];
-
   // 1) Initialize with the first example
   let examplesForInitialGuess = examples;
-  if (options.incrementalForInitial) examplesForInitialGuess = [examples[0]]
+  if (options.incrementalForInitial) examplesForInitialGuess = [examples[0]] // not used
   let currentSolution: Solution = await generator.generateInitialSolution(examplesForInitialGuess);
 
   // 2) Evaluate on just that first example
@@ -231,7 +231,7 @@ async function runLoop<Solution, Example extends { fileName: string }, Result ex
   let bestCandidate = candidate;
   checkpoints.push(candidate);
 
-  console.log(`[Snippet #1/${examples.length}] Passed ${candidate.score}/1 so far.`);
+  console.log(`Snippet #1/${examples.length}] Passed ${candidate.score}/1 so far.`);
 
   // 3) Process subsequent examples in sequence
   let lastExampleWasNotSolved = false;
@@ -290,7 +290,6 @@ async function runLoop<Solution, Example extends { fileName: string }, Result ex
         }
       } else {
         lastExampleWasNotSolved = true; // Set flag for next iteration
-        skippedExamples.push(examples[i]); // Add to skipped examples
       }
     }
 
