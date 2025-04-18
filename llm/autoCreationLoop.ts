@@ -146,7 +146,7 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     if (failingExamples.length === 1) {
-      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName}...`);
+      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName} ...`);
     } else {
       console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples.length} examples...`);
     }
@@ -284,6 +284,7 @@ async function runLoop<Solution, Example extends { fileName: string }, Result ex
         candidate = repairedCandidate;
         // Update bestCandidate if improved
         if (candidate.score > bestCandidate.score) {
+          console.log('After repair, found new best candidate with score', candidate.score, `(was ${bestCandidate.score})`);
           bestCandidate = candidate;
           checkpoints.push(bestCandidate);
           if (options.checkpointHook) options.checkpointHook(bestCandidate);
