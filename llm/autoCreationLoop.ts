@@ -139,7 +139,10 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   
   // First, evaluate the current solution to get its baseline score
   const baselineCandidate = await evaluateSolution(currentSolution, processedExamples, verifier, stopOnFirstFailure, true /* reverse order */);
-  console.log("Baseline score (before repair):", baselineCandidate.score);
+  // TODO: this way of evaluating baseline is not ideal, this will give a score of 0 every time if stopOnFirstFailure is true
+  // TODO: we should instead evaluate with stopOnFirstFailure = false and then take the best score, or at least skip the first (known failing) one, but this might cause other logical issues later,
+  // TODO: as it is not comparable to score's outside of this function (since they get saved in .score)
+  console.log("Baseline score (before repair):", baselineCandidate.score); // always 0 if stopOnFirstFailure is true
   bestScore = baselineCandidate.score;
   
   let currentAttemptSolution = currentSolution;
