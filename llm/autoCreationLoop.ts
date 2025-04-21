@@ -123,8 +123,8 @@ async function evaluateSolution<Solution, Example, Result extends { success: boo
  */
 async function repairLoop<Solution, Example extends { fileName: string }, Result extends { success: boolean }>(
   currentSolution: Solution,
-  failingExamples: Example[],
-  failingResults: Result[],
+  _failingExamples: Example[],
+  _failingResults: Result[],
   processedExamples: Example[],
   generator: Generator<Solution, Example, Result>,
   verifier: Verifier<Solution, Example, Result>,
@@ -143,7 +143,9 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   bestScore = baselineCandidate.score;
   
   let currentAttemptSolution = currentSolution;
-  
+  let failingExamples = _failingExamples;
+  let failingResults = _failingResults;
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     if (failingExamples.length === 1) {
       console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName} ...`);
@@ -156,6 +158,14 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
 
     // 2) Evaluate the repaired solution over the processed examples
     const candidate = await evaluateSolution(repairedSolution, processedExamples, verifier, stopOnFirstFailure, true /* reverse order */);
+
+    // 2.5) Update the failing examples and results
+    failingExamples = candidate.results
+                      .filter(r => !r.result.success)
+                      .map(r => r.example);
+    failingResults = candidate.results
+                      .filter(r => !r.result.success)
+                      .map(r => r.result);
     
     // 3) If improved, store a repair checkpoint candidate and use it as the new baseline
     if (candidate.score > bestScore) {
