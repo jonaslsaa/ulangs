@@ -350,7 +350,7 @@ export class AdapterContext {
 		if (!adapterErrors || adapterErrors.length === 0) {
 			return '';
 		}
-		let prompt = 'I got the following errors:';
+		let prompt = 'I got the following errors:\n';
 
 		// Map error types to an array of messages
 		const errors = new Map<AdapterError['type'], string[]>();
