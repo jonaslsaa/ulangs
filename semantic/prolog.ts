@@ -18,7 +18,8 @@ function wrapWithComment(lines: string[], comment: string): string[] {
     return [
         `% === ${comment} ===`,
         ...lines,
-        ''
+        `% --- end of ${comment} ---`,
+        '',
     ];
 }
 
