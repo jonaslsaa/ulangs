@@ -8,6 +8,7 @@ import { configure } from './env';
 import { doInferAdapter } from './actions/inferAdapter';
 import { QueryNames } from './rules/queries/mapping';
 import { ExitAndLogStats, Stats } from './actions/utils';
+import { evaluateAdapter } from './actions/evaluateAdapter';
 
 function checkFileExists(filePath: string | undefined) {
     if (filePath === undefined) return; // We don't care if it's undefined
@@ -58,7 +59,7 @@ cli.command('query')
                 options.query = options.query.slice(0, -3);
             }
             // Check if the query exists
-            if(!(QueryNames().includes(options.query))) {
+            if (!(QueryNames().includes(options.query))) {
                 console.error(`Query '${options.query}' not found`);
                 process.exit(1);
             }
@@ -184,11 +185,11 @@ cli.command('rpc')
             // Reading from pipe
             let data = '';
             process.stdin.setEncoding('utf8');
-            
+
             process.stdin.on('data', chunk => {
                 data += chunk;
             });
-            
+
             process.stdin.on('end', () => {
                 resolveRPC(functionName, data.trim());
             });
@@ -202,8 +203,41 @@ cli.command('rpc')
         }
     });
 
+cli.command('evaluate-adapter')
+    .description('Evaluate a Prolog adapter against all code files in a directory')
+    .argument('<directory>', 'Directory containing code files to test')
+    .argument('<extension>', 'File extension to filter by, e.g. .lua')
+    .option('-A, --adapter <path>', 'Adapter file to use')
+    .option('-L, --lexer <path>', 'Lexer file to use')
+    .option('-P, --parser <path>', 'Parser file to use')
+    .option('-R, --recursive', 'Detect code files in subdirectories', false)
+    .action(async (directory, extension, options) => {
+        // Validate inputs
+        const { adapter, lexer, parser, recursive } = options;
+        if (!adapter || !fs.existsSync(adapter)) {
+            console.error(`Adapter file not found: ${adapter}`);
+            process.exit(1);
+        }
+        if (!lexer || !fs.existsSync(lexer)) {
+            console.error(`Lexer file not found: ${lexer}`);
+            process.exit(1);
+        }
+        if (!parser || !fs.existsSync(parser)) {
+            console.error(`Parser file not found: ${parser}`);
+            process.exit(1);
+        }
+        if (!fs.existsSync(directory)) {
+            console.error(`Directory not found: ${directory}`);
+            process.exit(1);
+        }
+
+        // Run evaluation
+        await evaluateAdapter(adapter, lexer, parser, directory, extension, recursive);
+    });
+
+
 // Handle SIGINT (Ctrl+C) to gracefully exit
-process.on('SIGINT', function() {
+process.on('SIGINT', function () {
     console.log("\nStopping... Goodbye!");
     ExitAndLogStats(1);
 });
