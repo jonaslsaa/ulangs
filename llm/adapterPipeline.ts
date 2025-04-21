@@ -355,7 +355,6 @@ export class AdapterContext {
 		// Map error types to an array of messages
 		const errors = new Map<AdapterError['type'], string[]>();
 		for (const { type, message } of adapterErrors) {
-			console.log("1 error type", type);
 			const messages = errors.get(type) ?? [];
 			messages.push(message);
 			errors.set(type, messages);
@@ -363,7 +362,6 @@ export class AdapterContext {
 
 		// Build the string output
 		for (const [type, messages] of errors.entries()) {
-			console.log("2 error type", type);
 			prompt += `\n<${type}Errors>\n${messages.map(m => " - " + m).join('\n')}\n</${type}Errors>`;
 		}
 
