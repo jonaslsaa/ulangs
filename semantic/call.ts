@@ -13,7 +13,7 @@ export interface PrologResult {
 
 export function callSWIProlog(
     file: string,
-    timeoutMs: number = 2000
+    timeoutMs: number = 10000
 ): PrologResult {
     const opts: SpawnSyncOptionsWithStringEncoding = {
         encoding: 'utf8',
