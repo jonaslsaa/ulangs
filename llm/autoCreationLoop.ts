@@ -150,6 +150,11 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   let failingResults = _failingResults;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (failingExamples.length === 0) {
+      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ No failing examples, skipping...`);
+      // TODO: not sure why this happens actually... is it right to `continue` here?
+      continue;
+    }
     if (failingExamples.length === 1) {
       console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName} ...`);
     } else {
