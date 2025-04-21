@@ -150,11 +150,6 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
   let failingResults = _failingResults;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    if (failingExamples.length === 0) {
-      console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ No failing examples, skipping...`);
-      // TODO: not sure why this happens actually... is it right to `continue` here?
-      continue;
-    }
     if (failingExamples.length === 1) {
       console.log(`[Repair Attempt ${attempt}/${maxRetries}] ⏳ Repairing ${failingExamples[0].fileName} ...`);
     } else {
@@ -174,6 +169,12 @@ async function repairLoop<Solution, Example extends { fileName: string }, Result
     failingResults = candidate.results
                       .filter(r => !r.result.success)
                       .map(r => r.result);
+
+    if (failingExamples.length === 0) {
+      // NOTE: i tihnk this happens since some examples are actaully broken (e.g. antlr parsing errors), so we get a mismatch when checking if *all* examples passed
+      console.log(`[Repair Attempt ${attempt}] ✅ Nothing left to repair.`);
+      return { candidate, solution: repairedSolution };
+    }
     
     // 3) If improved, store a repair checkpoint candidate and use it as the new baseline
     if (candidate.score > bestScore) {
