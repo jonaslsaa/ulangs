@@ -65,7 +65,7 @@ export class AdapterContext {
 	_snippetToTreeCache: Map<string, ParseableTree>;
 	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
-	MINUMUM_JUDGE_SCORE = 60;
+	MINUMUM_JUDGE_SCORE = 70;
 
 	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
 		this.lexerPath = lexerPath;
@@ -268,7 +268,7 @@ export class AdapterContext {
 		if (!queryResult.output || queryResult.output.trim() === '') {
 			testedAdapter.errors?.push({
 				type: 'PROLOG',
-				message: 'Prolog returned empty result',
+				message: 'Executing the prolog file returned empty result (no output)',
 				file: snippet.filePath,
 				line: undefined,
 				column: undefined,
@@ -355,6 +355,7 @@ export class AdapterContext {
 		// Map error types to an array of messages
 		const errors = new Map<AdapterError['type'], string[]>();
 		for (const { type, message } of adapterErrors) {
+			console.log("1 error type", type);
 			const messages = errors.get(type) ?? [];
 			messages.push(message);
 			errors.set(type, messages);
@@ -362,6 +363,7 @@ export class AdapterContext {
 
 		// Build the string output
 		for (const [type, messages] of errors.entries()) {
+			console.log("2 error type", type);
 			prompt += `\n<${type}Errors>\n${messages.map(m => " - " + m).join('\n')}\n</${type}Errors>`;
 		}
 
