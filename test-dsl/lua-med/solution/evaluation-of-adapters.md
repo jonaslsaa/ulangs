@@ -17,3 +17,21 @@ Final average adapter score: 87.73/100 over 99 files.
 Successfully applied adapter to 77/99 snippets
 Final total score: 8355
 Final average adapter score: 84.39/100 over 99 files.
+
+## o3Adapter3.pl
+
+Successfully applied adapter to 91/99 snippets
+Final total score: 9165
+Final average adapter score: 92.58/100 over 99 files.
+
+## o3Adapter4.pl
+
+Successfully applied adapter to 85/99 snippets
+Final total score: 8770
+Final average adapter score: 88.59/100 over 99 files.
+
+## o3Adapter5.pl
+
+Successfully applied adapter to 92/99 snippets
+Final total score: 9165
+Final average adapter score: 93.58/100 over 99 files.
