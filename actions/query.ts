@@ -125,6 +125,26 @@ function parseStdErr(stderr: string): PrologError[] {
 export function executePrologQuery(prologFile: string): QueryResult {
     const result = callSWIProlog(prologFile);
     const errors = parseStdErr(result.stderr);
+    if (result.timedOut) {
+        console.warn("Prolog query timed out.");
+        errors.push({
+            type: 'ERROR',
+            message: 'Prolog query timed out.',
+            file: prologFile,
+            line: undefined,
+            column: undefined,
+        });
+    }
+    if (result.overflowed) {
+        console.warn("Prolog query resulted in buffer overflow.");
+        errors.push({
+            type: 'ERROR',
+            message: 'Prolog query resulted in buffer overflow. This means most likely the JSON exploded in size due to an error in the query.',
+            file: prologFile,
+            line: undefined,
+            column: undefined,
+        });
+    }
     // Filter out errors with empty messages
     const filteredErrors = errors.filter(error => error.message.trim() !== '');
     return {
