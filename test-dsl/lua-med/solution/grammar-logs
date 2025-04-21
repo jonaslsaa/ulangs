@@ -1,0 +1,15 @@
+[PASS] Passed 100/100 tests.
+[Repair Attempt 1] ✅ Grammar repaired successfully for snippet: Chapter03_24_tableinobjects.lua
+Candidate score: 98
+[Repair Attempt 1] ✅ All 98 examples now passing.
+Checkpoint: 98/99 snippets passing.
+[Snippet #98/99] Passed 98/98 so far.
+Checkpoint: 99/99 snippets passing.
+[Snippet #99/99] Passed 99/99 so far.
+Final solution passed all examples.
+Wrote final grammar to test-dsl/lua-med/solution/MyLexer.g4 and test-dsl/lua-med/solution/MyParser.g4
+
+[Stats]
+Generated 14 requests, and completed 14 requests.
+    433671 tokens (30976.5 avg tokens per request)
+    Cached input tokens: 308736, Non-cached input tokens: 81126, Output tokens: 43809
