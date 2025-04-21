@@ -65,9 +65,9 @@ export class AdapterContext {
 	_snippetToTreeCache: Map<string, ParseableTree>;
 	_scoreAdapterCache: Map<string, z.infer<typeof ScoringSchema>>;
 
-	MINUMUM_JUDGE_SCORE = 70;
+	minimumJudgeScoreThreshold;
 
-	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv) {
+	constructor(lexerPath: string, parserPath: string, openaiEnv: OpenAIEnv, minimumJudgeScore: number = 70) {
 		this.lexerPath = lexerPath;
 		this.parserPath = parserPath;
 		this.openai = new OpenAI({
@@ -78,6 +78,7 @@ export class AdapterContext {
 
 		this._snippetToTreeCache = new Map<string, ParseableTree>();
 		this._scoreAdapterCache = new Map<string, z.infer<typeof ScoringSchema>>();
+		this.minimumJudgeScoreThreshold = minimumJudgeScore;
 	}
 
 	async snippetToTree(
@@ -333,7 +334,7 @@ export class AdapterContext {
 
 		testedAdapter.LLMScore = scoring.score;
 
-		if (scoring.score < this.MINUMUM_JUDGE_SCORE) {
+		if (scoring.score < this.minimumJudgeScoreThreshold) {
 			console.log("    - Score too low (4/5), reasons:");
 			console.log(scoring.errorsAndLimitations);
 			console.log("      - Score:", scoring.score);
@@ -623,7 +624,14 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 	parserPath: string;
 	initialAdapter: string | undefined;
 
-	constructor(openaiEnv: OpenAIEnv, messages: OpenAIMessage[], lexerPath: string, parserPath: string, initialAdapter: string | undefined, query: Query) {
+	constructor(openaiEnv: OpenAIEnv,
+							messages: OpenAIMessage[],
+							lexerPath: string,
+							parserPath: string,
+							initialAdapter: string | undefined,
+							query: Query,
+							minimumJudgeScore: number = 70
+						) {
 		this.openaiEnv = openaiEnv;
 		this.messages = messages;
 		this.holotypeQuery = query;
@@ -632,7 +640,7 @@ export class AdapterGenerator implements Generator<Adapter, Snippet, TestedAdapt
 		this.parserPath = parserPath;
 		this.initialAdapter = initialAdapter;
 
-		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv);
+		this.adapterContext = new AdapterContext(lexerPath, parserPath, openaiEnv, minimumJudgeScore);
 	}
 
 	/**

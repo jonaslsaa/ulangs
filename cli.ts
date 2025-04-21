@@ -127,6 +127,7 @@ export type CLIInferAdapterArguments = {
     parser: string;
     outputDir: string;
     initialAdapter: string | undefined;
+    minimumJudgeScore: string;
 };
 
 cli.command('infer-adapter')
@@ -139,6 +140,7 @@ cli.command('infer-adapter')
     .option('-iA, --initial-adapter <path>', 'Use a file as a starting point for the adapter', undefined)
     .option('-R, --recursive', 'Detect grammar from subdirectories', false)
     .option('-S, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
+    .option('-J, --minimum-judge-score <score>', 'Minimum score to accept a judge score (default: 70)', '70')
     // .option('-s, --skip-first-guess', 'Skips the first guess and starts from the previous intermediate solution. Useful when inital grammar is almost correct.', false)
     .action(async (directory: string, extension: string, outputDir: string, options: CLIInferAdapterArguments) => {
         // Check if the directory exists

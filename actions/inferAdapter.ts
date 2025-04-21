@@ -35,11 +35,9 @@ export async function doInferAdapter(
   // We'll store conversation history in messages, if needed.
   const messages: OpenAIMessage[] = [];
 
-  // 3. Construct the adapter context.
-  //    (Contains references to the parser/lexer and LLM client.)
-  const adapterContext = new AdapterContext(options.lexer, options.parser, openaiEnv);
-
   const holotypeQuery = GetQuery('holotype'); // TODO: investigate what the best holotype query is
+
+  const minimumJudgeScore = parseFloat(options.minimumJudgeScore);
 
   // 4. Create the AdapterGenerator and get its associated AdapterVerifier.
   const generator = new AdapterGenerator(
@@ -48,7 +46,8 @@ export async function doInferAdapter(
     options.lexer,
     options.parser,
     options.initialAdapter,
-    holotypeQuery
+    holotypeQuery,
+    minimumJudgeScore
   );
   const verifier = generator.getVerifier(snippets);
 
@@ -56,7 +55,7 @@ export async function doInferAdapter(
   //    or do single-pass; here we just do standard incremental usage with
   //    “stopOnFirstFailure: false,” etc.
   const inferenceOptions: InferenceOptions = {
-    maxRetries: 5,
+    maxRetries: 3,
     stopOnFirstFailure: true,
     incrementalForInitial: false,
     repairAllFailingExamples: false,
