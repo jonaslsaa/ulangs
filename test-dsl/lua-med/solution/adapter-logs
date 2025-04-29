@@ -10,3 +10,6 @@ Generated 147 requests, and completed 146 requests.
     2753556 tokens (18732 avg tokens per request)
     Cached input tokens: 747392, Non-cached input tokens: 1750371, Output tokens: 255793
 # note: 341196 tokens are the main generation models usage (rest is scorer)
+
+total scorer: 2514251 (non-cached: 2262825)
+total main: 588 449 (non-cached: 510275)
