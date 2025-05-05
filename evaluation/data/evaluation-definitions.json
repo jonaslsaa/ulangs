@@ -1,0 +1,287 @@
+{
+  "symbols": [
+    {
+      "kind":13,
+      "location": {"col":0,"file":"__file__","len":10,"line":1},
+      "name":"GameObject",
+      "references": [
+        {"col":9,"file":"__file__","len":10,"line":3},
+        {"col":9,"file":"__file__","len":10,"line":19},
+        {"col":9,"file":"__file__","len":10,"line":27},
+        {"col":9,"file":"__file__","len":10,"line":31},
+        {"col":9,"file":"__file__","len":10,"line":37},
+        {"col":9,"file":"__file__","len":10,"line":50}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":8,"file":"__file__","len":1,"line":51},
+      "name":"_",
+      "references": []
+    },
+    {
+      "kind":13,
+      "location": {"col":24,"file":"__file__","len":4,"line":3},
+      "name":"area",
+      "references": [
+        {"col":9,"file":"__file__","len":4,"line":7},
+        {"col":16,"file":"__file__","len":4,"line":7},
+        {"col":58,"file":"__file__","len":4,"line":58}
+      ]
+    },
+    {
+      "kind":20,
+      "location": {"col":111,"file":"__file__","len":5,"line":58},
+      "name":"color",
+      "references": [ {"col":124,"file":"__file__","len":5,"line":58} ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":13,"line":10},
+      "name":"creation_time",
+      "references": []
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":18,"line":16},
+      "name":"current_collisions",
+      "references": [
+        {"col":51,"file":"__file__","len":18,"line":22},
+        {"col":13,"file":"__file__","len":18,"line":23},
+        {"col":21,"file":"__file__","len":18,"line":42}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":4,"line":12},
+      "name":"dead",
+      "references": []
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":5,"line":13},
+      "name":"depth",
+      "references": []
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":7,"line":31},
+      "name":"destroy",
+      "references": [ {"col":15,"file":"__file__","len":7,"line":32} ]
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":4,"line":27},
+      "name":"draw",
+      "references": []
+    },
+    {
+      "kind":13,
+      "location": {"col":27,"file":"__file__","len":2,"line":19},
+      "name":"dt",
+      "references": [ {"col":41,"file":"__file__","len":2,"line":20} ]
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":25,"line":50},
+      "name":"enemyProjectileCollisions",
+      "references": []
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":5,"line":37},
+      "name":"enter",
+      "references": [ {"col":32,"file":"__file__","len":5,"line":51} ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":2,"line":9},
+      "name":"id",
+      "references": [
+        {"col":46,"file":"__file__","len":2,"line":42},
+        {"col":54,"file":"__file__","len":2,"line":43}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":21,"file":"__file__","len":1,"line":5},
+      "name":"k",
+      "references": [ {"col":49,"file":"__file__","len":1,"line":5} ]
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":3,"line":3},
+      "name":"new",
+      "references": []
+    },
+    {
+      "kind":13,
+      "location": {"col":14,"file":"__file__","len":6,"line":52},
+      "name":"object",
+      "references": [
+        {"col":29,"file":"__file__","len":6,"line":52},
+        {"col":11,"file":"__file__","len":6,"line":53},
+        {"col":21,"file":"__file__","len":6,"line":54},
+        {"col":36,"file":"__file__","len":6,"line":54},
+        {"col":46,"file":"__file__","len":6,"line":54},
+        {"col":56,"file":"__file__","len":6,"line":54},
+        {"col":15,"file":"__file__","len":6,"line":56},
+        {"col":16,"file":"__file__","len":6,"line":57},
+        {"col":32,"file":"__file__","len":6,"line":57},
+        {"col":19,"file":"__file__","len":6,"line":58},
+        {"col":51,"file":"__file__","len":6,"line":58},
+        {"col":90,"file":"__file__","len":6,"line":58},
+        {"col":100,"file":"__file__","len":6,"line":58},
+        {"col":17,"file":"__file__","len":6,"line":59}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":36,"file":"__file__","len":4,"line":3},
+      "name":"opts",
+      "references": [
+        {"col":10,"file":"__file__","len":4,"line":4},
+        {"col":17,"file":"__file__","len":4,"line":4},
+        {"col":7,"file":"__file__","len":4,"line":5},
+        {"col":35,"file":"__file__","len":4,"line":5}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":23,"file":"__file__","len":6,"line":57},
+      "name":"pierce",
+      "references": [
+        {"col":22,"file":"__file__","len":6,"line":56},
+        {"col":39,"file":"__file__","len":6,"line":57}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":19,"line":15},
+      "name":"previous_collisions",
+      "references": [
+        {"col":13,"file":"__file__","len":19,"line":22},
+        {"col":28,"file":"__file__","len":19,"line":43}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":44,"file":"__file__","len":4,"line":5},
+      "name":"self",
+      "references": [
+        {"col":4,"file":"__file__","len":4,"line":7},
+        {"col":4,"file":"__file__","len":4,"line":8},
+        {"col":12,"file":"__file__","len":4,"line":8},
+        {"col":4,"file":"__file__","len":4,"line":9},
+        {"col":4,"file":"__file__","len":4,"line":10},
+        {"col":4,"file":"__file__","len":4,"line":11},
+        {"col":4,"file":"__file__","len":4,"line":12},
+        {"col":4,"file":"__file__","len":4,"line":13},
+        {"col":4,"file":"__file__","len":4,"line":15},
+        {"col":4,"file":"__file__","len":4,"line":16},
+        {"col":7,"file":"__file__","len":4,"line":20},
+        {"col":23,"file":"__file__","len":4,"line":20},
+        {"col":7,"file":"__file__","len":4,"line":21},
+        {"col":8,"file":"__file__","len":4,"line":22},
+        {"col":46,"file":"__file__","len":4,"line":22},
+        {"col":8,"file":"__file__","len":4,"line":23},
+        {"col":4,"file":"__file__","len":4,"line":32},
+        {"col":7,"file":"__file__","len":4,"line":33},
+        {"col":33,"file":"__file__","len":4,"line":33},
+        {"col":4,"file":"__file__","len":4,"line":34},
+        {"col":36,"file":"__file__","len":4,"line":39},
+        {"col":15,"file":"__file__","len":4,"line":41},
+        {"col":16,"file":"__file__","len":4,"line":42},
+        {"col":23,"file":"__file__","len":4,"line":43},
+        {"col":27,"file":"__file__","len":4,"line":51},
+        {"col":12,"file":"__file__","len":4,"line":54},
+        {"col":15,"file":"__file__","len":4,"line":55},
+        {"col":60,"file":"__file__","len":4,"line":55},
+        {"col":119,"file":"__file__","len":4,"line":58}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":5,"line":34},
+      "name":"shape",
+      "references": [
+        {"col":12,"file":"__file__","len":5,"line":21},
+        {"col":12,"file":"__file__","len":5,"line":33},
+        {"col":38,"file":"__file__","len":5,"line":33},
+        {"col":8,"file":"__file__","len":5,"line":39},
+        {"col":41,"file":"__file__","len":5,"line":39},
+        {"col":11,"file":"__file__","len":5,"line":40},
+        {"col":20,"file":"__file__","len":5,"line":41},
+        {"col":39,"file":"__file__","len":5,"line":41},
+        {"col":40,"file":"__file__","len":5,"line":42},
+        {"col":48,"file":"__file__","len":5,"line":43},
+        {"col":84,"file":"__file__","len":5,"line":43},
+        {"col":11,"file":"__file__","len":5,"line":51},
+        {"col":23,"file":"__file__","len":5,"line":52}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":10,"file":"__file__","len":6,"line":38},
+      "name":"shapes",
+      "references": [
+        {"col":76,"file":"__file__","len":6,"line":43},
+        {"col":11,"file":"__file__","len":6,"line":47}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":26,"file":"__file__","len":3,"line":37},
+      "name":"tag",
+      "references": [
+        {"col":17,"file":"__file__","len":3,"line":40},
+        {"col":24,"file":"__file__","len":3,"line":40}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":9,"file":"__file__","len":5,"line":11},
+      "name":"timer",
+      "references": [
+        {"col":30,"file":"__file__","len":5,"line":10},
+        {"col":12,"file":"__file__","len":5,"line":20},
+        {"col":28,"file":"__file__","len":5,"line":20},
+        {"col":9,"file":"__file__","len":5,"line":32}
+      ]
+    },
+    {
+      "kind":12,
+      "location": {"col":20,"file":"__file__","len":6,"line":19},
+      "name":"update",
+      "references": [ {"col":34,"file":"__file__","len":6,"line":20} ]
+    },
+    {
+      "kind":13,
+      "location": {"col":24,"file":"__file__","len":1,"line":5},
+      "name":"v",
+      "references": [ {"col":54,"file":"__file__","len":1,"line":5} ]
+    },
+    {
+      "kind":13,
+      "location": {"col":30,"file":"__file__","len":1,"line":3},
+      "name":"x",
+      "references": [
+        {"col":9,"file":"__file__","len":1,"line":8},
+        {"col":21,"file":"__file__","len":1,"line":8},
+        {"col":43,"file":"__file__","len":1,"line":54},
+        {"col":97,"file":"__file__","len":1,"line":58}
+      ]
+    },
+    {
+      "kind":13,
+      "location": {"col":33,"file":"__file__","len":1,"line":3},
+      "name":"y",
+      "references": [
+        {"col":17,"file":"__file__","len":1,"line":8},
+        {"col":24,"file":"__file__","len":1,"line":8},
+        {"col":53,"file":"__file__","len":1,"line":54},
+        {"col":107,"file":"__file__","len":1,"line":58}
+      ]
+    }
+  ]
+}

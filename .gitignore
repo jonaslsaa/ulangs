@@ -185,3 +185,5 @@ test.pl
 
 /*.g4
 /*.pl
+
+**/__pycache__
