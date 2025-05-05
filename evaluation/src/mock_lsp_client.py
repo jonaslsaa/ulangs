@@ -117,7 +117,6 @@ def get_definition_from_json(
         origin_len = origin_selection_range_data.get("len")
 
         # --- Get range data for the DEFINITION (where symbol is defined) from JSON ---
-        # (We still need this to check validity, even if not used directly for targetRange)
         def_line_1based = found_symbol_definition_loc.get("line")
         def_col_0based = found_symbol_definition_loc.get("col")
         def_len = found_symbol_definition_loc.get("len")
@@ -126,33 +125,28 @@ def get_definition_from_json(
         if (def_line_1based is not None and def_col_0based is not None and def_len is not None and # Check definition data validity
             origin_line_1based is not None and origin_col_0based is not None and origin_len is not None): # Check origin data validity
 
-            # Calculate end column (0-based)
-            origin_end_col_0based = origin_col_0based + origin_len
-
-            # *** Modification: Use ORIGIN range for targetRange and targetSelectionRange ***
-            # This replicates the behavior observed in the real LSP server output provided,
-            # where the target range matched the origin range.
-
-            # Convert JSON 1-based line and 0-based col/end-col to LSP 0-based line/char
-            lsp_target_start_line = origin_line_1based - 1
-            lsp_target_start_char = origin_col_0based
-            lsp_target_end_line = origin_line_1based - 1 # Assuming origin is single line
-            lsp_target_end_char = origin_end_col_0based
-
+            # --- Calculate LSP 0-based coordinates for the ORIGIN ---
             lsp_origin_start_line = origin_line_1based - 1
             lsp_origin_start_char = origin_col_0based
             lsp_origin_end_line = origin_line_1based - 1 # Assuming origin is single line
-            lsp_origin_end_char = origin_end_col_0based
+            lsp_origin_end_char = origin_col_0based + origin_len
 
+            # --- Calculate LSP 0-based coordinates for the TARGET (Definition) ---
+            # Use the definition's location data (def_...)
+            lsp_target_start_line = def_line_1based - 1
+            lsp_target_start_char = def_col_0based
+            lsp_target_end_line = def_line_1based - 1 # Assuming definition is single line
+            lsp_target_end_char = def_col_0based + def_len
 
             # Construct the LSP LocationLink dictionary format (using 0-based indexing)
+            # Target ranges now correctly point to the definition location.
             location_link_dict = {
-                "targetUri": source_file_uri,
+                "targetUri": source_file_uri, # Assuming definition is in the same file for now
                 "targetRange": {
                     "start": {"line": lsp_target_start_line, "character": lsp_target_start_char},
                     "end": {"line": lsp_target_end_line, "character": lsp_target_end_char}
                 },
-                "targetSelectionRange": {
+                "targetSelectionRange": { # Often the same as targetRange, but could be just the identifier
                     "start": {"line": lsp_target_start_line, "character": lsp_target_start_char},
                     "end": {"line": lsp_target_end_line, "character": lsp_target_end_char}
                 },
