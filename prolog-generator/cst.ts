@@ -73,8 +73,6 @@ export function generatePrologFacts(
       return nodeId;
     }
 
-    if (node.getChildCount() === 0) throw new NoNodesError(`Node ${node.constructor.name} has no children`);
-
     const start = node.start;
       const stop = node.stop;
       const prologNode: PrologNode = {
