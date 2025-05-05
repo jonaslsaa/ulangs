@@ -11,21 +11,21 @@ logger = logging.getLogger(__name__)
 def get_definition_from_json(
     json_data_path: str,
     source_file_path: str,
-    line: int, # 0-based line
-    character: int, # 0-based character (column)
+    line: int, # 0-based line (LSP standard)
+    character: int, # 0-based character (column) (LSP standard)
 ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
     """
     Finds the definition location for a symbol at a given position
     by looking it up in a pre-defined JSON data structure and returns
-    it in a format mimicking LSP LocationLink, attempting to replicate
-    observed server behavior where the origin range might be returned as target.
+    it in a format mimicking LSP LocationLink. Handles JSON data where
+    'line' is 1-based and 'col' is 0-based.
 
     Args:
         json_data_path: Absolute path to the JSON file containing symbol data.
         source_file_path: Absolute path to the source file being analyzed
                           (used to resolve "__file__" and create URIs).
-        line: 0-based line number of the symbol usage/reference.
-        character: 0-based character number (column) of the symbol usage/reference.
+        line: 0-based line number of the symbol usage/reference (LSP standard).
+        character: 0-based character number (column) of the symbol usage/reference (LSP standard).
 
     Returns:
         A list containing a single dictionary representing the definition
@@ -68,12 +68,14 @@ def get_definition_from_json(
         # Check if the cursor position falls within the definition location itself
         loc = symbol.get("location")
         if isinstance(loc, dict):
-            loc_line = loc.get("line")
-            loc_col = loc.get("col")
+            loc_line_1based = loc.get("line") # JSON line is 1-based
+            loc_col_0based = loc.get("col")   # JSON col is 0-based
             loc_len = loc.get("len")
-            # Assuming 0-based line/col in JSON
-            if (loc_line == line and loc_col is not None and loc_len is not None and
-                    character >= loc_col and character < (loc_col + loc_len)):
+
+            # Compare input (0-based) with JSON data (adjusting line)
+            if (loc_line_1based is not None and loc_col_0based is not None and loc_len is not None and
+                    (loc_line_1based - 1) == line and # Adjust JSON line to 0-based for comparison
+                    character >= loc_col_0based and character < (loc_col_0based + loc_len)):
                 found_symbol_definition_loc = loc # Store the actual definition loc
                 origin_selection_range_data = loc # Clicked on the definition itself
                 break # Found the symbol
@@ -89,12 +91,14 @@ def get_definition_from_json(
                 logger.warning(f"Skipping invalid reference entry: {ref}")
                 continue
 
-            ref_line = ref.get("line")
-            ref_col = ref.get("col")
+            ref_line_1based = ref.get("line") # JSON line is 1-based
+            ref_col_0based = ref.get("col")   # JSON col is 0-based
             ref_len = ref.get("len")
-            # Assuming 0-based line/col in JSON
-            if (ref_line == line and ref_col is not None and ref_len is not None and
-                    character >= ref_col and character < (ref_col + ref_len)):
+
+            # Compare input (0-based) with JSON data (adjusting line)
+            if (ref_line_1based is not None and ref_col_0based is not None and ref_len is not None and
+                    (ref_line_1based - 1) == line and
+                    character >= ref_col_0based and character < (ref_col_0based + ref_len)):
                 # Found the symbol via one of its references
                 found_symbol_definition_loc = symbol.get("location") # Store the actual definition loc
                 origin_selection_range_data = ref # Store the range of the reference clicked
@@ -107,46 +111,54 @@ def get_definition_from_json(
     if (found_symbol_definition_loc and isinstance(found_symbol_definition_loc, dict) and
         origin_selection_range_data and isinstance(origin_selection_range_data, dict)):
 
-        # --- Get range data for the ORIGIN (the clicked symbol) ---
-        origin_line = origin_selection_range_data.get("line")
-        origin_col = origin_selection_range_data.get("col")
+        # --- Get range data for the ORIGIN (the clicked symbol) from JSON ---
+        origin_line_1based = origin_selection_range_data.get("line")
+        origin_col_0based = origin_selection_range_data.get("col")
         origin_len = origin_selection_range_data.get("len")
 
-        # --- Get range data for the DEFINITION (where symbol is defined) ---
-        # (We still need this to check validity, even if not used for targetRange)
-        def_line = found_symbol_definition_loc.get("line")
-        def_col = found_symbol_definition_loc.get("col")
+        # --- Get range data for the DEFINITION (where symbol is defined) from JSON ---
+        # (We still need this to check validity, even if not used directly for targetRange)
+        def_line_1based = found_symbol_definition_loc.get("line")
+        def_col_0based = found_symbol_definition_loc.get("col")
         def_len = found_symbol_definition_loc.get("len")
 
 
-        if (def_line is not None and def_col is not None and def_len is not None and # Check definition data validity
-            origin_line is not None and origin_col is not None and origin_len is not None): # Check origin data validity
+        if (def_line_1based is not None and def_col_0based is not None and def_len is not None and # Check definition data validity
+            origin_line_1based is not None and origin_col_0based is not None and origin_len is not None): # Check origin data validity
 
-            # Assuming 0-based line/col in JSON
-            origin_end_col = origin_col + origin_len
+            # Calculate end column (0-based)
+            origin_end_col_0based = origin_col_0based + origin_len
 
             # *** Modification: Use ORIGIN range for targetRange and targetSelectionRange ***
             # This replicates the behavior observed in the real LSP server output provided,
             # where the target range matched the origin range.
-            target_start_line = origin_line
-            target_start_char = origin_col
-            target_end_line = origin_line
-            target_end_char = origin_end_col
 
-            # Construct the LSP LocationLink dictionary format
+            # Convert JSON 1-based line and 0-based col/end-col to LSP 0-based line/char
+            lsp_target_start_line = origin_line_1based - 1
+            lsp_target_start_char = origin_col_0based
+            lsp_target_end_line = origin_line_1based - 1 # Assuming origin is single line
+            lsp_target_end_char = origin_end_col_0based
+
+            lsp_origin_start_line = origin_line_1based - 1
+            lsp_origin_start_char = origin_col_0based
+            lsp_origin_end_line = origin_line_1based - 1 # Assuming origin is single line
+            lsp_origin_end_char = origin_end_col_0based
+
+
+            # Construct the LSP LocationLink dictionary format (using 0-based indexing)
             location_link_dict = {
                 "targetUri": source_file_uri,
                 "targetRange": {
-                    "start": {"line": target_start_line, "character": target_start_char},
-                    "end": {"line": target_end_line, "character": target_end_char}
+                    "start": {"line": lsp_target_start_line, "character": lsp_target_start_char},
+                    "end": {"line": lsp_target_end_line, "character": lsp_target_end_char}
                 },
                 "targetSelectionRange": {
-                    "start": {"line": target_start_line, "character": target_start_char},
-                    "end": {"line": target_end_line, "character": target_end_char}
+                    "start": {"line": lsp_target_start_line, "character": lsp_target_start_char},
+                    "end": {"line": lsp_target_end_line, "character": lsp_target_end_char}
                 },
                 "originSelectionRange": {
-                    "start": {"line": origin_line, "character": origin_col},
-                    "end": {"line": origin_line, "character": origin_end_col}
+                    "start": {"line": lsp_origin_start_line, "character": lsp_origin_start_char},
+                    "end": {"line": lsp_origin_end_line, "character": lsp_origin_end_char}
                 }
             }
             # Return as a list containing the single location link
@@ -156,5 +168,5 @@ def get_definition_from_json(
             return None
     else:
         # No symbol found at the specified line and character
-        logger.info(f"No symbol found at {source_file_path} L{line}:C{character} in {json_data_path}")
+        logger.info(f"No symbol found at {source_file_path} L{line}:C{character} (0-based) in {json_data_path}")
         return None
