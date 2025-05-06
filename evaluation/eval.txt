@@ -1360,8 +1360,8 @@ server quit
 
 --- Comparison ---
   Items only in Mock JSON (2):
-    - (('range', (('end', (('character', 62), ('line', 57))), ('start', (('character', 58), ('line', 57))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
     - (('range', (('end', (('character', 13), ('line', 6))), ('start', (('character', 9), ('line', 6))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 62), ('line', 57))), ('start', (('character', 58), ('line', 57))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
 Results are DIFFERENT
 
 --- REF Statistics ---
@@ -1379,50 +1379,147 @@ Calculated Statistics:
 ----------------------
 ------------------
 
-------
- > Test Case (REF): x (field set in new) (at 8:21)
-------
---- Manual Comparison ---
-Mode: REF
-Lua Server: /Users/jonassilva/Downloads/lua-language-server-3.14.0-darwin-arm64/bin/lua-language-server
-Lua File: /Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua
-Symbol JSON: /Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-definitions.json
-Position: Line 7, Character 20 (0-based)
-Include Declaration in References: True
--------------------------
+  ------
+  > Test Case (REF): x (field set in new) (at 8:22)
+  ------
+  --- Manual Comparison ---
+  Mode: REF
+  Lua Server: /Users/jonassilva/Downloads/lua-language-server-3.14.0-darwin-arm64/bin/lua-language-server
+  Lua File: /Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua
+  Symbol JSON: /Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-definitions.json
+  Position: Line 7, Character 21 (0-based)
+  Include Declaration in References: True
+  -------------------------
 
-[1] Querying Real Lua LSP Server for References...
-Notify method not found: $/hello.
-Notify method not found: window/logMessage.
-server quit
+  [1] Querying Real Lua LSP Server for References...
+  Notify method not found: $/hello.
+  Notify method not found: window/logMessage.
+  server quit
 
-[2] Querying Mock JSON Data for References...
+  [2] Querying Mock JSON Data for References...
 
---- Real LSP Server Result (REF) ---
-No ref found or error occurred.
-----------------------------
+  --- Real LSP Server Result (REF) ---
+  [
+    {
+      "range": {
+        "end": {
+          "character": 31,
+          "line": 2
+        },
+        "start": {
+          "character": 30,
+          "line": 2
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    },
+    {
+      "range": {
+        "end": {
+          "character": 22,
+          "line": 7
+        },
+        "start": {
+          "character": 21,
+          "line": 7
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    }
+  ]
+  ----------------------------
 
---- Mock JSON Lookup Result (REF) ---
-No ref found or error occurred.
-----------------------------
+  --- Mock JSON Lookup Result (REF) ---
+  [
+    {
+      "range": {
+        "end": {
+          "character": 31,
+          "line": 2
+        },
+        "start": {
+          "character": 30,
+          "line": 2
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    },
+    {
+      "range": {
+        "end": {
+          "character": 10,
+          "line": 7
+        },
+        "start": {
+          "character": 9,
+          "line": 7
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    },
+    {
+      "range": {
+        "end": {
+          "character": 22,
+          "line": 7
+        },
+        "start": {
+          "character": 21,
+          "line": 7
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    },
+    {
+      "range": {
+        "end": {
+          "character": 44,
+          "line": 53
+        },
+        "start": {
+          "character": 43,
+          "line": 53
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    },
+    {
+      "range": {
+        "end": {
+          "character": 98,
+          "line": 57
+        },
+        "start": {
+          "character": 97,
+          "line": 57
+        }
+      },
+      "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+    }
+  ]
+  ----------------------------
 
---- Comparison ---
-Results are IDENTICAL by direct comparison.
+  --- Comparison ---
+    Items only in Mock JSON (3):
+      - (('range', (('end', (('character', 44), ('line', 53))), ('start', (('character', 43), ('line', 53))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+      - (('range', (('end', (('character', 98), ('line', 57))), ('start', (('character', 97), ('line', 57))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+      - (('range', (('end', (('character', 10), ('line', 7))), ('start', (('character', 9), ('line', 7))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+  Results are DIFFERENT
 
---- REF Statistics ---
-True  Positives (TP): 0  (Correctly matched items)
-False Positives (FP): 0  (Mock returned, but not in Real)
-False Negatives (FN): 0  (In Real, but Mock missed)
+  --- REF Statistics ---
+  True  Positives (TP): 2  (Correctly matched items)
+  False Positives (FP): 3  (Mock returned, but not in Real)
+  False Negatives (FN): 0  (In Real, but Mock missed)
 
-Total in Golden Standard (Real LSP): 0
-Total Returned by Mock Client: 0
+  Total in Golden Standard (Real LSP): 2
+  Total Returned by Mock Client: 5
 
-Calculated Statistics:
-  Precision: 0.00%
-  Recall: 0.00%
-  F1 Score: 0.00%
-----------------------
-------------------
+  Calculated Statistics:
+    Precision: 40.00%
+    Recall: 100.00%
+    F1 Score: 57.14%
+  ----------------------
+  ------------------
 
 ------
  > Test Case (REF): timer (field usage in update) (at 20:13)
@@ -1881,14 +1978,14 @@ server quit
 
 --- Comparison ---
   Items only in Mock JSON (8):
-    - (('range', (('end', (('character', 89), ('line', 42))), ('start', (('character', 84), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
-    - (('range', (('end', (('character', 13), ('line', 38))), ('start', (('character', 8), ('line', 38))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 28), ('line', 51))), ('start', (('character', 23), ('line', 51))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
     - (('range', (('end', (('character', 45), ('line', 41))), ('start', (('character', 40), ('line', 41))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
     - (('range', (('end', (('character', 16), ('line', 50))), ('start', (('character', 11), ('line', 50))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
-    - (('range', (('end', (('character', 28), ('line', 51))), ('start', (('character', 23), ('line', 51))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
-    - (('range', (('end', (('character', 16), ('line', 39))), ('start', (('character', 11), ('line', 39))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
-    - (('range', (('end', (('character', 53), ('line', 42))), ('start', (('character', 48), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
     - (('range', (('end', (('character', 44), ('line', 40))), ('start', (('character', 39), ('line', 40))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 16), ('line', 39))), ('start', (('character', 11), ('line', 39))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 13), ('line', 38))), ('start', (('character', 8), ('line', 38))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 89), ('line', 42))), ('start', (('character', 84), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 53), ('line', 42))), ('start', (('character', 48), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
 Results are DIFFERENT
 
 --- REF Statistics ---
@@ -2636,21 +2733,21 @@ Calculated Statistics:
       Comparison Summary for MODE: REF
 ========================================
 Total Comparisons Run: 10
-          Identical: 4
-          Different: 6
+          Identical: 3
+          Different: 7
 ========================================
 
 --- Overall REF Statistics (Aggregated) ---
 Micro-Averaged (based on total TP, FP, FN across 10 test cases):
-  Total TP: 39, Total FP: 13, Total FN: 1
-  Overall Precision: 75.00%
-  Overall Recall:    97.50%
-  Overall F1-Score:  84.78%
+  Total TP: 41, Total FP: 16, Total FN: 1
+  Overall Precision: 71.92%
+  Overall Recall:    97.61%
+  Overall F1-Score:  82.81%
 
 Macro-Averaged (average of per-test-case scores from 10 test cases):
-  Average Precision: 63.28%
-  Average Recall:    80.00%
-  Average F1-Score:  69.21%
+  Average Precision: 67.28%
+  Average Recall:    90.00%
+  Average F1-Score:  74.92%
 -------------------------------------------
 
 ######################################################################
