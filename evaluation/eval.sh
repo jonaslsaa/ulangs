@@ -42,12 +42,17 @@ test_cases_def=(
 )
 
 # Test cases for References (REF) mode
-test_cases_ref=(
+test_cases_ref=(                                                                                                                                                    
     "GameObject (class name);3;10"
-    "area (param in new);7;17"
-    "self (in update method);20;8"
-    "timer (field usage);32;10"
-    "x (field usage in new);8;23",
+    "GameObject.new (method);3;21"
+    "area (param usage in new);7;17"
+    "x (field set in new);8;21"
+    "timer (field usage in update);20;13"
+    "shape (field usage in destroy);33;39"
+    "shapes (local var usage in enter);47;12"
+    "tag (param in enter);40;25"
+    "HC.remove (library func call);33;27"
+    "object (local var decl in enemyProjectileCollisions);52;15"               
 )
 # --- End Test Cases ---
 
