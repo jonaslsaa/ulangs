@@ -1,0 +1,2630 @@
+======================================================================
+    STARTING EVALUATION: REAL LSP vs. NAIVE Client
+======================================================================
+
+######################################################################
+          RUNNING EVALUATION FOR MODE: DEF (REAL vs. NAIVE)
+######################################################################
+
+Comparing REAL LSP server and NAIVE Client results in MODE: DEF
+Total test cases for this mode: 10
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): GameObject (def) (at 3:10)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 19,
+        "line": 2
+      },
+      "start": {
+        "character": 9,
+        "line": 2
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 19,
+        "line": 2
+      },
+      "start": {
+        "character": 9,
+        "line": 2
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): area (param in new) (at 7:17)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 20,
+        "line": 6
+      },
+      "start": {
+        "character": 16,
+        "line": 6
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 20,
+        "line": 6
+      },
+      "start": {
+        "character": 16,
+        "line": 6
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): GameObject (update method) (at 19:10)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 19,
+        "line": 18
+      },
+      "start": {
+        "character": 9,
+        "line": 18
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 19,
+        "line": 18
+      },
+      "start": {
+        "character": 9,
+        "line": 18
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): self (param in update) (at 20:8)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 11,
+        "line": 19
+      },
+      "start": {
+        "character": 7,
+        "line": 19
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 11,
+        "line": 19
+      },
+      "start": {
+        "character": 7,
+        "line": 19
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 48,
+        "line": 4
+      },
+      "start": {
+        "character": 44,
+        "line": 4
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 48,
+        "line": 4
+      },
+      "start": {
+        "character": 44,
+        "line": 4
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client A (REAL) (not in B) (1):
+    - (('originSelectionRange', (('end', (('character', 11), ('line', 19))), ('start', (('character', 7), ('line', 19))))), ('targetRange', (('end', (('character', 10), ('line', 0))), ('start', (('character...
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('originSelectionRange', (('end', (('character', 11), ('line', 19))), ('start', (('character', 7), ('line', 19))))), ('targetRange', (('end', (('character', 48), ('line', 4))), ('start', (('character...
+Results are DIFFERENT (REAL vs. NAIVE)
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): timer (field) (at 32:10)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 14,
+        "line": 31
+      },
+      "start": {
+        "character": 9,
+        "line": 31
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 14,
+        "line": 10
+      },
+      "start": {
+        "character": 9,
+        "line": 10
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 14,
+        "line": 10
+      },
+      "start": {
+        "character": 9,
+        "line": 10
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 14,
+        "line": 31
+      },
+      "start": {
+        "character": 9,
+        "line": 31
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 35,
+        "line": 9
+      },
+      "start": {
+        "character": 30,
+        "line": 9
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 35,
+        "line": 9
+      },
+      "start": {
+        "character": 30,
+        "line": 9
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client A (REAL) (not in B) (1):
+    - (('originSelectionRange', (('end', (('character', 14), ('line', 31))), ('start', (('character', 9), ('line', 31))))), ('targetRange', (('end', (('character', 14), ('line', 10))), ('start', (('characte...
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('originSelectionRange', (('end', (('character', 14), ('line', 31))), ('start', (('character', 9), ('line', 31))))), ('targetRange', (('end', (('character', 35), ('line', 9))), ('start', (('character...
+Results are DIFFERENT (REAL vs. NAIVE)
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): dt (param in update) (at 19:28)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 29,
+        "line": 18
+      },
+      "start": {
+        "character": 27,
+        "line": 18
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): shape (field) (at 33:39)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 43,
+        "line": 32
+      },
+      "start": {
+        "character": 38,
+        "line": 32
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 14,
+        "line": 33
+      },
+      "start": {
+        "character": 9,
+        "line": 33
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 14,
+        "line": 33
+      },
+      "start": {
+        "character": 9,
+        "line": 33
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 43,
+        "line": 32
+      },
+      "start": {
+        "character": 38,
+        "line": 32
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client A (REAL) (not in B) (1):
+    - (('originSelectionRange', (('end', (('character', 43), ('line', 32))), ('start', (('character', 38), ('line', 32))))), ('targetRange', (('end', (('character', 14), ('line', 33))), ('start', (('charact...
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('originSelectionRange', (('end', (('character', 43), ('line', 32))), ('start', (('character', 38), ('line', 32))))), ('targetRange', (('end', (('character', 17), ('line', 20))), ('start', (('charact...
+Results are DIFFERENT (REAL vs. NAIVE)
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): shapes (local var) (at 47:12)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 17,
+        "line": 46
+      },
+      "start": {
+        "character": 11,
+        "line": 46
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 17,
+        "line": 46
+      },
+      "start": {
+        "character": 11,
+        "line": 46
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): shape (param in anonymous func) (at 52:24)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 28,
+        "line": 51
+      },
+      "start": {
+        "character": 23,
+        "line": 51
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 16,
+        "line": 50
+      },
+      "start": {
+        "character": 11,
+        "line": 50
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 16,
+        "line": 50
+      },
+      "start": {
+        "character": 11,
+        "line": 50
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+[
+  {
+    "originSelectionRange": {
+      "end": {
+        "character": 28,
+        "line": 51
+      },
+      "start": {
+        "character": 23,
+        "line": 51
+      }
+    },
+    "targetRange": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "targetSelectionRange": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "targetUri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client A (REAL) (not in B) (1):
+    - (('originSelectionRange', (('end', (('character', 28), ('line', 51))), ('start', (('character', 23), ('line', 51))))), ('targetRange', (('end', (('character', 16), ('line', 50))), ('start', (('charact...
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('originSelectionRange', (('end', (('character', 28), ('line', 51))), ('start', (('character', 23), ('line', 51))))), ('targetRange', (('end', (('character', 17), ('line', 20))), ('start', (('charact...
+Results are DIFFERENT (REAL vs. NAIVE)
+------------------
+
+------
+ > Test Case (DEF - REAL vs. NAIVE): 50 (literal) (at 13:18)
+------
+
+[A] Querying Client A (REAL) for DEF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for DEF...
+
+--- Client A (REAL) Result (DEF) ---
+No def found or error occurred for Client A.
+----------------------------
+
+--- Client B (NAIVE) Result (DEF) ---
+No def found or error occurred for Client B.
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+------------------
+
+========================================
+      Comparison Summary for MODE: DEF (REAL vs. NAIVE)
+========================================
+Total Comparisons Run: 10
+          Identical: 6
+          Different: 4
+========================================
+
+######################################################################
+          COMPLETED EVALUATION FOR MODE: DEF (REAL vs. NAIVE)
+######################################################################
+
+
+######################################################################
+          RUNNING EVALUATION FOR MODE: REF (REAL vs. NAIVE)
+######################################################################
+
+Comparing REAL LSP server and NAIVE Client results in MODE: REF
+Total test cases for this mode: 10
+
+------
+ > Test Case (REF - REAL vs. NAIVE): GameObject (class name) (at 3:10)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 2
+      },
+      "start": {
+        "character": 9,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 18
+      },
+      "start": {
+        "character": 9,
+        "line": 18
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 26
+      },
+      "start": {
+        "character": 9,
+        "line": 26
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 30
+      },
+      "start": {
+        "character": 9,
+        "line": 30
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 36
+      },
+      "start": {
+        "character": 9,
+        "line": 36
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 49
+      },
+      "start": {
+        "character": 9,
+        "line": 49
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 10,
+        "line": 0
+      },
+      "start": {
+        "character": 0,
+        "line": 0
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 2
+      },
+      "start": {
+        "character": 9,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 18
+      },
+      "start": {
+        "character": 9,
+        "line": 18
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 26
+      },
+      "start": {
+        "character": 9,
+        "line": 26
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 30
+      },
+      "start": {
+        "character": 9,
+        "line": 30
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 36
+      },
+      "start": {
+        "character": 9,
+        "line": 36
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 19,
+        "line": 49
+      },
+      "start": {
+        "character": 9,
+        "line": 49
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 7  (A items correctly found by B)
+False Positives (FP): 0  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 7
+Total Returned by Client B (NAIVE): 7
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 100.00%
+  Recall: 100.00%
+  F1 Score: 100.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): GameObject.new (method) (at 3:21)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 23,
+        "line": 2
+      },
+      "start": {
+        "character": 20,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 23,
+        "line": 2
+      },
+      "start": {
+        "character": 20,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 1  (A items correctly found by B)
+False Positives (FP): 0  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 1
+Total Returned by Client B (NAIVE): 1
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 100.00%
+  Recall: 100.00%
+  F1 Score: 100.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): area (param usage in new) (at 7:17)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 20,
+        "line": 6
+      },
+      "start": {
+        "character": 16,
+        "line": 6
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 28,
+        "line": 2
+      },
+      "start": {
+        "character": 24,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 13,
+        "line": 6
+      },
+      "start": {
+        "character": 9,
+        "line": 6
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 20,
+        "line": 6
+      },
+      "start": {
+        "character": 16,
+        "line": 6
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 62,
+        "line": 57
+      },
+      "start": {
+        "character": 58,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (2):
+    - (('range', (('end', (('character', 13), ('line', 6))), ('start', (('character', 9), ('line', 6))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 62), ('line', 57))), ('start', (('character', 58), ('line', 57))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 2  (A items correctly found by B)
+False Positives (FP): 2  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 2
+Total Returned by Client B (NAIVE): 4
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 50.00%
+  Recall: 100.00%
+  F1 Score: 66.67%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): x (field set in new) (at 8:22)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 31,
+        "line": 2
+      },
+      "start": {
+        "character": 30,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 22,
+        "line": 7
+      },
+      "start": {
+        "character": 21,
+        "line": 7
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 31,
+        "line": 2
+      },
+      "start": {
+        "character": 30,
+        "line": 2
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 10,
+        "line": 7
+      },
+      "start": {
+        "character": 9,
+        "line": 7
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 22,
+        "line": 7
+      },
+      "start": {
+        "character": 21,
+        "line": 7
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 44,
+        "line": 53
+      },
+      "start": {
+        "character": 43,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 98,
+        "line": 57
+      },
+      "start": {
+        "character": 97,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (3):
+    - (('range', (('end', (('character', 44), ('line', 53))), ('start', (('character', 43), ('line', 53))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 98), ('line', 57))), ('start', (('character', 97), ('line', 57))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 10), ('line', 7))), ('start', (('character', 9), ('line', 7))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 2  (A items correctly found by B)
+False Positives (FP): 3  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 2
+Total Returned by Client B (NAIVE): 5
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 40.00%
+  Recall: 100.00%
+  F1 Score: 57.14%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): timer (field usage in update) (at 20:13)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 10
+      },
+      "start": {
+        "character": 9,
+        "line": 10
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 19
+      },
+      "start": {
+        "character": 12,
+        "line": 19
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 33,
+        "line": 19
+      },
+      "start": {
+        "character": 28,
+        "line": 19
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 31
+      },
+      "start": {
+        "character": 9,
+        "line": 31
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 35,
+        "line": 9
+      },
+      "start": {
+        "character": 30,
+        "line": 9
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 10
+      },
+      "start": {
+        "character": 9,
+        "line": 10
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 19
+      },
+      "start": {
+        "character": 12,
+        "line": 19
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 33,
+        "line": 19
+      },
+      "start": {
+        "character": 28,
+        "line": 19
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 31
+      },
+      "start": {
+        "character": 9,
+        "line": 31
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('range', (('end', (('character', 35), ('line', 9))), ('start', (('character', 30), ('line', 9))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 4  (A items correctly found by B)
+False Positives (FP): 1  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 4
+Total Returned by Client B (NAIVE): 5
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 80.00%
+  Recall: 100.00%
+  F1 Score: 88.89%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): shape (field usage in destroy) (at 33:39)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 32
+      },
+      "start": {
+        "character": 12,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 43,
+        "line": 32
+      },
+      "start": {
+        "character": 38,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 33
+      },
+      "start": {
+        "character": 9,
+        "line": 33
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 46,
+        "line": 38
+      },
+      "start": {
+        "character": 41,
+        "line": 38
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 25,
+        "line": 40
+      },
+      "start": {
+        "character": 20,
+        "line": 40
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 20
+      },
+      "start": {
+        "character": 12,
+        "line": 20
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 32
+      },
+      "start": {
+        "character": 12,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 43,
+        "line": 32
+      },
+      "start": {
+        "character": 38,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 14,
+        "line": 33
+      },
+      "start": {
+        "character": 9,
+        "line": 33
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 13,
+        "line": 38
+      },
+      "start": {
+        "character": 8,
+        "line": 38
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 46,
+        "line": 38
+      },
+      "start": {
+        "character": 41,
+        "line": 38
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 16,
+        "line": 39
+      },
+      "start": {
+        "character": 11,
+        "line": 39
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 25,
+        "line": 40
+      },
+      "start": {
+        "character": 20,
+        "line": 40
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 44,
+        "line": 40
+      },
+      "start": {
+        "character": 39,
+        "line": 40
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 45,
+        "line": 41
+      },
+      "start": {
+        "character": 40,
+        "line": 41
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 53,
+        "line": 42
+      },
+      "start": {
+        "character": 48,
+        "line": 42
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 89,
+        "line": 42
+      },
+      "start": {
+        "character": 84,
+        "line": 42
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 16,
+        "line": 50
+      },
+      "start": {
+        "character": 11,
+        "line": 50
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 28,
+        "line": 51
+      },
+      "start": {
+        "character": 23,
+        "line": 51
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (8):
+    - (('range', (('end', (('character', 13), ('line', 38))), ('start', (('character', 8), ('line', 38))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 16), ('line', 39))), ('start', (('character', 11), ('line', 39))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 28), ('line', 51))), ('start', (('character', 23), ('line', 51))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 53), ('line', 42))), ('start', (('character', 48), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 89), ('line', 42))), ('start', (('character', 84), ('line', 42))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 44), ('line', 40))), ('start', (('character', 39), ('line', 40))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 16), ('line', 50))), ('start', (('character', 11), ('line', 50))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+    - (('range', (('end', (('character', 45), ('line', 41))), ('start', (('character', 40), ('line', 41))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 6  (A items correctly found by B)
+False Positives (FP): 8  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 6
+Total Returned by Client B (NAIVE): 14
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 42.86%
+  Recall: 100.00%
+  F1 Score: 60.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): shapes (local var usage in enter) (at 47:12)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 82,
+        "line": 42
+      },
+      "start": {
+        "character": 76,
+        "line": 42
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 46
+      },
+      "start": {
+        "character": 11,
+        "line": 46
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 16,
+        "line": 37
+      },
+      "start": {
+        "character": 10,
+        "line": 37
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 82,
+        "line": 42
+      },
+      "start": {
+        "character": 76,
+        "line": 42
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 46
+      },
+      "start": {
+        "character": 11,
+        "line": 46
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 3  (A items correctly found by B)
+False Positives (FP): 0  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 3
+Total Returned by Client B (NAIVE): 3
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 100.00%
+  Recall: 100.00%
+  F1 Score: 100.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): tag (param in enter) (at 40:25)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 29,
+        "line": 36
+      },
+      "start": {
+        "character": 26,
+        "line": 36
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 27,
+        "line": 39
+      },
+      "start": {
+        "character": 24,
+        "line": 39
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 29,
+        "line": 36
+      },
+      "start": {
+        "character": 26,
+        "line": 36
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 20,
+        "line": 39
+      },
+      "start": {
+        "character": 17,
+        "line": 39
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 27,
+        "line": 39
+      },
+      "start": {
+        "character": 24,
+        "line": 39
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('range', (('end', (('character', 20), ('line', 39))), ('start', (('character', 17), ('line', 39))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 2  (A items correctly found by B)
+False Positives (FP): 1  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 2
+Total Returned by Client B (NAIVE): 3
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 66.67%
+  Recall: 100.00%
+  F1 Score: 80.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): HC.remove (library func call) (at 33:27)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 32,
+        "line": 32
+      },
+      "start": {
+        "character": 26,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 32,
+        "line": 32
+      },
+      "start": {
+        "character": 26,
+        "line": 32
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+Results are IDENTICAL by direct comparison (REAL vs. NAIVE).
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 1  (A items correctly found by B)
+False Positives (FP): 0  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 1
+Total Returned by Client B (NAIVE): 1
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 100.00%
+  Recall: 100.00%
+  F1 Score: 100.00%
+----------------------
+------------------
+
+------
+ > Test Case (REF - REAL vs. NAIVE): object (local var decl in enemyProjectileCollisions) (at 52:15)
+------
+
+[A] Querying Client A (REAL) for REF...
+Notify method not found: $/hello.
+Notify method not found: window/logMessage.
+server quit
+
+[B] Querying Client B (NAIVE) for REF...
+
+--- Client A (REAL) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 20,
+        "line": 51
+      },
+      "start": {
+        "character": 14,
+        "line": 51
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 52
+      },
+      "start": {
+        "character": 11,
+        "line": 52
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 27,
+        "line": 53
+      },
+      "start": {
+        "character": 21,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 42,
+        "line": 53
+      },
+      "start": {
+        "character": 36,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 52,
+        "line": 53
+      },
+      "start": {
+        "character": 46,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 62,
+        "line": 53
+      },
+      "start": {
+        "character": 56,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 21,
+        "line": 55
+      },
+      "start": {
+        "character": 15,
+        "line": 55
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 22,
+        "line": 56
+      },
+      "start": {
+        "character": 16,
+        "line": 56
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 38,
+        "line": 56
+      },
+      "start": {
+        "character": 32,
+        "line": 56
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 25,
+        "line": 57
+      },
+      "start": {
+        "character": 19,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 57,
+        "line": 57
+      },
+      "start": {
+        "character": 51,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 96,
+        "line": 57
+      },
+      "start": {
+        "character": 90,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 106,
+        "line": 57
+      },
+      "start": {
+        "character": 100,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 23,
+        "line": 58
+      },
+      "start": {
+        "character": 17,
+        "line": 58
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Client B (NAIVE) Result (REF) ---
+[
+  {
+    "range": {
+      "end": {
+        "character": 20,
+        "line": 51
+      },
+      "start": {
+        "character": 14,
+        "line": 51
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 35,
+        "line": 51
+      },
+      "start": {
+        "character": 29,
+        "line": 51
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 17,
+        "line": 52
+      },
+      "start": {
+        "character": 11,
+        "line": 52
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 27,
+        "line": 53
+      },
+      "start": {
+        "character": 21,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 42,
+        "line": 53
+      },
+      "start": {
+        "character": 36,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 52,
+        "line": 53
+      },
+      "start": {
+        "character": 46,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 62,
+        "line": 53
+      },
+      "start": {
+        "character": 56,
+        "line": 53
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 21,
+        "line": 55
+      },
+      "start": {
+        "character": 15,
+        "line": 55
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 22,
+        "line": 56
+      },
+      "start": {
+        "character": 16,
+        "line": 56
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 38,
+        "line": 56
+      },
+      "start": {
+        "character": 32,
+        "line": 56
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 25,
+        "line": 57
+      },
+      "start": {
+        "character": 19,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 57,
+        "line": 57
+      },
+      "start": {
+        "character": 51,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 96,
+        "line": 57
+      },
+      "start": {
+        "character": 90,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 106,
+        "line": 57
+      },
+      "start": {
+        "character": 100,
+        "line": 57
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  },
+  {
+    "range": {
+      "end": {
+        "character": 23,
+        "line": 58
+      },
+      "start": {
+        "character": 17,
+        "line": 58
+      }
+    },
+    "uri": "file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua"
+  }
+]
+----------------------------
+
+--- Comparison (Client A: REAL vs. Client B: NAIVE) ---
+  Items only in Client B (NAIVE) (not in A) (1):
+    - (('range', (('end', (('character', 35), ('line', 51))), ('start', (('character', 29), ('line', 51))))), ('uri', 'file:///Users/jonassilva/Desktop/uLangs/evaluation/data/evaluation-sample.lua'))
+Results are DIFFERENT (REAL vs. NAIVE)
+
+--- REF Statistics (Client A: REAL vs. Client B: NAIVE) ---
+True  Positives (TP): 14  (A items correctly found by B)
+False Positives (FP): 1  (B returned, but not in A)
+False Negatives (FN): 0  (In A, but B missed)
+
+Total in Client A (REAL - Golden Standard): 14
+Total Returned by Client B (NAIVE): 15
+
+Calculated Statistics (REAL vs. NAIVE):
+  Precision: 93.33%
+  Recall: 100.00%
+  F1 Score: 96.55%
+----------------------
+------------------
+
+========================================
+      Comparison Summary for MODE: REF (REAL vs. NAIVE)
+========================================
+Total Comparisons Run: 10
+          Identical: 4
+          Different: 6
+========================================
+
+--- Overall REF Statistics (Aggregated for REAL vs. NAIVE) ---
+Micro-Averaged (based on total TP, FP, FN across 10 test cases):
+  Total TP: 42, Total FP: 16, Total FN: 0
+  Overall Precision: 72.41%
+  Overall Recall:    100.00%
+  Overall F1-Score:  83.99%
+
+Macro-Averaged (average of per-test-case scores from 10 test cases):
+  Average Precision: 77.28%
+  Average Recall:    100.00%
+  Average F1-Score:  84.92%
+-------------------------------------------
+
+######################################################################
+          COMPLETED EVALUATION FOR MODE: REF (REAL vs. NAIVE)
+######################################################################
+
+
+======================================================================
+          ALL EVALUATION MODES COMPLETED FOR REAL vs. NAIVE
+======================================================================
