@@ -45,6 +45,11 @@ See the [TODO](TODO.md) file for a list of planned features and improvements.
    ```bash
    pnpm install
    ```
+3. **Build `antlr-grammar-checker`**
+```bash
+cd antlr-grammar-checker/
+mvn clean install
+```
 
 ### Running the Language Server
 
