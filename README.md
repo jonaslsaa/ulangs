@@ -4,9 +4,8 @@ A toolkit that simplifies language server development by automating grammar and 
 
 ## Development Status
 
-This project represents ongoing Master's thesis research in automated language server development. Many features are still missing, and the codebase is not yet stable.
+This project represents completed Master's thesis research in automated language server development. While the core research is finished, ongoing refinement and feature additions may occur.
 
-See the [TODO](TODO.md) file for a list of planned features and improvements.
 
 ## Features
 
