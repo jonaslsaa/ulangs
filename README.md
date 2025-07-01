@@ -1,3 +1,7 @@
+<p align="center">
+<img src="https://github.com/user-attachments/assets/29fb8040-4861-48c4-91ec-f3992137c35e" width="400" title="Logo"/>
+</p>
+
 # uLangs - Universal Language Server Toolkit
 
 A toolkit that simplifies language server development by automating grammar and semantic analysis generation. Given sample code from any domain-specific language, uLangs generates the necessary parsing and analysis components to create a LSP server implementation. The system uses LLMs to automate the traditionally manual tasks of grammar definition and semantic rule creation.
