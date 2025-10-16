@@ -8,7 +8,7 @@ A toolkit that simplifies language server development by automating grammar and 
 
 ## Development Status
 
-This project represents completed Master's thesis research in automated language server development. While the core research is finished, ongoing refinement and feature additions may occur.
+This project represents completed [Master's thesis research in automated language server development](./Masters-Thesis.pdf). While the core research is finished, ongoing refinement and feature additions may occur.
 
 
 ## Features
