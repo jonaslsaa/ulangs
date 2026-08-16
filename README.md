@@ -10,6 +10,7 @@ A toolkit that simplifies language server development by automating grammar and 
 
 This project represents completed [Master's thesis research in automated language server development](./Masters-Thesis.pdf). While the core research is finished, ongoing refinement and feature additions may occur.
 
+[Master's defense presentation slides](https://www.mn.uio.no/ifi/english/research/groups/psy/completedmasters/2025/da-silva/master-s-thesis-defense.pdf)
 
 ## Features
 
